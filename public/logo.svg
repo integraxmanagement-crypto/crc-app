@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Marca provisional de CRC: una C abierta (Centinel) con el punto de control al centro. -->
+  <rect width="512" height="512" fill="#0B3C5D"/>
+  <path d="M355.6 172.4 A130 130 0 1 0 355.6 339.6" fill="none" stroke="#FFFFFF" stroke-width="56"/>
+  <circle cx="256" cy="256" r="42" fill="#1BA39C"/>
+</svg>
