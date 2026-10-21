@@ -1,0 +1,25 @@
+# Claves y variables de entorno: NUNCA se suben al repositorio
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencias y archivos generados
+node_modules/
+dist/
+build/
+.next/
+.vercel/
+.supabase/
+coverage/
+
+# Registros y temporales
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Configuración local de editores
+.vscode/
+.idea/
