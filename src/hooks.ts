@@ -1,4 +1,30 @@
 import { useEffect, useState } from 'react'
+import { supabase } from './supabase'
+
+export type DbState = 'checking' | 'ok' | 'offline' | 'error' | 'unconfigured'
+
+/** Comprueba la conexión con la base de datos leyendo la tabla de prueba. */
+export function useDatabase(online: boolean): DbState {
+  const [result, setResult] = useState<'ok' | 'error' | null>(null)
+
+  useEffect(() => {
+    if (!supabase || !online) return
+    let active = true
+    supabase
+      .from('prueba_conexion')
+      .select('id', { head: true, count: 'exact' })
+      .then(({ error }) => {
+        if (active) setResult(error ? 'error' : 'ok')
+      })
+    return () => {
+      active = false
+    }
+  }, [online])
+
+  if (!supabase) return 'unconfigured'
+  if (!online) return 'offline'
+  return result ?? 'checking'
+}
 
 /** Indica si el equipo tiene conexión a internet, y cambia en vivo. */
 export function useOnline() {

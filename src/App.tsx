@@ -1,6 +1,14 @@
 import { CircleCheck, Database, Download, Smartphone, Wifi, WifiOff } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useInstall, useOnline } from './hooks'
+import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
+
+const dbText: Record<DbState, { value: string; note?: string; tone: Tone }> = {
+  checking: { value: 'Comprobando…', tone: 'idle' },
+  ok: { value: 'Conectada', tone: 'ok' },
+  offline: { value: 'En espera', note: 'Se conectará al volver la señal', tone: 'idle' },
+  error: { value: 'Sin respuesta', note: 'Se reintentará más tarde', tone: 'idle' },
+  unconfigured: { value: 'Por conectar', tone: 'idle' },
+}
 
 function Mark() {
   return (
@@ -64,6 +72,7 @@ function Install() {
 
 export default function App() {
   const online = useOnline()
+  const db = dbText[useDatabase(online)]
 
   return (
     <main className="screen">
@@ -88,7 +97,7 @@ export default function App() {
             note={online ? undefined : 'La app sigue disponible'}
             tone={online ? 'ok' : 'idle'}
           />
-          <Check icon={<Database />} label="Base de datos" value="Por conectar" tone="idle" />
+          <Check icon={<Database />} label="Base de datos" value={db.value} note={db.note} tone={db.tone} />
         </ul>
 
         <Install />
