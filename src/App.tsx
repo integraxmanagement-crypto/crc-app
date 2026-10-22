@@ -1,6 +1,9 @@
-import { CircleCheck, Database, Download, Smartphone, Wifi, WifiOff } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { CircleCheck, Database, Download, LogOut, Smartphone, Wifi, WifiOff } from 'lucide-react'
+import { type ReactNode, useState } from 'react'
+import { CambioContrasena } from './CambioContrasena'
 import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
+import { Ingreso } from './Ingreso'
+import { type Perfil, salir, useSesion } from './sesion'
 
 const dbText: Record<DbState, { value: string; note?: string; tone: Tone }> = {
   checking: { value: 'Comprobando…', tone: 'idle' },
@@ -70,12 +73,77 @@ function Install() {
   )
 }
 
-export default function App() {
-  const online = useOnline()
+function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
   const db = dbText[useDatabase(online)]
+  const datos = [
+    ['Empresa', perfil.esDueno && !perfil.empresa ? 'Integrax · Dueño de la plataforma' : perfil.empresa],
+    ['Rol', perfil.rol ?? (perfil.esDueno ? 'Dueño de la plataforma' : null)],
+    ['Puesto', perfil.puesto],
+    ['Área', perfil.area],
+  ].filter((d): d is [string, string] => Boolean(d[1]))
 
   return (
-    <main className="screen">
+    <>
+      <p className="lede">Hola, {perfil.apellidosNombres}.</p>
+
+      <dl className="ficha">
+        {datos.map(([etiqueta, valor]) => (
+          <div key={etiqueta}>
+            <dt>{etiqueta}</dt>
+            <dd>{valor}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <h2 id="estado">Estado del sistema</h2>
+      <ul className="checks">
+        <Check
+          icon={online ? <Wifi /> : <WifiOff />}
+          label="Internet"
+          value={online ? 'En línea' : 'Sin conexión'}
+          note={online ? undefined : 'La app sigue disponible'}
+          tone={online ? 'ok' : 'idle'}
+        />
+        <Check icon={<Database />} label="Base de datos" value={db.value} note={db.note} tone={db.tone} />
+      </ul>
+
+      <Install />
+
+      <button className="btn-link" type="button" onClick={() => void salir()}>
+        <LogOut size={18} aria-hidden="true" /> Cerrar sesión
+      </button>
+    </>
+  )
+}
+
+export default function App() {
+  const online = useOnline()
+  const { sesion, recargar } = useSesion(online)
+  // La contraseña recién escrita se guarda solo en memoria, para no volver a pedirla en el cambio obligatorio.
+  const [claveIngreso, setClaveIngreso] = useState<string | null>(null)
+
+  let contenido: ReactNode
+  if (sesion.fase === 'cargando') {
+    contenido = <p className="lede">Cargando…</p>
+  } else if (sesion.fase === 'fuera') {
+    contenido = <Ingreso aviso={sesion.aviso} onIngreso={setClaveIngreso} />
+  } else if (sesion.perfil.debeCambiarContrasena) {
+    contenido = (
+      <CambioContrasena
+        perfil={sesion.perfil}
+        claveActual={claveIngreso}
+        onListo={() => {
+          setClaveIngreso(null)
+          recargar()
+        }}
+      />
+    )
+  } else {
+    contenido = <Inicio perfil={sesion.perfil} online={online} />
+  }
+
+  return (
+    <main className="screen" data-fase={sesion.fase}>
       <header className="sign">
         <Mark />
         <h1 className="brand">
@@ -84,25 +152,9 @@ export default function App() {
         </h1>
       </header>
 
-      <section className="panel" aria-labelledby="estado">
-        <p className="lede">Sistema de gestión de seguridad y salud en el trabajo.</p>
-
-        <h2 id="estado">Estado del sistema</h2>
-        <ul className="checks">
-          <Check icon={<CircleCheck />} label="Aplicación" value="Lista" tone="ok" />
-          <Check
-            icon={online ? <Wifi /> : <WifiOff />}
-            label="Internet"
-            value={online ? 'En línea' : 'Sin conexión'}
-            note={online ? undefined : 'La app sigue disponible'}
-            tone={online ? 'ok' : 'idle'}
-          />
-          <Check icon={<Database />} label="Base de datos" value={db.value} note={db.note} tone={db.tone} />
-        </ul>
-
-        <Install />
-
-        <footer className="foot">Versión 0.1 · Base técnica</footer>
+      <section className="panel">
+        {contenido}
+        <footer className="foot">Versión 0.2 · Ingreso y seguridad</footer>
       </section>
     </main>
   )
