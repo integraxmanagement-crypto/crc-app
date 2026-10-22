@@ -1,8 +1,13 @@
-import { CircleCheck, Database, Download, LogOut, Smartphone, Wifi, WifiOff } from 'lucide-react'
+import { Building2, CircleCheck, Database, Download, Home, LogOut, Smartphone, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { CambioContrasena } from './CambioContrasena'
+import { DetalleEmpresa } from './empresas/DetalleEmpresa'
+import { crearEmpresa } from './empresas/datos'
+import { FormFicha } from './empresas/FormFicha'
+import { ListaEmpresas } from './empresas/ListaEmpresas'
 import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
 import { Ingreso } from './Ingreso'
+import { ir, useRuta } from './ruta'
 import { type Perfil, salir, useSesion } from './sesion'
 
 const dbText: Record<DbState, { value: string; note?: string; tone: Tone }> = {
@@ -107,6 +112,21 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
         <Check icon={<Database />} label="Base de datos" value={db.value} note={db.note} tone={db.tone} />
       </ul>
 
+      {(perfil.esDueno || perfil.rolCodigo === 'admin_empresa') && (
+        <div className="accesos">
+          {perfil.esDueno && (
+            <button className="btn" type="button" onClick={() => ir('/empresas')}>
+              <Building2 size={20} aria-hidden="true" /> Empresas clientes
+            </button>
+          )}
+          {perfil.rolCodigo === 'admin_empresa' && perfil.empresaId && (
+            <button className="btn" type="button" onClick={() => ir('/mi-empresa')}>
+              <Building2 size={20} aria-hidden="true" /> Mi empresa
+            </button>
+          )}
+        </div>
+      )}
+
       <Install />
 
       <button className="btn-link" type="button" onClick={() => void salir()}>
@@ -116,8 +136,60 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
   )
 }
 
+/** Barra superior compacta de las pantallas de gestión. */
+function Barra({ perfil }: { perfil: Perfil }) {
+  return (
+    <header className="barra">
+      <button className="barra-marca" type="button" onClick={() => ir('/')} aria-label="Ir al inicio">
+        <Mark />
+        <span>CRC</span>
+      </button>
+      <nav aria-label="Secciones">
+        <button type="button" onClick={() => ir('/')}>
+          <Home size={18} aria-hidden="true" /> <span>Inicio</span>
+        </button>
+        {perfil.esDueno && (
+          <button type="button" onClick={() => ir('/empresas')}>
+            <Building2 size={18} aria-hidden="true" /> <span>Empresas</span>
+          </button>
+        )}
+        {perfil.rolCodigo === 'admin_empresa' && (
+          <button type="button" onClick={() => ir('/mi-empresa')}>
+            <Building2 size={18} aria-hidden="true" /> <span>Mi empresa</span>
+          </button>
+        )}
+        <button type="button" onClick={() => void salir()} aria-label="Cerrar sesión">
+          <LogOut size={18} aria-hidden="true" />
+        </button>
+      </nav>
+    </header>
+  )
+}
+
+/** Pantallas de gestión según la dirección (#/empresas, #/mi-empresa…). null = pantalla de inicio. */
+function Gestion({ perfil, ruta }: { perfil: Perfil; ruta: string[] }): ReactNode {
+  if (ruta[0] === 'empresas' && perfil.esDueno) {
+    if (!ruta[1]) return <ListaEmpresas />
+    if (ruta[1] === 'nueva')
+      return (
+        <FormFicha
+          onCancelar={() => ir('/empresas')}
+          onGuardar={async (ficha, sede) => {
+            const id = await crearEmpresa(ficha, sede!)
+            ir(`/empresas/${id}`)
+          }}
+        />
+      )
+    return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
+  }
+  if (ruta[0] === 'mi-empresa' && perfil.rolCodigo === 'admin_empresa' && perfil.empresaId)
+    return <DetalleEmpresa empresaId={perfil.empresaId} modo="admin" />
+  return null
+}
+
 export default function App() {
   const online = useOnline()
+  const ruta = useRuta()
   const { sesion, recargar } = useSesion(online)
   // La contraseña recién escrita se guarda solo en memoria, para no volver a pedirla en el cambio obligatorio.
   const [claveIngreso, setClaveIngreso] = useState<string | null>(null)
@@ -139,6 +211,14 @@ export default function App() {
       />
     )
   } else {
+    const gestion = Gestion({ perfil: sesion.perfil, ruta })
+    if (gestion)
+      return (
+        <main className="screen gestion">
+          <Barra perfil={sesion.perfil} />
+          <section className="panel panel-ancho">{gestion}</section>
+        </main>
+      )
     contenido = <Inicio perfil={sesion.perfil} online={online} />
   }
 
@@ -154,7 +234,7 @@ export default function App() {
 
       <section className="panel">
         {contenido}
-        <footer className="foot">Versión 0.2 · Ingreso y seguridad</footer>
+        <footer className="foot">Versión 0.3 · Registro de empresas</footer>
       </section>
     </main>
   )

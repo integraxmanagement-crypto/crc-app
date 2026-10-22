@@ -21,7 +21,9 @@ export type Perfil = {
   debeCambiarContrasena: boolean
   esDueno: boolean
   empresa: string | null
+  empresaId: string | null
   rol: string | null
+  rolCodigo: string | null // p. ej. 'admin_empresa'; decide qué pantallas se muestran (los permisos reales los da la base de datos)
   puesto: string | null
   area: string | null
 }
@@ -57,7 +59,7 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
     supabase.from('personas').select('apellidos_nombres, numero_documento, debe_cambiar_contrasena').eq('id', id).maybeSingle(),
     supabase
       .from('vinculos')
-      .select('puesto, area, empresas(razon_social), roles(nombre)')
+      .select('puesto, area, empresa_id, rol, empresas(razon_social), roles(nombre)')
       .eq('persona_id', id)
       .eq('estado', 'activo')
       .maybeSingle(),
@@ -68,6 +70,8 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
   const v = vinculo.data as unknown as {
     puesto: string | null
     area: string | null
+    empresa_id: string
+    rol: string
     empresas: { razon_social: string } | null
     roles: { nombre: string } | null
   } | null
@@ -79,7 +83,9 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
     debeCambiarContrasena: persona.data.debe_cambiar_contrasena,
     esDueno: Boolean(dueno.data),
     empresa: v?.empresas?.razon_social ?? null,
+    empresaId: v?.empresa_id ?? null,
     rol: v?.roles?.nombre ?? null,
+    rolCodigo: v?.rol ?? null,
     puesto: v?.puesto ?? null,
     area: v?.area ?? null,
   }

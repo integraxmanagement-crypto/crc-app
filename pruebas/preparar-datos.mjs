@@ -6,12 +6,12 @@ import { claveFuerte, cuentas, guardarCuenta, ingresarComo, llamarFuncion } from
 
 const PERSONAS = [
   // [nombre, documento, apellidos y nombres, rol, empresa (RUC), puesto, área, lo crea]
-  ['ADMIN_A', 'dni:20000001', 'PRUEBA ADMIN A, Ana (ficticia)', 'admin_empresa', '20000000001', 'Jefa de SSO', 'Seguridad', 'DUENO'],
-  ['GESTOR_A', 'dni:20000002', 'PRUEBA GESTOR A, Beto (ficticio)', 'gestor', '20000000001', 'Supervisor SSO', 'Operaciones', 'ADMIN_A'],
-  ['USUARIO_A', 'dni:20000003', 'PRUEBA USUARIO A, Carla (ficticia)', 'usuario', '20000000001', 'Operaria', 'Planta', 'ADMIN_A'],
-  ['ADMIN_B', 'dni:30000001', 'PRUEBA ADMIN B, Diego (ficticio)', 'admin_empresa', '20000000002', 'Jefe de SSO', 'Seguridad', 'DUENO'],
-  ['GESTOR_B', 'dni:30000002', 'PRUEBA GESTOR B, Elena (ficticia)', 'gestor', '20000000002', 'Supervisora SSO', 'Obras', 'ADMIN_B'],
-  ['USUARIO_B', 'ce:CE300003', 'PRUEBA USUARIO B, Franco (ficticio)', 'usuario', '20000000002', 'Operario', 'Obras', 'ADMIN_B'],
+  ['ADMIN_A', 'dni:20000001', 'PRUEBA ADMIN A, Ana (ficticia)', 'admin_empresa', '20000000010', 'Jefa de SSO', 'Seguridad', 'DUENO'],
+  ['GESTOR_A', 'dni:20000002', 'PRUEBA GESTOR A, Beto (ficticio)', 'gestor', '20000000010', 'Supervisor SSO', 'Operaciones', 'ADMIN_A'],
+  ['USUARIO_A', 'dni:20000003', 'PRUEBA USUARIO A, Carla (ficticia)', 'usuario', '20000000010', 'Operaria', 'Planta', 'ADMIN_A'],
+  ['ADMIN_B', 'dni:30000001', 'PRUEBA ADMIN B, Diego (ficticio)', 'admin_empresa', '20000000028', 'Jefe de SSO', 'Seguridad', 'DUENO'],
+  ['GESTOR_B', 'dni:30000002', 'PRUEBA GESTOR B, Elena (ficticia)', 'gestor', '20000000028', 'Supervisora SSO', 'Obras', 'ADMIN_B'],
+  ['USUARIO_B', 'ce:CE300003', 'PRUEBA USUARIO B, Franco (ficticio)', 'usuario', '20000000028', 'Operario', 'Obras', 'ADMIN_B'],
 ]
 
 const { c: dueno, error } = await ingresarComo('DUENO')

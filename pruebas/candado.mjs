@@ -15,7 +15,8 @@ for (const n of ACTIVAS) {
 const { c: dueno } = await ingresarComo('DUENO')
 const { data: personas } = await dueno.from('personas').select('numero_documento, clave_con_candado')
 const sin = personas?.filter((p) => !p.clave_con_candado).map((p) => p.numero_documento) ?? []
-comprobar('Todas las cuentas activas ya tienen candado (solo queda sin él la cesada 20000003)', sin.length === 1 && sin[0] === '20000003', `sin candado: ${sin.join(', ') || 'ninguna'}`)
+// La cuenta cesada 20000003 recibe el candado cuando vuelve a ingresar (la prueba de separación la reactiva en B).
+comprobar('Todas las cuentas activas ya tienen candado', sin.every((d) => d === '20000003'), `sin candado: ${sin.join(', ') || 'ninguna'}`)
 
 // 2. La puerta trasera: ir directo a Supabase con la contraseña CORRECTA.
 for (const n of ['DUENO', 'ADMIN_A', 'USUARIO_B']) {

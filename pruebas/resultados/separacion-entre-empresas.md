@@ -1,8 +1,8 @@
 # Prueba de separación entre empresas · CRC tarea 3.1
 
-Ejecutada: 22/10/2026, 12:35:55 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 22/10/2026, 2:40:40 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 48 de 48 pruebas pasaron.**
+**Resultado: 65 de 65 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app (clave pública + reglas RLS) e intenta ver o tocar lo que no le corresponde.
 
@@ -10,17 +10,17 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | USUARIO_A2: solo ve su empresa (A) | ve 20000000001 |
+| ✅ Pasa | USUARIO_A2: solo ve su empresa (A) | ve 20000000010 |
 | ✅ Pasa | USUARIO_A2: si pide la empresa B por su código, recibe 0 filas |  |
 | ✅ Pasa | USUARIO_A2: 0 vínculos de B |  |
 | ✅ Pasa | USUARIO_A2: 0 personas de B |  |
 | ✅ Pasa | USUARIO_A2: 0 registros del historial de B |  |
-| ✅ Pasa | GESTOR_A: solo ve su empresa (A) | ve 20000000001 |
+| ✅ Pasa | GESTOR_A: solo ve su empresa (A) | ve 20000000010 |
 | ✅ Pasa | GESTOR_A: si pide la empresa B por su código, recibe 0 filas |  |
 | ✅ Pasa | GESTOR_A: 0 vínculos de B |  |
 | ✅ Pasa | GESTOR_A: 0 personas de B |  |
 | ✅ Pasa | GESTOR_A: 0 registros del historial de B |  |
-| ✅ Pasa | ADMIN_A: solo ve su empresa (A) | ve 20000000001 |
+| ✅ Pasa | ADMIN_A: solo ve su empresa (A) | ve 20000000010 |
 | ✅ Pasa | ADMIN_A: si pide la empresa B por su código, recibe 0 filas |  |
 | ✅ Pasa | ADMIN_A: 0 vínculos de B |  |
 | ✅ Pasa | ADMIN_A: 0 personas de B |  |
@@ -83,8 +83,30 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 | ✅ Pasa | Admin A NO ve su nuevo vínculo en B |  |
 | ✅ Pasa | Admin B NO ve su historial en A |  |
 
-## 7. El dueño de la plataforma ve las dos empresas
+## 7. El dueño de la plataforma ve todas las empresas
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve A y B |  |
+| ✅ Pasa | El dueño ve A y B (y las demás empresas de prueba) | 3 empresas |
+
+## 8. Ampliación 3.2: sedes, contactos y logos tampoco cruzan entre empresas
+
+| Resultado | Prueba | Detalle |
+|---|---|---|
+| ✅ Pasa | ADMIN_A: solo ve sedes de su empresa | 1 sedes |
+| ✅ Pasa | ADMIN_A: ningún contacto de la otra empresa |  |
+| ✅ Pasa | ADMIN_A: la carpeta de logos de la otra empresa se ve vacía |  |
+| ✅ Pasa | GESTOR_A: solo ve sedes de su empresa | 1 sedes |
+| ✅ Pasa | GESTOR_A: ningún contacto de la otra empresa |  |
+| ✅ Pasa | GESTOR_A: la carpeta de logos de la otra empresa se ve vacía |  |
+| ✅ Pasa | USUARIO_A2: solo ve sedes de su empresa | 1 sedes |
+| ✅ Pasa | USUARIO_A2: ningún contacto de la otra empresa |  |
+| ✅ Pasa | USUARIO_A2: la carpeta de logos de la otra empresa se ve vacía |  |
+| ✅ Pasa | ADMIN_B: solo ve sedes de su empresa | 1 sedes |
+| ✅ Pasa | ADMIN_B: ningún contacto de la otra empresa |  |
+| ✅ Pasa | ADMIN_B: la carpeta de logos de la otra empresa se ve vacía |  |
+| ✅ Pasa | GESTOR_B: solo ve sedes de su empresa | 1 sedes |
+| ✅ Pasa | GESTOR_B: ningún contacto de la otra empresa |  |
+| ✅ Pasa | GESTOR_B: la carpeta de logos de la otra empresa se ve vacía |  |
+| ✅ Pasa | ADMIN_A no puede descargar el logo de B | Object not found |
+| ✅ Pasa | Sin iniciar sesión no se puede descargar ningún logo | Object not found |

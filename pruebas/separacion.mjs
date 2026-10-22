@@ -11,8 +11,8 @@ function seccion(titulo) {
   console.log(`\n── ${titulo}`)
 }
 
-const RUC_A = '20000000001'
-const RUC_B = '20000000002'
+const RUC_A = '20000000010'
+const RUC_B = '20000000028'
 const SIN_PERMISO = (r) => r.error?.code === '42501' || /permission denied|No autorizado/i.test(r.error?.message ?? '')
 
 // Datos de referencia que solo el dueño puede ver completos.
@@ -156,10 +156,30 @@ seccion('6. Cambio de empresa: la persona pasa de A a B y el historial se conser
 }
 
 // ───────────────────────────────────────────────
-seccion('7. El dueño de la plataforma ve las dos empresas')
+seccion('7. El dueño de la plataforma ve todas las empresas')
 {
   const r = await dueno.from('empresas').select('ruc')
-  comprobar('El dueño ve A y B', r.data?.length === 2)
+  const rucs = r.data?.map((e) => e.ruc) ?? []
+  comprobar('El dueño ve A y B (y las demás empresas de prueba)', rucs.includes(RUC_A) && rucs.includes(RUC_B), `${rucs.length} empresas`)
+}
+
+// ───────────────────────────────────────────────
+seccion('8. Ampliación 3.2: sedes, contactos y logos tampoco cruzan entre empresas')
+{
+  const { data: logoB } = await dueno.from('empresas').select('logo_positivo').eq('id', ID[RUC_B]).single()
+  for (const [n, propia, ajena] of [['ADMIN_A', RUC_A, RUC_B], ['GESTOR_A', RUC_A, RUC_B], ['USUARIO_A2', RUC_A, RUC_B], ['ADMIN_B', RUC_B, RUC_A], ['GESTOR_B', RUC_B, RUC_A]]) {
+    const c = sesion[n]
+    const sedes = await c.from('sedes').select('empresa_id')
+    comprobar(`${n}: solo ve sedes de su empresa`, sedes.data?.length > 0 && sedes.data.every((s) => s.empresa_id === ID[propia]), `${sedes.data?.length} sedes`)
+    const contactos = await c.from('empresas_contactos').select('empresa_id')
+    comprobar(`${n}: ningún contacto de la otra empresa`, !contactos.data?.some((k) => k.empresa_id === ID[ajena]))
+    const carpeta = await c.storage.from('logos').list(ID[ajena])
+    comprobar(`${n}: la carpeta de logos de la otra empresa se ve vacía`, (carpeta.data ?? []).length === 0)
+  }
+  const robo = await sesion.ADMIN_A.storage.from('logos').download(logoB.logo_positivo)
+  comprobar('ADMIN_A no puede descargar el logo de B', Boolean(robo.error), robo.error?.message)
+  const anon = await cliente().storage.from('logos').download(logoB.logo_positivo)
+  comprobar('Sin iniciar sesión no se puede descargar ningún logo', Boolean(anon.error), anon.error?.message)
 }
 
 const fallas = resumen()

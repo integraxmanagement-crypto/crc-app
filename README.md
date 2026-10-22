@@ -2,7 +2,7 @@
 
 Sistema de gestión de seguridad y salud en el trabajo (SST / SGSST) para empresas y profesionales.
 
-> **Estado actual (v0.2, 22/10/2026):** ingreso y seguridad (tarea 3.1). Se ingresa con documento y contraseña, cada empresa ve solo sus datos, las cuentas se pueden cesar y reactivar, y los intentos de adivinar contraseñas se registran y bloquean. **Todavía no hay pantallas de negocio** (registro de empresas, usuarios, inspecciones…).
+> **Estado actual (v0.3, 22/10/2026):** ingreso y seguridad (tarea 3.1) y **registro de empresas clientes (tarea 3.2)**. Se ingresa con documento y contraseña; cada empresa ve solo sus datos; Integrax da de alta a cada empresa con su ficha, sedes, contactos, logos y primer administrador. **Todavía no hay** pantalla de usuarios y roles por puesto (3.3), inspecciones ni las demás funciones de negocio.
 
 - **App publicada (pruebas internas):** https://crc-app-phi.vercel.app
 - **Repositorio:** https://github.com/integraxmanagement-crypto/crc-app
@@ -109,8 +109,37 @@ Están en `pruebas/` y usan las cuentas de `.env.pruebas.local` (archivo local, 
 | `bloqueo.mjs` | Registro de intentos y bloqueo por documento (deja a USUARIO_B bloqueado 15 min). |
 | `candado.mjs` | La puerta trasera está cerrada: ni con la contraseña correcta se entra directo a Supabase. |
 | `reglas-contrasena.mjs` | Reglas de contraseña aplicadas por el servidor. |
+| `empresas.mjs` | Registro de empresas (3.2): separación de ficha, sedes, contactos y logos; solo el dueño crea empresas y sedes; RUC, CIIU y archivos; suspensión. Informe en `pruebas/resultados/`. |
 
-`preparar-datos.mjs` crea las personas ficticias; `primer-ingreso.mjs` se usó una sola vez para el primer cambio de contraseña del dueño ficticio.
+`preparar-datos.mjs` crea las personas ficticias; `preparar-empresas.mjs` completa la ficha, sedes, contactos y logo ficticios de las empresas A y B; `primer-ingreso.mjs` se usó una sola vez para el primer cambio de contraseña del dueño ficticio.
+
+## Registro de empresas clientes (tarea 3.2)
+
+Las empresas **no se registran solas**: el dueño de la plataforma (Integrax) las da de alta desde **Inicio → Empresas clientes**.
+
+### Ficha de la empresa
+- **RUC:** 11 dígitos, que empiece con 10, 15, 16, 17 o 20 y con dígito verificador correcto. Se revisa el formato; **no se consulta a SUNAT**.
+- Razón social, nombre comercial (opcional) y domicilio legal (dirección, distrito, provincia y departamento, en texto libre).
+- **Actividad económica:** código CIIU elegido del catálogo oficial, más un **texto libre** que es el que se imprime en los encabezados de registros y formatos; se puede cambiar sin cambiar el CIIU.
+- **Logos** positivo (fondo claro) y negativo (fondo oscuro, opcional; si falta se usa el positivo). PNG, JPG o WebP de hasta 1 MB, en un almacén **privado**: cada empresa solo puede ver y cambiar los suyos.
+- **Contactos:** representante legal, administrador de contacto y respaldo (opcional). Son datos personales: solo los ven Integrax y el administrador de esa empresa.
+- **Estado** (activa o suspendida: si se suspende, nadie de esa empresa puede ingresar y se cierran sus sesiones) y **plan** (gratuito o de pago; solo se guarda, el control de planes es de la v1.1).
+- **Sedes:** toda empresa tiene al menos una activa. Se agregan, editan y desactivan; no se borran.
+- **Primer administrador:** lo crea el dueño desde la ficha; la contraseña inicial se muestra una sola vez.
+
+### Quién puede qué (decisión del dueño, 22/10/2026)
+| | Dueño (Integrax) | Administrador de la empresa | Gestor y usuario |
+|---|---|---|---|
+| Crear empresas y sedes; editar ficha legal; suspender | ✅ | ❌ | ❌ |
+| Editar contactos y logos | ✅ | ✅ (solo su empresa) | ❌ |
+| Ver ficha, sedes y logos | Todas | Su empresa | Su empresa |
+| Ver contactos | Todas | Su empresa | ❌ |
+
+### Catálogo CIIU
+419 códigos de la **CIIU Rev. 4.0** de SUNAT (archivo `TablaOficialCIIURev4.xls` de las tablas anexas del RUC, descargado el 22/10/2026; último guardado del archivo: 28/02/2025). Se busca por código o por palabras, sin importar tildes. Los dos códigos que SUNAT marca "(NO USAR)" (9810 y 9820) se guardan pero no se pueden elegir. La migración `catalogo_ciiu_rev4_sunat` lleva la fuente y una huella de control.
+
+### Datos de prueba
+Las empresas de `crc-dev` son **ficticias** y están marcadas como de prueba: la base de datos obliga a que lleven "Ficticia" en la razón social. Sus datos se cargan fuera de las migraciones, para que **nunca viajen** al entorno limpio donde se cargará la empresa piloto real.
 
 ## Seguridad: reglas que no se rompen
 
@@ -124,7 +153,10 @@ Están en `pruebas/` y usan las cuentas de `.env.pruebas.local` (archivo local, 
 
 ```
 public/logo.svg        Logo provisional (de él salen los íconos de instalación)
-src/App.tsx            Elige la pantalla: ingreso, cambio de contraseña o inicio
+src/App.tsx            Elige la pantalla: ingreso, cambio de contraseña, inicio o gestión
+src/ruta.ts            Navegación simple (#/empresas, #/mi-empresa…) sin librerías
+src/empresas/          Registro de empresas: lista, ficha, CIIU, sedes, contactos, logos y administrador
+src/gestion.css        Diseño de las pantallas de gestión
 src/Ingreso.tsx        Pantalla de ingreso (documento y contraseña)
 src/CambioContrasena.tsx  Cambio obligatorio de contraseña
 src/sesion.ts          Sesión: ingresar, salir, ficha de la persona, cierre si fue cesada
@@ -149,4 +181,6 @@ vite.config.ts         Configuración de la app instalable (PWA)
 - Lugares con muchos trabajadores en una misma conexión (por ejemplo, el wifi de una mina): Supabase deja pasar unos 30 ingresos por minuto por dirección; vigilarlo cuando haya clientes reales.
 - Antes de tener clientes: sumar la verificación "no soy un robot" (Cloudflare Turnstile) al ingreso.
 - Las funciones del servidor ya usan las claves nuevas de Supabase; las antiguas (`anon` / `service_role`) dejan de funcionar a fines de 2026. Cuando se desactiven en el panel, confirmar que todo sigue funcionando.
-- La cuenta ficticia cesada (DNI 20000003) pasará al candado recién cuando se la reactive e ingrese.
+- **3.2:** cuando SUNAT publique una versión nueva de la tabla CIIU, cargarla con una migración nueva (sin borrar la anterior si ya hay empresas que la usan).
+- **3.2:** la empresa piloto real se cargará en un entorno limpio, que se decidirá aparte; las empresas ficticias de `crc-dev` no se usan para el piloto.
+- **3.2:** la ficha no guarda historial de cambios (quién cambió qué y cuándo, más allá de la última modificación); evaluarlo si un cliente o la auditoría lo pide.

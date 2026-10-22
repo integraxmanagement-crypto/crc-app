@@ -92,3 +92,7 @@ export function resumen() {
   console.log(`\n${resultados.length - fallas} de ${resultados.length} pruebas pasaron.`)
   return fallas
 }
+
+/** Imagen PNG ficticia de 1×1 píxel, para probar la carga de logos. */
+export const PNG_FICTICIO = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64')
