@@ -1044,3 +1044,30 @@
     font-size: 9pt;
   }
 }
+
+/* Personas «por revisar» (carga con lista completa): aviso en Usuarios y recuadro en la cuenta. */
+.aviso-revisar,
+.por-revisar {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #e8c26a;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+
+.aviso-revisar p,
+.por-revisar p {
+  margin: 0;
+}
+
+.por-revisar {
+  margin-bottom: 0.6rem;
+}
+
+@media (min-width: 640px) {
+  .aviso-revisar {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+}

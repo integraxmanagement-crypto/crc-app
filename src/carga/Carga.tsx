@@ -176,13 +176,17 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
   )
   const bloqueado = cuenta.error > 0 || cuenta.falta_lista > 0
   const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`
+  const marcarRevisar = listaCompleta ? (revision?.noAparecen.length ?? 0) : 0
+  const quitarMarca = (revision?.filas ?? []).filter((f) => f.porRevisar).length
   const resumenGrabar = [
     cuenta.nueva && plural(cuenta.nueva, 'cuenta nueva', 'cuentas nuevas'),
     cuenta.alta_cuenta_existente && plural(cuenta.alta_cuenta_existente, 'alta de quien ya tenía cuenta', 'altas de quienes ya tenían cuenta'),
     cuenta.actualizar && plural(cuenta.actualizar, 'actualización', 'actualizaciones'),
     reactivar.size && plural(reactivar.size, 'reactivación', 'reactivaciones'),
+    marcarRevisar && plural(marcarRevisar, 'persona queda «por revisar»', 'personas quedan «por revisar»'),
+    quitarMarca && plural(quitarMarca, 'persona deja de estar «por revisar»', 'personas dejan de estar «por revisar»'),
   ].filter(Boolean) as string[]
-  const porGrabar = cuenta.nueva + cuenta.alta_cuenta_existente + cuenta.actualizar + reactivar.size
+  const porGrabar = cuenta.nueva + cuenta.alta_cuenta_existente + cuenta.actualizar + reactivar.size + marcarRevisar + quitarMarca
   const marcar = (set: Set<number>, fijar: (s: Set<number>) => void, i: number) => {
     const s = new Set(set)
     if (s.has(i)) s.delete(i)
@@ -318,6 +322,7 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
                         {f.estado === 'nueva' && <div>Recibirá una contraseña inicial.</div>}
                         {f.estado === 'alta_cuenta_existente' && <div>Se da de alta aquí; sigue con su contraseña de siempre.</div>}
                         {f.estado === 'sin_cambios' && <div>No se toca nada (ni su contraseña).</div>}
+                        {f.porRevisar && <div>Estaba «por revisar»: al grabar se le quita la marca (sigue en la empresa).</div>}
                       </td>
                     </tr>
                   ))}

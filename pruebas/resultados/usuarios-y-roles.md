@@ -1,6 +1,6 @@
 # Usuarios y roles por empresa · CRC tarea 3.3
 
-Ejecutada: 23/10/2026, 8:47:58 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 23/10/2026, 9:04:49 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 81 de 81 pruebas pasaron.**
 
@@ -12,7 +12,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 12 personas visibles |
+| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 17 personas visibles |
 | ✅ Pasa | ADMIN_A ve 0 cuentas de B |  |
 | ✅ Pasa | ADMIN_A no puede crear una cuenta en B | 403 No autorizado |
 | ✅ Pasa | ADMIN_A no puede cesar a USUARIO_B | No autorizado |
@@ -75,14 +75,14 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 | ✅ Pasa | Al cambiarla, vuelve a ver los datos de su empresa |  |
 | ✅ Pasa | ADMIN_B no ve el registro de contraseñas dadas en A |  |
 | ✅ Pasa | El gestor no ve el registro de contraseñas dadas |  |
-| ✅ Pasa | El dueño restablece en bloque los gestores de C | 1 cuentas |
+| ✅ Pasa | El dueño restablece en bloque los gestores de C | 2 cuentas |
 | ✅ Pasa | El restablecimiento en bloque respeta los roles elegidos |  |
 
 ## 5. Solo el dueño de la plataforma ve el registro de intentos de ingreso
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve los intentos | 325 intentos |
+| ✅ Pasa | El dueño ve los intentos | 354 intentos |
 | ✅ Pasa | ADMIN_A ve 0 intentos |  |
 | ✅ Pasa | GESTOR_A ve 0 intentos |  |
 | ✅ Pasa | USUARIO_A2 ve 0 intentos |  |

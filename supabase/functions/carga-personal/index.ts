@@ -50,7 +50,11 @@ Deno.serve(async (req) => {
   const altas = resultado.filas.filter((f) => f.estado === 'alta_cuenta_existente')
   const actualizar = resultado.filas.filter((f) => f.estado === 'actualizar')
   const reactivar = resultado.filas.filter((f) => f.estado === 'reactivar' && marcadas.has(f.fila))
-  if (!nuevas.length && !altas.length && !actualizar.length && !reactivar.length) {
+  // Lista completa (decisión 9): quienes no aparecen quedan «por revisar». La lista la arma ESTA revisión.
+  const listaCompleta = d.lista_completa === true
+  const porRevisar = listaCompleta ? resultado.noAparecen.map((p) => p.vinculo_id) : []
+  const quitarMarca = resultado.filas.filter((f) => f.porRevisar).length
+  if (!nuevas.length && !altas.length && !actualizar.length && !reactivar.length && !porRevisar.length && !quitarMarca) {
     return responder(req, 400, { error: 'No hay nada que grabar: todas las personas ya están al día.' })
   }
 
@@ -82,7 +86,9 @@ Deno.serve(async (req) => {
     p_datos: {
       filas: resultado.filas.length,
       sin_cambios: resultado.filas.filter((f) => f.estado === 'sin_cambios').length,
-      lista_completa: d.lista_completa === true,
+      lista_completa: listaCompleta,
+      presentes: resultado.filas.filter((f) => f.vinculo_id && f.estado !== 'reactivar').map((f) => f.vinculo_id),
+      por_revisar: porRevisar,
       nuevas: creadas.map((c) => ({ ...datosVinculo(c.fila), persona_id: c.id, tipo: TIPO_INTERNO[c.fila.tipo], numero: c.fila.numero, nombres: c.fila.nombres })),
       altas: altas.map((f) => ({ ...datosVinculo(f), persona_id: f.persona_id })),
       actualizar: actualizar.map((f) => ({ ...datosVinculo(f), vinculo_id: f.vinculo_id, nombres: f.nombres })),
@@ -103,7 +109,9 @@ Deno.serve(async (req) => {
   creadas.sort((a, b) => a.fila.fila - b.fila.fila)
   return responder(req, 200, {
     carga_id: grabado.data,
-    resumen: { nuevas: creadas.length, altas: altas.length, actualizadas: actualizar.length, reactivadas: reactivar.length },
+    resumen: {
+      nuevas: creadas.length, altas: altas.length, actualizadas: actualizar.length, reactivadas: reactivar.length, por_revisar: porRevisar.length,
+    },
     entregas: creadas.map((c) => ({
       fila: c.fila.fila, tipo: c.fila.tipo, numero: c.fila.numero, apellidos_nombres: c.fila.nombres, rol: c.fila.rol, contrasena: c.contrasena,
     })),

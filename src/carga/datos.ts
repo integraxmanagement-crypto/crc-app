@@ -14,6 +14,7 @@ export type Revisada = {
   motivos: string[]
   cambios: string[]
   faltan: string[]
+  porRevisar?: boolean // estaba «por revisar»: al grabar se le quita la marca
 }
 
 export type Faltante = ({ tipo: 'puesto'; nombre: string } | { tipo: 'unidad'; nivel: 'gerencia' | 'area' | 'subarea'; camino: string[] }) & {
@@ -33,7 +34,7 @@ export type Entrega = { fila: number; tipo: string; numero: string; apellidos_no
 
 export type Grabado = {
   carga_id: string
-  resumen: { nuevas: number; altas: number; actualizadas: number; reactivadas: number }
+  resumen: { nuevas: number; altas: number; actualizadas: number; reactivadas: number; por_revisar: number }
   entregas: Entrega[]
 }
 

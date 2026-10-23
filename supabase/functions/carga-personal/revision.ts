@@ -46,6 +46,7 @@ export type Revisada = {
   unidad_id?: string | null
   fecha?: string
   rol?: string
+  porRevisar?: boolean // estaba «por revisar» (paso 6): al grabar se le quita la marca
 }
 
 // «necesario»: lo usa al menos una fila sin otros errores (la vista previa lo propone marcado para crear).
@@ -104,7 +105,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
     : { data: [] }
   const ids = (personas ?? []).map((p) => p.id as string)
   const { data: vinculos } = ids.length
-    ? await admin.from('vinculos').select('id, persona_id, empresa_id, rol, estado, fecha_ingreso, puesto_id, unidad_id, actualizado_en').in('persona_id', ids)
+    ? await admin.from('vinculos').select('id, persona_id, empresa_id, rol, estado, fecha_ingreso, puesto_id, unidad_id, actualizado_en, por_revisar_desde').in('persona_id', ids)
     : { data: [] }
 
   const hoy = hoyLima()
@@ -207,6 +208,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
           motivos.push('Esta persona tiene una cuenta activa en otra empresa: debe cesarse allí primero.')
         } else if (activo) {
           r.vinculo_id = activo.id as string
+          if (activo.por_revisar_desde) r.porRevisar = true
           if (activo.rol === 'admin_empresa') r.estado = 'administrador'
           else {
             const cambios = r.cambios

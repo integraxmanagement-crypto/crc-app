@@ -1,4 +1,4 @@
-import { ArrowLeft, FileSpreadsheet, KeyRound, Pencil, Search, UserCheck, UserMinus, UserPlus } from 'lucide-react'
+import { ArrowLeft, FileSpreadsheet, KeyRound, Pencil, Search, UserCheck, UserMinus, UserPlus, UserRoundCheck } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from '../empresas/campos'
 import { normalizar } from '../empresas/datos'
@@ -6,7 +6,7 @@ import { ir } from '../ruta'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
 import { EnBloque } from './EnBloque'
 import {
-  type ContrasenaDada, type Cuenta, type Listas, NOMBRE_ROL, type Rol, actualizarPersona, cesarCuenta, crearCuenta,
+  type ContrasenaDada, type Cuenta, type Listas, NOMBRE_ROL, type Rol, actualizarPersona, cesarCuenta, confirmarSigue, crearCuenta,
   darContrasena, leerListas, listarContrasenasDadas, listarCuentas, reactivarCuenta, unidadesAsignables,
 } from './datos'
 
@@ -29,7 +29,7 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
   const [dadas, setDadas] = useState<ContrasenaDada[]>([])
   const [error, setError] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
-  const [estado, setEstado] = useState<'activo' | 'cesado' | 'todos'>('activo')
+  const [estado, setEstado] = useState<'activo' | 'cesado' | 'todos' | 'por_revisar'>('activo')
   const [abierta, setAbierta] = useState<string | null>(null)
   const [creando, setCreando] = useState(false)
   const [clave, setClave] = useState<Clave | null>(null)
@@ -48,9 +48,11 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
   useEffect(cargar, [cargar])
 
   const f = normalizar(filtro)
+  const porRevisar = (cuentas ?? []).filter((c) => c.estado === 'activo' && c.por_revisar_desde).length
+  const filtroActual = estado === 'por_revisar' && !porRevisar ? 'activo' : estado
   const visibles = (cuentas ?? []).filter(
     (c) =>
-      (estado === 'todos' || c.estado === estado) &&
+      (filtroActual === 'todos' || c.estado === filtroActual || (filtroActual === 'por_revisar' && Boolean(c.por_revisar_desde))) &&
       (!f || normalizar(`${c.personas?.apellidos_nombres} ${c.personas?.numero_documento} ${c.puesto ?? ''} ${c.area ?? ''}`).includes(f)),
   )
   const cuenta = (e: Cuenta['estado']) => (cuentas ?? []).filter((c) => c.estado === e).length
@@ -99,6 +101,17 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
       )}
 
       <Aviso tipo="ok">{aviso}</Aviso>
+      {porRevisar > 0 && filtroActual !== 'por_revisar' && (
+        <div className="aviso-revisar" role="status">
+          <p>
+            <b>{porRevisar === 1 ? '1 persona está' : `${porRevisar} personas están`} «por revisar»</b>: no aparecieron en la última carga
+            de Excel marcada como lista completa. Confirma su cese o que siguen en la empresa. Nadie se cesa solo.
+          </p>
+          <button className="btn-sec" type="button" onClick={() => setEstado('por_revisar')}>
+            Revisar ahora
+          </button>
+        </div>
+      )}
       {creando && <NuevaCuenta empresaId={empresaId} esDueno={esDueno} listas={listas} onCancelar={() => setCreando(false)} onListo={listo} />}
 
       <div className="filtros">
@@ -106,10 +119,10 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
           <Search aria-hidden="true" />
           <input type="search" value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar por nombre, documento, puesto o área" aria-label="Buscar persona" />
         </span>
-        <div className="segmentos" role="group" aria-label="Estado">
-          {(['activo', 'cesado', 'todos'] as const).map((e) => (
-            <button key={e} type="button" aria-pressed={estado === e} onClick={() => setEstado(e)}>
-              {e === 'activo' ? 'Activos' : e === 'cesado' ? 'Cesados' : 'Todos'}
+        <div className={`segmentos${porRevisar ? ' cuatro' : ''}`} role="group" aria-label="Estado">
+          {(['activo', 'cesado', 'todos', ...(porRevisar ? ['por_revisar' as const] : [])] as const).map((e) => (
+            <button key={e} type="button" aria-pressed={filtroActual === e} onClick={() => setEstado(e)}>
+              {e === 'activo' ? 'Activos' : e === 'cesado' ? 'Cesados' : e === 'todos' ? 'Todos' : `Por revisar (${porRevisar})`}
             </button>
           ))}
         </div>
@@ -127,6 +140,7 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
                 <span className="chips">
                   <span className="chip chip-gris">{NOMBRE_ROL[c.rol]}</span>
                   {c.estado === 'cesado' && <span className="chip chip-mal">Cesado {c.fecha_cese ? fecha(c.fecha_cese) : ''}</span>}
+                  {c.estado === 'activo' && c.por_revisar_desde && <span className="chip chip-aviso">Por revisar</span>}
                   {c.estado === 'activo' && c.personas?.debe_cambiar_contrasena && <span className="chip chip-aviso">Debe cambiar su contraseña</span>}
                   {propia && <span className="chip chip-ok">Tú</span>}
                 </span>
@@ -281,6 +295,8 @@ function PanelCuenta({
   const [ocupado, setOcupado] = useState(false)
   const nombre = c.personas?.apellidos_nombres ?? ''
 
+  const desde = c.por_revisar_desde ? new Date(c.por_revisar_desde).toLocaleDateString('es-PE') : null
+
   async function hacer(fn: () => Promise<Clave | void>) {
     setError(null)
     setOcupado(true)
@@ -313,6 +329,21 @@ function PanelCuenta({
 
   return (
     <div className="panel-cuenta">
+      {accion === 'menu' && c.estado === 'activo' && desde && (
+        <div className="por-revisar">
+          <p className="nota">
+            <b>Por revisar</b>: no apareció en la carga de Excel del {desde}, marcada como lista completa. ¿Sigue en la empresa?
+          </p>
+          <div className="acciones">
+            <button className="btn-sec" type="button" disabled={ocupado} onClick={() => void hacer(() => confirmarSigue(c.id))}>
+              <UserRoundCheck size={18} aria-hidden="true" /> {ocupado ? 'Guardando…' : 'Sí, sigue en la empresa'}
+            </button>
+            <button className="btn-sec btn-sec-peligro" type="button" onClick={() => setAccion('cesar')}>
+              <UserMinus size={18} aria-hidden="true" /> No, confirmar cese
+            </button>
+          </div>
+        </div>
+      )}
       {accion === 'menu' && (
         <div className="acciones">
           {c.estado === 'activo' ? (

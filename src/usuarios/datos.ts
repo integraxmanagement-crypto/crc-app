@@ -17,6 +17,7 @@ export type Cuenta = {
   puesto_id: string | null
   area: string | null // camino completo de su unidad, por ejemplo «Operaciones › Producción › Línea 1»
   puesto: string | null
+  por_revisar_desde: string | null // no apareció en una carga con «lista completa» (tarea 3.6): confirmar cese o que sigue
   personas: { tipo_documento: string; numero_documento: string; apellidos_nombres: string; debe_cambiar_contrasena: boolean } | null
 }
 
@@ -84,7 +85,7 @@ export async function listarCuentas(empresaId: string): Promise<Cuenta[]> {
     db()
       .from('vinculos')
       .select(
-        'id, persona_id, rol, estado, fecha_ingreso, fecha_cese, motivo_cese, unidad_id, puesto_id, area, puesto, ' +
+        'id, persona_id, rol, estado, fecha_ingreso, fecha_cese, motivo_cese, unidad_id, puesto_id, area, puesto, por_revisar_desde, ' +
           'personas(tipo_documento, numero_documento, apellidos_nombres, debe_cambiar_contrasena)',
       )
       .eq('empresa_id', empresaId),
@@ -113,6 +114,8 @@ export const actualizarPersona = (vinculoId: string, datos: Record<string, strin
 export const cesarCuenta = (vinculoId: string, fecha: string, motivo: string) =>
   rpc<void>('cesar_vinculo', { p_vinculo: vinculoId, p_fecha_cese: fecha, p_motivo: motivo })
 export const reactivarCuenta = (vinculoId: string) => rpc<void>('reactivar_vinculo', { p_vinculo: vinculoId })
+/** Quita la marca «por revisar»: la persona sigue en la empresa. (El cese se confirma con cesarCuenta.) */
+export const confirmarSigue = (vinculoId: string) => rpc<void>('confirmar_sigue', { p_vinculo: vinculoId })
 
 export const darContrasena = (personaId: string) =>
   invocar<{ apellidos_nombres: string; contrasena: string }>('dar-contrasena', { persona_id: personaId })

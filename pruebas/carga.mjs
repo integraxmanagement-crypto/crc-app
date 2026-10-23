@@ -102,4 +102,38 @@ const ajena = await grabar(adminB, B, [fila(2, 1, { puesto: 'Operaria', area: 'O
 comprobar('Una persona activa en A no se puede cargar en B', ajena.estado === 409
   && ajena.datos?.revision?.filas?.[0]?.motivos?.some((m) => m.includes('otra empresa')))
 
+console.log('\n8. Lista completa: «por revisar»')
+const marcados = async () => (await adminA.from('vinculos').select('id, rol, estado, personas!inner(numero_documento)').eq('empresa_id', A).not('por_revisar_desde', 'is', null)).data ?? []
+const pre = await grabar(adminA, A, [...cambiadas, fila(5, 4), fila(6, 6)])
+comprobar('Se agregan 2 personas más (sin lista completa no se marca a nadie)', pre.estado === 200 && pre.datos?.resumen?.por_revisar === 0 && (await marcados()).length === 0)
+const revCompleta = await revisar(adminA, A, cambiadas)
+const ausentes = revCompleta.datos?.noAparecen ?? []
+comprobar('La revisión lista a quienes no aparecen (solo gestores y usuarios)', ausentes.length >= 2 && ausentes.every((p) => p.rol === 'gestor' || p.rol === 'usuario'))
+const completa = await grabar(adminA, A, cambiadas, { lista_completa: true })
+comprobar('Con «lista completa», quienes no aparecen quedan «por revisar»', completa.estado === 200 && completa.datos?.resumen?.por_revisar === ausentes.length)
+const m1 = await marcados()
+comprobar('…exactamente esas personas, ninguna administradora', m1.length === ausentes.length && m1.every((v) => v.rol !== 'admin_empresa'))
+comprobar('…y nadie fue cesado', m1.every((v) => v.estado === 'activo'))
+const { data: cargaCompleta } = await adminA.from('cargas_personal').select('por_revisar, lista_completa').eq('id', completa.datos?.carga_id).single()
+comprobar('El registro de la carga anota cuántas quedaron por revisar', cargaCompleta?.lista_completa === true && cargaCompleta.por_revisar === ausentes.length)
+const v4 = m1.find((v) => v.personas.numero_documento === dni(4))
+const v6 = m1.find((v) => v.personas.numero_documento === dni(6))
+comprobar('Las 2 personas que no estaban en el Excel están entre las marcadas', Boolean(v4 && v6))
+const sigueGestor = await gestorA.rpc('confirmar_sigue', { p_vinculo: v4?.id })
+comprobar('Un gestor no puede resolver «por revisar»', Boolean(sigueGestor.error))
+const sigueB = await adminB.rpc('confirmar_sigue', { p_vinculo: v4?.id })
+comprobar('El administrador de B no puede resolver las de A', Boolean(sigueB.error))
+const cese4 = await adminA.rpc('cesar_vinculo', { p_vinculo: v4?.id, p_fecha_cese: '2026-10-22', p_motivo: 'No figura en la planilla (prueba ficticia)' })
+const { data: v4despues } = await adminA.from('vinculos').select('estado, por_revisar_desde').eq('id', v4?.id).single()
+comprobar('Confirmar el cese: queda cesada y sin la marca', !cese4.error && v4despues?.estado === 'cesado' && !v4despues.por_revisar_desde)
+const vuelve = await grabar(adminA, A, [...cambiadas, fila(7, 6)])
+comprobar('Si una persona marcada vuelve a aparecer en un Excel, se le quita la marca', vuelve.estado === 200
+  && !(await marcados()).some((v) => v.id === v6?.id))
+const resto = await marcados()
+let todosSigue = true
+for (const v of resto) todosSigue &&= !(await adminA.rpc('confirmar_sigue', { p_vinculo: v.id })).error
+comprobar('El administrador confirma «sigue en la empresa» para el resto', todosSigue && (await marcados()).length === 0)
+const otraVez = await adminA.rpc('confirmar_sigue', { p_vinculo: resto[0]?.id })
+comprobar('No se puede confirmar a alguien que ya no está por revisar', Boolean(otraVez.error))
+
 resumen()

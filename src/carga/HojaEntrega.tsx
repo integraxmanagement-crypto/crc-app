@@ -33,11 +33,15 @@ export function HojaEntrega({ grabado, empresa, onCerrar }: { grabado: Grabado; 
     resumen.altas && `${resumen.altas} alta${resumen.altas === 1 ? '' : 's'} de personas que ya tenían cuenta`,
     resumen.actualizadas && `${resumen.actualizadas} actualizada${resumen.actualizadas === 1 ? '' : 's'}`,
     resumen.reactivadas && `${resumen.reactivadas} reactivada${resumen.reactivadas === 1 ? '' : 's'}`,
+    resumen.por_revisar && `${resumen.por_revisar} ${resumen.por_revisar === 1 ? 'persona quedó' : 'personas quedaron'} «por revisar»`,
   ].filter(Boolean)
 
   return (
     <Seccion titulo="Carga grabada">
-      <Aviso tipo="ok">Se grabó todo: {partes.join(', ')}.</Aviso>
+      <Aviso tipo="ok">Se grabó todo{partes.length ? `: ${partes.join(', ')}` : ''}.</Aviso>
+      {resumen.por_revisar > 0 && (
+        <p className="nota">Las personas «por revisar» siguen activas: confirma su cese o que siguen desde Usuarios, filtro «Por revisar».</p>
+      )}
 
       {entregas.length > 0 ? (
         <>
@@ -149,7 +153,7 @@ export function HojaEntrega({ grabado, empresa, onCerrar }: { grabado: Grabado; 
         </>
       ) : (
         <>
-          <p className="nota">No hubo cuentas nuevas: las personas que ya tenían cuenta siguen con su contraseña de siempre.</p>
+          <p className="nota">No hubo cuentas nuevas: nadie recibe contraseña y quienes ya tenían cuenta siguen con la de siempre.</p>
           <div className="acciones">
             <button className="btn-sec" type="button" onClick={onCerrar}>
               Listo
