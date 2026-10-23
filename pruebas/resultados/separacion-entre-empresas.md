@@ -1,6 +1,6 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 23/10/2026, 12:12:44 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 23/10/2026, 8:48:34 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 84 de 84 pruebas pasaron.**
 
@@ -32,11 +32,11 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 |---|---|---|
 | ✅ Pasa | Usuario A2: solo ve su propia ficha | 1 ficha(s) |
 | ✅ Pasa | Usuario A2: NO recibe la lista de personas de su empresa |  |
-| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 5 personas |
+| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 11 personas |
 | ✅ Pasa | Gestor A: la lista trae solo nombres, puesto y área (sin documento) | apellidos_nombres, area, persona_id, puesto |
 | ✅ Pasa | Gestor A: la lista no incluye a nadie de B |  |
 | ✅ Pasa | Gestor A: no puede leer los documentos de otras personas |  |
-| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 6 fichas |
+| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 12 fichas |
 | ✅ Pasa | Administrador A: ninguna ficha es de B |  |
 
 ## 3. Un administrador de A no puede crear ni leer cuentas de B

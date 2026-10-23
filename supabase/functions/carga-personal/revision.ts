@@ -76,6 +76,9 @@ function sumarDias(iso: string, dias: number): string {
   return new Date(Date.parse(`${iso}T00:00:00Z`) + dias * 86400_000).toISOString().slice(0, 10)
 }
 const fechaPeru = (iso: string) => iso.split('-').reverse().join('/')
+/** AAAA-MM-DD y además un día que existe (no 31/02). */
+const fechaReal = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && !Number.isNaN(Date.parse(`${iso}T00:00:00Z`))
+  && new Date(`${iso}T00:00:00Z`).toISOString().slice(0, 10) === iso
 
 type Unidad = { id: string; nivel: string; padre_id: string | null; nombre: string; vigente: boolean }
 
@@ -142,7 +145,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
     // Nombre, fecha y rol
     if (nombres.length < 3) motivos.push('Faltan los apellidos y nombres.')
     else if (nombres.length > 200) motivos.push('Apellidos y nombres demasiado largos (máximo 200 caracteres).')
-    if (!f.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(f.fecha)) motivos.push(`Fecha de ingreso no válida${f.fechaTexto ? ` («${f.fechaTexto}»)` : ''}: usa día/mes/año.`)
+    if (!f.fecha || !fechaReal(f.fecha)) motivos.push(`Fecha de ingreso no válida${f.fechaTexto ? ` («${f.fechaTexto}»)` : ''}: usa día/mes/año.`)
     else if (f.fecha < '1950-01-01' || f.fecha > maxFecha) motivos.push(`Fecha de ingreso fuera de rango (${fechaPeru(f.fecha)}).`)
     const rol = limpio(f.rol).toLowerCase()
     if (rol === 'administrador' || rol === 'admin' || rol === 'admin_empresa') motivos.push('Rol no permitido: los administradores los crea Integrax, no el Excel.')

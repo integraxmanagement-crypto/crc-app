@@ -1,9 +1,10 @@
 import { ArrowLeft, Download, FileSpreadsheet, Plus, RefreshCw } from 'lucide-react'
 import { type ChangeEvent, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
-import { db } from '../empresas/datos'
+import { conLimite, db } from '../empresas/datos'
 import { caminoUnidad, guardarPuesto, guardarUnidad, leerListas } from '../usuarios/datos'
-import { ESTADOS, type Estado, type Faltante, type Revision, revisarCarga, textoFaltante } from './datos'
+import { ESTADOS, type Estado, type Faltante, type Grabado, type Revision, grabarCarga, revisarCarga, textoFaltante } from './datos'
+import { HojaEntrega } from './HojaEntrega'
 import { FILAS_MAXIMAS, type Lectura, leerPersonal } from './lectura.ts'
 import { crearPlantilla } from './plantilla.ts'
 import { ErrorExcel, TAMANO_MAXIMO } from './xlsx.ts'
@@ -32,11 +33,13 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
   const [reactivar, setReactivar] = useState<Set<number>>(new Set())
   const [listaCompleta, setListaCompleta] = useState(false)
   const [verNoAparecen, setVerNoAparecen] = useState(false)
+  const [confirmar, setConfirmar] = useState(false)
+  const [grabado, setGrabado] = useState<Grabado | null>(null)
 
   async function revisar(l: Lectura) {
     setOcupado('Revisando las filas…')
     try {
-      const r = await revisarCarga(empresaId, l.registros)
+      const r = await conLimite(revisarCarga(empresaId, l.registros), 60_000)
       setRevision(r)
       setCrear(new Set(r.faltantes.flatMap((f, i) => (f.necesario ? [i] : []))))
       setReactivar(new Set())
@@ -54,6 +57,7 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
     setError(null)
     setRevision(null)
     setLectura(null)
+    setConfirmar(false)
     setArchivo(f.name)
     if (f.size > TAMANO_MAXIMO) return setError('El archivo pesa más de 1 MB. Divide la lista en varios archivos.')
     setOcupado('Leyendo el Excel…')
@@ -99,10 +103,21 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
   async function crearFaltantes() {
     if (!revision || !lectura) return
     setError(null)
-    setOcupado('Creando en las listas…')
+    const elegidos = revision.faltantes.filter((_, i) => crear.has(i))
+    let hechos = 0
+    // Muestra el avance y no espera para siempre: si una respuesta no llega, se avisa.
+    // Lo ya creado queda creado; al revisar de nuevo ya no aparece como faltante.
+    const paso = async (accion: () => Promise<unknown>) => {
+      setOcupado(`Creando en las listas… ${hechos} de ${elegidos.length}`)
+      await conLimite(accion(), 20_000).catch((e: Error) => {
+        throw new Error(e.message.startsWith('La respuesta tarda')
+          ? 'El servidor tarda en responder. Pulsa «Revisar de nuevo»: lo que ya se creó no se vuelve a pedir.'
+          : e.message)
+      })
+      hechos++
+    }
     try {
-      const elegidos = revision.faltantes.filter((_, i) => crear.has(i))
-      for (const f of elegidos) if (f.tipo === 'puesto') await guardarPuesto(empresaId, null, f.nombre)
+      for (const f of elegidos) if (f.tipo === 'puesto') await paso(() => guardarPuesto(empresaId, null, f.nombre))
       for (const nivel of ['gerencia', 'area', 'subarea'] as const) {
         const { unidades } = await leerListas(empresaId)
         const buscar = (n: string, padre: string | null, nombre: string) =>
@@ -113,12 +128,36 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
           const a = nivel === 'subarea' && g ? buscar('area', g.id, f.camino[1]) : null
           const padre = nivel === 'gerencia' ? null : nivel === 'area' ? g?.id : a?.id
           if (nivel !== 'gerencia' && !padre) throw new Error(`Para crear ${textoFaltante(f)} marca también la unidad de arriba.`)
-          await guardarUnidad(empresaId, null, nivel, padre ?? null, f.camino[f.camino.length - 1])
+          await paso(() => guardarUnidad(empresaId, null, nivel, padre ?? null, f.camino[f.camino.length - 1]))
         }
       }
       await revisar(lectura)
     } catch (e) {
       setError((e as Error).message)
+      setOcupado(null)
+    }
+  }
+
+  /** Graba todo o nada. Después olvida el Excel: en pantalla solo queda el resultado y la hoja de entrega. */
+  async function grabar() {
+    if (!lectura) return
+    setError(null)
+    setOcupado('Grabando… no cierres esta pantalla.')
+    try {
+      const g = await conLimite(grabarCarga(empresaId, lectura.registros, [...reactivar], listaCompleta), 150_000).catch((e: Error) => {
+        throw new Error(e.message.startsWith('La respuesta tarda') || e.message.startsWith('No hubo respuesta')
+          ? 'No llegó la respuesta del servidor. Antes de reintentar, pulsa «Revisar de nuevo»: si las personas aparecen como «Ya existe», la carga sí se grabó y sus contraseñas se dan desde Usuarios.'
+          : e.message)
+      })
+      setGrabado(g)
+      setLectura(null)
+      setRevision(null)
+      setArchivo(null)
+      setConfirmar(false)
+    } catch (e) {
+      setError((e as Error).message)
+      setConfirmar(false)
+    } finally {
       setOcupado(null)
     }
   }
@@ -136,6 +175,14 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
           : !['error', 'falta_lista', 'nueva', 'alta_cuenta_existente'].includes(f.estado),
   )
   const bloqueado = cuenta.error > 0 || cuenta.falta_lista > 0
+  const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`
+  const resumenGrabar = [
+    cuenta.nueva && plural(cuenta.nueva, 'cuenta nueva', 'cuentas nuevas'),
+    cuenta.alta_cuenta_existente && plural(cuenta.alta_cuenta_existente, 'alta de quien ya tenía cuenta', 'altas de quienes ya tenían cuenta'),
+    cuenta.actualizar && plural(cuenta.actualizar, 'actualización', 'actualizaciones'),
+    reactivar.size && plural(reactivar.size, 'reactivación', 'reactivaciones'),
+  ].filter(Boolean) as string[]
+  const porGrabar = cuenta.nueva + cuenta.alta_cuenta_existente + cuenta.actualizar + reactivar.size
   const marcar = (set: Set<number>, fijar: (s: Set<number>) => void, i: number) => {
     const s = new Set(set)
     if (s.has(i)) s.delete(i)
@@ -153,6 +200,12 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
         <p>{empresaNombre}</p>
       </header>
 
+      {grabado && (
+        <HojaEntrega grabado={grabado} empresa={empresaNombre} onCerrar={() => setGrabado(null)} />
+      )}
+
+      {!grabado && (
+      <>
       <Seccion titulo="1. Plantilla">
         <p className="nota">Trae las listas de puestos y de la estructura de la empresa. Hasta {FILAS_MAXIMAS} personas y 1 MB por archivo.</p>
         <div className="acciones">
@@ -221,7 +274,7 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
               </div>
             )}
 
-            <div className="segmentos" role="group" aria-label="Filtrar filas">
+            <div className="segmentos cuatro" role="group" aria-label="Filtrar filas">
               {([['todas', 'Todas'], ['problemas', 'Con problemas'], ['nuevas', 'Nuevas'], ['existentes', 'Ya existen']] as [Filtro, string][]).map(([k, t]) => (
                 <button key={k} type="button" aria-pressed={filtro === k} onClick={() => setFiltro(k)}>
                   {t}
@@ -315,17 +368,34 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
           </Seccion>
 
           <Seccion titulo="5. Confirmar">
-            <p className="nota">
-              Se crearán {cuenta.nueva} cuentas nuevas{cuenta.alta_cuenta_existente ? `, se darán de alta ${cuenta.alta_cuenta_existente} personas que ya tenían cuenta` : ''}
-              {cuenta.actualizar ? `, se actualizarán ${cuenta.actualizar}` : ''}
-              {reactivar.size ? ` y se reactivarán ${reactivar.size}` : ''}. Se graba todo o nada.
-            </p>
-            <button className="btn" type="button" disabled>
-              Confirmar y grabar
-            </button>
-            <p className="nota">El grabado se activa en el paso 5 de esta tarea.</p>
+            {porGrabar ? (
+              <p className="nota">
+                Se {porGrabar === 1 ? 'grabará' : 'grabarán'}: {resumenGrabar.join(', ')}. Se graba todo o nada: si algo falla, no se graba ninguna fila.
+              </p>
+            ) : (
+              <p className="nota">No hay nada que grabar: todas las personas ya están al día.</p>
+            )}
+            {!confirmar ? (
+              <button className="btn" type="button" disabled={bloqueado || !porGrabar || Boolean(ocupado)} onClick={() => setConfirmar(true)}>
+                Confirmar y grabar
+              </button>
+            ) : (
+              <div className="acciones">
+                <button className="btn" type="button" disabled={Boolean(ocupado)} onClick={() => void grabar()}>
+                  {ocupado ? 'Grabando…' : 'Sí, grabar ahora'}
+                </button>
+                <button className="btn-link" type="button" disabled={Boolean(ocupado)} onClick={() => setConfirmar(false)}>
+                  Cancelar
+                </button>
+              </div>
+            )}
+            {cuenta.nueva > 0 && !bloqueado && (
+              <p className="nota">Al terminar verás la hoja de entrega con las contraseñas iniciales. Se muestra una sola vez: ten la impresora lista.</p>
+            )}
           </Seccion>
         </>
+      )}
+      </>
       )}
     </div>
   )

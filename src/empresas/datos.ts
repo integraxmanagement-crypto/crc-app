@@ -69,10 +69,15 @@ export function db() {
   return supabase
 }
 
+// Cuando el servidor no contesta, el navegador da mensajes en inglés como «TypeError: Failed to fetch».
+const FALLA_DE_RED = /failed to fetch|networkerror|load failed|network request failed/i
+export const SIN_RESPUESTA = 'No hubo respuesta del servidor. Revisa tu señal y reintenta.'
+
 /** Mensaje en lenguaje simple a partir de un error de Supabase. */
 export function mensaje(error: { message?: string; code?: string } | null): string {
   if (!error) return ''
   if (!navigator.onLine) return 'Sin conexión. Necesitas señal para guardar.'
+  if (FALLA_DE_RED.test(error.message ?? '')) return SIN_RESPUESTA
   if (error.code === '42501' || error.message === 'No autorizado') return 'No tienes permiso para hacer esto.'
   return error.message || 'No se pudo completar. Intenta de nuevo.'
 }
@@ -220,7 +225,7 @@ export async function invocar<T>(nombre: string, cuerpo: Record<string, unknown>
       const respuesta = await error.context.json().catch(() => null)
       if (respuesta?.error) throw new Error(respuesta.error === 'No autorizado' ? 'No tienes permiso para hacer esto.' : String(respuesta.error))
     }
-    throw new Error(navigator.onLine ? 'No se pudo completar. Intenta de nuevo.' : 'Sin conexión. Necesitas señal para hacer esto.')
+    throw new Error(navigator.onLine ? SIN_RESPUESTA : 'Sin conexión. Necesitas señal para hacer esto.')
   }
   return data as T
 }

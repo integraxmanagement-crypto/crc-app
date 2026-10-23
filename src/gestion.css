@@ -883,3 +883,164 @@
 .tabla-carga tr.fila-falta_lista td:first-child {
   box-shadow: inset 4px 0 0 #e3a93b;
 }
+
+/* Carga desde Excel en celular: filtros en dos filas y cada persona como tarjeta, con el motivo a la vista. */
+@media (max-width: 640px) {
+  .segmentos.cuatro {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .segmentos.cuatro button:nth-child(3) {
+    border-left: 0;
+  }
+
+  .segmentos.cuatro button:nth-child(n + 3) {
+    border-top: 1px solid var(--rule);
+  }
+
+  .tabla-carga thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .tabla-carga,
+  .tabla-carga tbody,
+  .tabla-carga tr,
+  .tabla-carga td {
+    display: block;
+  }
+
+  .tabla-carga tr {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.15rem 0.6rem;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .tabla-carga td {
+    padding: 0;
+    border: 0;
+  }
+
+  .tabla-carga td:first-child::before {
+    content: "Fila ";
+  }
+
+  .tabla-carga td.vacio::before {
+    content: none;
+  }
+
+  .tabla-carga td:first-child,
+  .tabla-carga td:nth-child(2) {
+    color: var(--ink-2);
+    font-size: 0.8125rem;
+  }
+
+  .tabla-carga td:nth-child(n + 3) {
+    grid-column: 1 / -1;
+  }
+
+  .tabla-carga td:nth-child(3) {
+    font-weight: 650;
+  }
+
+  .tabla-carga td.detalle-fila {
+    min-width: 0;
+  }
+
+  .tabla-carga tr.fila-error td:first-child,
+  .tabla-carga tr.fila-falta_lista td:first-child {
+    box-shadow: none;
+  }
+
+  .tabla-carga tr.fila-error {
+    box-shadow: inset 4px 0 0 #b4432f;
+  }
+
+  .tabla-carga tr.fila-falta_lista {
+    box-shadow: inset 4px 0 0 #e3a93b;
+  }
+}
+
+/* Hoja de entrega de contraseñas (carga desde Excel): no se ve en pantalla; al imprimir, es lo único que sale. */
+.hoja-entrega {
+  display: none;
+}
+
+@media print {
+  body > *:not(.hoja-entrega) {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .hoja-entrega {
+    display: block;
+    color: #000;
+    font: 11pt/1.4 Arial, Helvetica, sans-serif;
+  }
+
+  .hoja-entrega h1 {
+    margin: 0 0 4pt;
+    font-size: 15pt;
+  }
+
+  .hoja-entrega p {
+    margin: 0 0 6pt;
+  }
+
+  .hoja-control table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .hoja-control th,
+  .hoja-control td {
+    padding: 5pt 6pt;
+    border: 1px solid #555;
+    text-align: left;
+  }
+
+  .hoja-control td.firma {
+    width: 38%;
+    height: 26pt;
+  }
+
+  .hoja-control tr {
+    break-inside: avoid;
+  }
+
+  .hoja-tarjetas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    break-before: page;
+  }
+
+  .tarjeta-entrega {
+    padding: 10pt 12pt;
+    border: 1px dashed #555;
+    break-inside: avoid;
+  }
+
+  .tarjeta-titulo {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .tarjeta-clave {
+    font: 700 14pt/1 "Courier New", monospace;
+    letter-spacing: 0.08em;
+  }
+
+  .tarjeta-pasos {
+    font-size: 9pt;
+  }
+}

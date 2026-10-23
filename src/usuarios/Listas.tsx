@@ -139,7 +139,7 @@ function EditorEstructura({ empresaId, unidades, onCambio }: { empresaId: string
 
   return (
     <Seccion
-      titulo={`Estructura (${gerencias.length} gerencias)`}
+      titulo={`Estructura (${gerencias.length} ${gerencias.length === 1 ? 'gerencia' : 'gerencias'})`}
       accion={
         edicion === null ? (
           <button className="btn-sec" type="button" onClick={() => { setError(null); setEdicion({ tipo: 'nueva', nivel: 'gerencia', padre: null }) }}>

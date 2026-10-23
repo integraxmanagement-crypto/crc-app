@@ -28,6 +28,19 @@ export type Revision = { filas: Revisada[]; faltantes: Faltante[]; noAparecen: N
 export const revisarCarga = (empresaId: string, filas: Registro[]) =>
   invocar<Revision>('carga-personal', { modo: 'revisar', empresa_id: empresaId, filas })
 
+/** Una persona nueva con su contraseña inicial. Solo existe en la pantalla, una vez: no se guarda en ningún lado. */
+export type Entrega = { fila: number; tipo: string; numero: string; apellidos_nombres: string; rol: string; contrasena: string }
+
+export type Grabado = {
+  carga_id: string
+  resumen: { nuevas: number; altas: number; actualizadas: number; reactivadas: number }
+  entregas: Entrega[]
+}
+
+/** Graba todo o nada. El servidor vuelve a revisar todas las filas antes de grabar. */
+export const grabarCarga = (empresaId: string, filas: Registro[], reactivar: number[], listaCompleta: boolean) =>
+  invocar<Grabado>('carga-personal', { modo: 'grabar', empresa_id: empresaId, filas, reactivar, lista_completa: listaCompleta })
+
 export const ESTADOS: Record<Estado, { texto: string; clase: string }> = {
   nueva: { texto: 'Nueva', clase: 'chip-ok' },
   alta_cuenta_existente: { texto: 'Ya tenía cuenta en CRC', clase: 'chip-ok' },

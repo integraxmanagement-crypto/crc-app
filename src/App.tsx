@@ -267,4 +267,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.4.5 · Carga desde Excel (vista previa)'
+const VERSION = 'Versión 0.4.6 · Carga desde Excel (grabado)'
