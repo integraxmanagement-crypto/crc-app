@@ -59,17 +59,45 @@ ul {
   grid-template-rows: auto 1fr;
 }
 
-/* Franja azul: el "letrero" de la marca */
+/* Franja blanca: el "letrero" de la marca con el logo animado (tarea 2.1a) */
 .sign {
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 1.75rem;
+  align-items: flex-start;
+  gap: 1.25rem;
   min-height: 46svh;
   padding: max(3rem, env(safe-area-inset-top)) 1.5rem 2.5rem;
-  background: var(--blue);
-  color: var(--on-blue);
+  background: var(--surface);
+  color: var(--blue);
+}
+
+/* Contenedor del logo (el SVG va adentro, con su proporción original 901 × 828) */
+.logo {
+  display: block;
+  flex: none;
+  aspect-ratio: 901 / 828;
+}
+
+.logo svg {
+  width: 100%;
+  height: 100%;
+}
+
+.logo-ingreso {
+  height: 9.5rem;
+}
+
+/* En pantallas no tan angostas, el nombre va al costado del logo */
+@media (min-width: 420px) {
+  .sign {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    align-content: flex-end;
+    flex-wrap: wrap;
+  }
 }
 
 .sign::after {
@@ -80,55 +108,30 @@ ul {
   background: var(--teal);
 }
 
-.mark {
-  width: 5.5rem;
-  height: 5.5rem;
-  overflow: visible;
-}
-
-.mark-arc {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-  animation: draw 1.1s var(--ease-out) both;
-}
-
-.mark-dot {
-  fill: var(--teal);
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: settle 0.7s 0.55s var(--ease-out) both;
-}
-
-@keyframes draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-}
-
-@keyframes settle {
-  from {
-    transform: scale(0);
-  }
-}
-
+/* Nombre completo como texto de la página, con los colores de marca */
 .brand {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  font-size: clamp(4.5rem, 24vw, 6rem);
+  gap: 0.2rem;
+  margin: 0;
+  color: var(--blue);
   font-weight: 800;
-  font-stretch: 125%;
-  line-height: 0.9;
-  letter-spacing: -0.02em;
+  line-height: 1;
+  letter-spacing: -0.01em;
 }
 
-.brand span {
-  font-size: 1.125rem;
-  font-weight: 500;
-  font-stretch: 100%;
-  line-height: 1.3;
-  letter-spacing: 0.01em;
-  color: var(--on-blue-2);
+.brand-1 {
+  font-size: clamp(2.4rem, 11vw, 3rem);
+  font-stretch: 112%;
+}
+
+.brand-2 {
+  font-size: clamp(1.45rem, 6.5vw, 1.8rem);
+  font-weight: 650;
+}
+
+.brand-2 span {
+  color: var(--teal);
 }
 
 /* Panel inferior */
@@ -284,13 +287,15 @@ ul {
   padding-bottom: 2rem;
 }
 
-.screen:has(.form) .mark {
-  width: 4rem;
-  height: 4rem;
+/* En el ingreso el logo va un poco más chico en celular, para que el formulario quede a la vista */
+.screen:has(.form) .logo-ingreso {
+  height: 7.5rem;
 }
 
-.screen:has(.form) .brand {
-  font-size: clamp(3.5rem, 18vw, 4.5rem);
+@media (min-width: 900px) {
+  .screen:has(.form) .logo-ingreso {
+    height: 10rem;
+  }
 }
 
 .form {
@@ -509,6 +514,7 @@ ul {
     min-height: 100svh;
     padding: 4rem;
     justify-content: center;
+    align-content: center;
   }
 
   .sign::after {
@@ -517,9 +523,16 @@ ul {
     height: auto;
   }
 
-  .mark {
-    width: 7rem;
-    height: 7rem;
+  .logo-ingreso {
+    height: 12rem;
+  }
+
+  .brand-1 {
+    font-size: 3.1rem;
+  }
+
+  .brand-2 {
+    font-size: 1.85rem;
   }
 
   .panel {

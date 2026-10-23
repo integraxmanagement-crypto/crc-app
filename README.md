@@ -179,7 +179,10 @@ No se ensayó en `crc-dev`: se ensayará en el entorno limpio (decisión del due
 ## Estructura de carpetas
 
 ```
-public/logo.svg        Logo provisional (de él salen los íconos de instalación)
+public/logo.svg        Logo provisional de los íconos de instalación (PWA); aún no se cambia
+src/marca/             Logo oficial de CRC (diseño del dueño, tarea 2.1a): animado para el ingreso y estático para la barra.
+                       Los dos SVG se usan tal cual; Logo.tsx los inserta en la página y elige la versión clara u oscura
+                       según el fondo (no según el modo oscuro del equipo). Cada uno se descarga aparte y solo cuando hace falta.
 src/App.tsx            Elige la pantalla: ingreso, cambio de contraseña, inicio o gestión
 src/ruta.ts            Navegación simple (#/empresas, #/mi-empresa…) sin librerías
 src/empresas/          Registro de empresas: lista, ficha, CIIU, sedes, contactos, logos y administrador
@@ -200,7 +203,7 @@ vite.config.ts         Configuración de la app instalable (PWA)
 
 ## Pendientes conocidos
 
-- Reemplazar el logo provisional por el oficial.
+- El logo oficial ya está en la app (2.1a); faltan los **íconos de instalación**, el favicon y el manifest (decisión aparte del dueño).
 - La tabla `prueba_conexion` es solo de prueba; se puede borrar cuando exista la primera tabla real.
 - Supabase gratuito pausa el proyecto tras 1 semana sin uso y no tiene copias de seguridad automáticas.
 - Antes de vender a clientes: pasar Vercel a plan Pro (el plan Hobby no permite uso comercial) y Supabase a un plan con copias de seguridad.

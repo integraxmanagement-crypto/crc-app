@@ -7,6 +7,7 @@ import { FormFicha } from './empresas/FormFicha'
 import { ListaEmpresas } from './empresas/ListaEmpresas'
 import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
 import { Ingreso } from './Ingreso'
+import { Logo } from './marca/Logo'
 import { ir, useRuta } from './ruta'
 import { type Perfil, salir, useSesion } from './sesion'
 import { Intentos } from './usuarios/Intentos'
@@ -19,22 +20,6 @@ const dbText: Record<DbState, { value: string; note?: string; tone: Tone }> = {
   offline: { value: 'En espera', note: 'Se conectará al volver la señal', tone: 'idle' },
   error: { value: 'Sin respuesta', note: 'Se reintentará más tarde', tone: 'idle' },
   unconfigured: { value: 'Por conectar', tone: 'idle' },
-}
-
-function Mark() {
-  return (
-    <svg className="mark" viewBox="96 96 320 320" aria-hidden="true">
-      <path
-        className="mark-arc"
-        d="M355.6 172.4 A130 130 0 1 0 355.6 339.6"
-        pathLength={1}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={56}
-      />
-      <circle className="mark-dot" cx="256" cy="256" r="42" />
-    </svg>
-  )
 }
 
 type Tone = 'ok' | 'idle'
@@ -153,9 +138,8 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
 function Barra({ perfil }: { perfil: Perfil }) {
   return (
     <header className="barra">
-      <button className="barra-marca" type="button" onClick={() => ir('/')} aria-label="Ir al inicio">
-        <Mark />
-        <span>CRC</span>
+      <button className="barra-marca" type="button" onClick={() => ir('/')} title="Ir al inicio">
+        <Logo fondo="oscuro" />
       </button>
       <nav aria-label="Secciones">
         <button type="button" onClick={() => ir('/')}>
@@ -242,31 +226,42 @@ export default function App() {
       />
     )
   } else {
+    // Ya con sesión: barra con el logo pequeño (decisión del dueño, tarea 2.1a), también en el inicio.
     const gestion = Gestion({ perfil: sesion.perfil, ruta })
-    if (gestion)
-      return (
-        <main className="screen gestion">
-          <Barra perfil={sesion.perfil} />
+    return (
+      <main className="screen gestion">
+        <Barra perfil={sesion.perfil} />
+        {gestion ? (
           <section className="panel panel-ancho">{gestion}</section>
-        </main>
-      )
-    contenido = <Inicio perfil={sesion.perfil} online={online} />
+        ) : (
+          <section className="panel panel-inicio">
+            <Inicio perfil={sesion.perfil} online={online} />
+            <footer className="foot">{VERSION}</footer>
+          </section>
+        )}
+      </main>
+    )
   }
 
+  // Antes de entrar (y en el cambio obligatorio de contraseña): franja blanca con el logo animado.
   return (
     <main className="screen" data-fase={sesion.fase}>
       <header className="sign">
-        <Mark />
+        {/* Mientras se revisa la sesión todavía no se sabe si toca el ingreso: así el animado no se descarga sin necesidad. */}
+        {sesion.fase === 'cargando' ? <span className="logo logo-ingreso" /> : <Logo animado fondo="claro" className="logo-ingreso" />}
         <h1 className="brand">
-          CRC
-          <span>Centinel Risk Control</span>
+          <span className="brand-1">Centinel</span> <span className="brand-2">
+            Risk <span>Control</span>
+          </span>
         </h1>
       </header>
 
       <section className="panel">
         {contenido}
-        <footer className="foot">Versión 0.4 · Usuarios y roles</footer>
+        <footer className="foot">{VERSION}</footer>
       </section>
     </main>
   )
 }
+
+const VERSION = 'Versión 0.4.1 · Logo nuevo'
