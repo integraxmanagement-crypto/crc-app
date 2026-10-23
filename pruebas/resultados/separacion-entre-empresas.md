@@ -1,8 +1,8 @@
-# Prueba de separación entre empresas · CRC tarea 3.1
+# Prueba de separación entre empresas · CRC tareas 3.1, 3.2 y 3.3
 
-Ejecutada: 22/10/2026, 2:40:40 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 22/10/2026, 7:28:44 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 65 de 65 pruebas pasaron.**
+**Resultado: 82 de 82 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app (clave pública + reglas RLS) e intenta ver o tocar lo que no le corresponde.
 
@@ -32,11 +32,11 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 |---|---|---|
 | ✅ Pasa | Usuario A2: solo ve su propia ficha | 1 ficha(s) |
 | ✅ Pasa | Usuario A2: NO recibe la lista de personas de su empresa |  |
-| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 3 personas |
+| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 5 personas |
 | ✅ Pasa | Gestor A: la lista trae solo nombres, puesto y área (sin documento) | apellidos_nombres, area, persona_id, puesto |
 | ✅ Pasa | Gestor A: la lista no incluye a nadie de B |  |
 | ✅ Pasa | Gestor A: no puede leer los documentos de otras personas |  |
-| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 4 fichas |
+| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 6 fichas |
 | ✅ Pasa | Administrador A: ninguna ficha es de B |  |
 
 ## 3. Un administrador de A no puede crear ni leer cuentas de B
@@ -110,3 +110,25 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 | ✅ Pasa | GESTOR_B: la carpeta de logos de la otra empresa se ve vacía |  |
 | ✅ Pasa | ADMIN_A no puede descargar el logo de B | Object not found |
 | ✅ Pasa | Sin iniciar sesión no se puede descargar ningún logo | Object not found |
+
+## 9. Ampliación 3.3: áreas, puestos, contraseñas dadas y acciones sobre personas no cruzan entre empresas
+
+| Resultado | Prueba | Detalle |
+|---|---|---|
+| ✅ Pasa | ADMIN_A: solo ve áreas y puestos de su empresa | 4 áreas, 4 puestos |
+| ✅ Pasa | ADMIN_A: ninguna contraseña dada en la otra empresa |  |
+| ✅ Pasa | GESTOR_A: solo ve áreas y puestos de su empresa | 4 áreas, 4 puestos |
+| ✅ Pasa | GESTOR_A: ninguna contraseña dada en la otra empresa |  |
+| ✅ Pasa | USUARIO_A2: solo ve áreas y puestos de su empresa | 4 áreas, 4 puestos |
+| ✅ Pasa | USUARIO_A2: ninguna contraseña dada en la otra empresa |  |
+| ✅ Pasa | ADMIN_B: solo ve áreas y puestos de su empresa | 2 áreas, 4 puestos |
+| ✅ Pasa | ADMIN_B: ninguna contraseña dada en la otra empresa |  |
+| ✅ Pasa | GESTOR_B: solo ve áreas y puestos de su empresa | 2 áreas, 4 puestos |
+| ✅ Pasa | GESTOR_B: ninguna contraseña dada en la otra empresa |  |
+| ✅ Pasa | USUARIO_B: solo ve áreas y puestos de su empresa | 2 áreas, 4 puestos |
+| ✅ Pasa | USUARIO_B: ninguna contraseña dada en la otra empresa |  |
+| ✅ Pasa | ADMIN_A no puede crear áreas en B | No autorizado |
+| ✅ Pasa | ADMIN_A no puede desactivar un área de B | No autorizado |
+| ✅ Pasa | ADMIN_A no puede corregir datos de una persona de B | No autorizado |
+| ✅ Pasa | ADMIN_A no puede dar contraseña nueva a una persona de B | 403 |
+| ✅ Pasa | Sin iniciar sesión no se ve ninguna área ni puesto |  |

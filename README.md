@@ -2,7 +2,7 @@
 
 Sistema de gestión de seguridad y salud en el trabajo (SST / SGSST) para empresas y profesionales.
 
-> **Estado actual (v0.3, 22/10/2026):** ingreso y seguridad (tarea 3.1) y **registro de empresas clientes (tarea 3.2)**. Se ingresa con documento y contraseña; cada empresa ve solo sus datos; Integrax da de alta a cada empresa con su ficha, sedes, contactos, logos y primer administrador. **Todavía no hay** pantalla de usuarios y roles por puesto (3.3), inspecciones ni las demás funciones de negocio.
+> **Estado actual (v0.4, 22/10/2026):** ingreso y seguridad (tarea 3.1), registro de empresas clientes (tarea 3.2) y **usuarios y roles por empresa (tarea 3.3)**. Se ingresa con documento y contraseña; cada empresa ve solo sus datos; Integrax da de alta a cada empresa y a sus administradores; cada administrador maneja a su gente (crear, corregir, cesar, reactivar y dar contraseñas nuevas) y sus listas de áreas y puestos. **Todavía no hay** inspecciones ni las demás funciones de negocio.
 
 - **App publicada (pruebas internas):** https://crc-app-phi.vercel.app
 - **Repositorio:** https://github.com/integraxmanagement-crypto/crc-app
@@ -74,8 +74,8 @@ Mínimo 8 caracteres (máx. 64), con **minúscula, mayúscula, número y símbol
 ### Quién ve qué
 | Rol | Ve | Puede |
 |---|---|---|
-| Dueño de la plataforma (Integrax) | Todas las empresas y personas; el registro de intentos de ingreso | Crear administradores de empresa |
-| Administrador de empresa | Su empresa: fichas, vínculos e historial | Crear, cesar y reactivar gestores y usuarios de **su** empresa |
+| Dueño de la plataforma (Integrax) | Todas las empresas y personas; el registro de intentos de ingreso | Crear, cesar y dar contraseña a administradores; restablecer contraseñas en bloque |
+| Administrador de empresa | Su empresa: personas (con documento, también los cesados), historial y contraseñas dadas | Crear, corregir, cesar, reactivar y dar contraseña nueva a gestores y usuarios de **su** empresa; editar sus áreas y puestos |
 | Gestor | Su ficha y la **lista de personas activas** de su empresa (solo nombres, puesto y área; sin documento) | — (no crea cuentas) |
 | Usuario | Solo su ficha y su empresa | — |
 
@@ -87,11 +87,11 @@ Los roles y permisos están en tablas (`roles`, `permisos`, `roles_permisos`, `r
 - Una persona solo puede estar activa en **una** empresa. Si cambia de empresa, se cesa en la primera y se da de alta en la segunda con la misma cuenta; cada empresa conserva su historial y no ve el de la otra.
 
 ### Protección contra intentos de adivinar contraseñas
-- Todo ingreso pasa por la función del servidor `ingresar`, que **anota cada intento** en `intentos_ingreso` (documento, resultado, dirección de internet y hora; solo lo ve el dueño, en Supabase → *Table Editor*).
+- Todo ingreso pasa por la función del servidor `ingresar`, que **anota cada intento** en `intentos_ingreso` (documento, resultado, dirección de internet y hora). Solo lo ve el dueño, en la app (**Intentos**). Se **borran solos a los 90 días** (plazo provisional, a validar con el abogado).
 - **5 fallos** con el mismo documento en 15 min → ese documento se bloquea **15 min** (también si el documento no existe). **30 fallos** desde la misma dirección de internet → esa dirección se bloquea 15 min.
 - **Candado de servidor:** Supabase no guarda la contraseña que escribe la persona sino una versión transformada con un secreto (`CRC_PIMIENTA`) que solo conocen las funciones. Así nadie puede saltarse el bloqueo probando contraseñas directo contra Supabase.
 
-> ⚠️ **El secreto `CRC_PIMIENTA` es vital.** Está en Supabase → *Edge Functions → Secrets* y en el gestor de contraseñas del dueño. Si se pierde o se cambia, **nadie podrá ingresar** hasta que se den contraseñas nuevas. Nunca va en el código ni en GitHub.
+> ⚠️ **El secreto `CRC_PIMIENTA` es vital.** Está en Supabase → *Edge Functions → Secrets* y en el gestor de contraseñas del dueño. Si se pierde o se cambia, **nadie podrá ingresar** hasta que se den contraseñas nuevas (ver «Plan de rescate» más abajo). Nunca va en el código ni en GitHub.
 
 ### Configuración hecha en el panel de Supabase (no está en el código)
 - *Authentication → Sign In / Providers*: registro libre **apagado**; contraseña mínima 8 con minúscula, mayúscula, número y símbolo.
@@ -110,6 +110,7 @@ Están en `pruebas/` y usan las cuentas de `.env.pruebas.local` (archivo local, 
 | `candado.mjs` | La puerta trasera está cerrada: ni con la contraseña correcta se entra directo a Supabase. |
 | `reglas-contrasena.mjs` | Reglas de contraseña aplicadas por el servidor. |
 | `empresas.mjs` | Registro de empresas (3.2): separación de ficha, sedes, contactos y logos; solo el dueño crea empresas y sedes; RUC, CIIU y archivos; suspensión. Informe en `pruebas/resultados/`. |
+| `usuarios.mjs` | Usuarios y roles (3.3): un administrador no toca a nadie de otra empresa ni a otros administradores; regla del último administrador; gestor y usuario no crean cuentas ni dan contraseñas; contraseña nueva (una sola vez, obliga a cambiarla, cierra sesiones); registro de intentos solo para el dueño; áreas y puestos por empresa. Crea una sola vez las cuentas ficticias ADMIN_A2 y USUARIO_A3. Informe en `pruebas/resultados/`. |
 
 `preparar-datos.mjs` crea las personas ficticias; `preparar-empresas.mjs` completa la ficha, sedes, contactos y logo ficticios de las empresas A y B; `primer-ingreso.mjs` se usó una sola vez para el primer cambio de contraseña del dueño ficticio.
 
@@ -141,6 +142,32 @@ Las empresas **no se registran solas**: el dueño de la plataforma (Integrax) la
 ### Datos de prueba
 Las empresas de `crc-dev` son **ficticias** y están marcadas como de prueba: la base de datos obliga a que lleven "Ficticia" en la razón social. Sus datos se cargan fuera de las migraciones, para que **nunca viajen** al entorno limpio donde se cargará la empresa piloto real.
 
+## Usuarios y roles por empresa (tarea 3.3)
+
+### Roles y puestos
+Se mantienen los 3 roles de acceso: **administrador**, **gestor** (equipo SSO) y **usuario** (trabajadores). El **puesto** (jefe de SSO, supervisor, médico ocupacional…) es solo un dato de la ficha: no cambia lo que la persona puede hacer. Si un cliente pide permisos distintos por puesto, se agregan como filas en las tablas de roles y permisos, sin reprogramar.
+
+### Pantallas
+- **Usuarios** (administrador: *Inicio → Usuarios de mi empresa*; dueño: dentro de cada empresa → *Personas*): lista con buscador y filtro activos/cesados; crear cuenta eligiendo puesto y área de las listas; **Gestionar** cada persona: corregir datos (nombre, puesto, área, fecha de ingreso, rol gestor/usuario), **contraseña nueva**, cesar con fecha y motivo, reactivar. Abajo, las últimas contraseñas nuevas dadas (quién, a quién y cuándo; nunca la contraseña).
+- **Áreas y puestos**: listas propias de cada empresa. Se agregan, renombran y desactivan; solo se borran si nunca se usaron.
+- **Registro de intentos de ingreso** (solo el dueño, menú *Intentos*): filtros por fecha, resultado y documento; los 200 más recientes.
+- **Restablecer en bloque** (solo el dueño, al final de *Usuarios* de cada empresa): contraseñas nuevas para todos los roles elegidos, que se muestran **una sola vez**.
+
+### Reglas
+- **Contraseña nueva:** 12 caracteres al azar, se muestra una sola vez, obliga a cambiarla al ingresar y cierra las sesiones abiertas de esa persona. Queda anotado quién la dio y cuándo en `contrasenas_dadas` (sin la contraseña). El administrador solo la da a gestores y usuarios de su empresa; a un administrador solo se la da el dueño. Sin recuperación por correo.
+- **Administradores:** puede haber varios por empresa; solo el dueño los crea. Nadie se cesa a sí mismo, y **no se puede cesar ni quitar el rol al único administrador activo** de una empresa (tampoco el dueño): primero se crea otro.
+- **Quién ve qué** sigue igual que en la 3.1: el administrador ve nombres y documento (también de los cesados); el gestor, nombres, puesto y área; el usuario, solo lo suyo.
+- **Borrado a los 90 días:** la tarea programada `borrar-intentos-90-dias` (pg_cron, incluido en Supabase) corre todos los días a las 03:15 de Lima.
+
+### Plan de rescate si se pierde `CRC_PIMIENTA`
+1. En Supabase → *Edge Functions → Secrets*, crear un `CRC_PIMIENTA` nuevo (al menos 32 caracteres) y guardar su copia en el gestor de contraseñas.
+2. Crear en la carpeta del proyecto el archivo **`.env.rescate.local`** (excluido de GitHub) con `SUPABASE_URL=` y `SUPABASE_CLAVE_SECRETA=` **solo ese día**.
+3. Correr `node herramientas/rescate-dueno.mjs dni <número del dueño>`: muestra una vez la contraseña nueva **del dueño** (la función se niega con cualquier otra cuenta).
+4. Ingresar a la app y, en cada empresa, usar **Restablecer en bloque** (por ejemplo, solo administradores; ellos luego dan contraseñas nuevas a su gente).
+5. Al terminar: **borrar** `.env.rescate.local` y **cambiar la clave secreta** en Supabase → *Project Settings → API Keys*.
+
+No se ensayó en `crc-dev`: se ensayará en el entorno limpio (decisión del dueño, 22/10/2026).
+
 ## Seguridad: reglas que no se rompen
 
 - Las claves van **solo** en variables de entorno (`.env.local` en el equipo, Vercel en la nube). El archivo `.env.local` está excluido de GitHub por `.gitignore`.
@@ -156,6 +183,7 @@ public/logo.svg        Logo provisional (de él salen los íconos de instalació
 src/App.tsx            Elige la pantalla: ingreso, cambio de contraseña, inicio o gestión
 src/ruta.ts            Navegación simple (#/empresas, #/mi-empresa…) sin librerías
 src/empresas/          Registro de empresas: lista, ficha, CIIU, sedes, contactos, logos y administrador
+src/usuarios/          Usuarios, áreas y puestos, contraseña nueva, restablecer en bloque y registro de intentos
 src/gestion.css        Diseño de las pantallas de gestión
 src/Ingreso.tsx        Pantalla de ingreso (documento y contraseña)
 src/CambioContrasena.tsx  Cambio obligatorio de contraseña
@@ -164,8 +192,9 @@ src/index.css          Colores, letra y diseño (marca: #0B3C5D y #1BA39C)
 src/hooks.ts           Estado de conexión, base de datos e instalación
 src/supabase.ts        Conexión con Supabase (solo clave pública)
 supabase/migrations/   Cada cambio hecho a la base de datos (el nombre coincide con la versión en Supabase)
-supabase/functions/    Funciones del servidor: ingresar, crear-cuenta, cambiar-contrasena
+supabase/functions/    Funciones del servidor: ingresar, crear-cuenta, cambiar-contrasena, dar-contrasena
 pruebas/               Pruebas automáticas con cuentas ficticias e informes
+herramientas/          Herramienta de rescate (solo si se pierde CRC_PIMIENTA; nunca va en la app)
 vite.config.ts         Configuración de la app instalable (PWA)
 ```
 
@@ -176,8 +205,8 @@ vite.config.ts         Configuración de la app instalable (PWA)
 - Supabase gratuito pausa el proyecto tras 1 semana sin uso y no tiene copias de seguridad automáticas.
 - Antes de vender a clientes: pasar Vercel a plan Pro (el plan Hobby no permite uso comercial) y Supabase a un plan con copias de seguridad.
 - **Al pasar Supabase a plan Pro:** activar la protección contra contraseñas filtradas (pedido del dueño, 22/10/2026). Ojo: con el candado de servidor, la de Supabase revisaría la contraseña transformada; esa revisión habrá que hacerla desde la función `ingresar` con el servicio gratuito HaveIBeenPwned (decidir entonces).
-- **Tarea 3.3:** pantalla para que el administrador dé una contraseña nueva a una persona (también es el plan de recuperación si se perdiera `CRC_PIMIENTA`), pantalla de usuarios y ceses, y pantalla para que el dueño revise el registro de intentos.
-- Definir cuánto tiempo se guarda el registro de intentos de ingreso (tiene direcciones de internet: dato personal).
+- Validar con el abogado (tareas 5.3 y 5.8) el plazo provisional de 90 días del registro de intentos (tiene direcciones de internet: dato personal).
+- **3.3:** ensayar el plan de rescate de `CRC_PIMIENTA` en el entorno limpio, no en `crc-dev`.
 - Lugares con muchos trabajadores en una misma conexión (por ejemplo, el wifi de una mina): Supabase deja pasar unos 30 ingresos por minuto por dirección; vigilarlo cuando haya clientes reales.
 - Antes de tener clientes: sumar la verificación "no soy un robot" (Cloudflare Turnstile) al ingreso.
 - Las funciones del servidor ya usan las claves nuevas de Supabase; las antiguas (`anon` / `service_role`) dejan de funcionar a fines de 2026. Cuando se desactiven en el panel, confirmar que todo sigue funcionando.

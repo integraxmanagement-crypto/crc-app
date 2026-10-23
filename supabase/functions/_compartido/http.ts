@@ -45,6 +45,27 @@ export function responder(req: Request, estado: number, cuerpo: unknown): Respon
   return new Response(estado === 204 ? null : JSON.stringify(cuerpo), { status: estado, headers: cabeceras(req.headers.get('Origin')) })
 }
 
+/**
+ * ¿El texto es una de las claves privadas del proyecto? Solo lo usa la herramienta de rescate (tarea 3.3),
+ * que se corre desde la computadora del dueño, nunca desde la app. Compara sin revelar cuánto coincide.
+ */
+export function esClavePrivada(texto: string): boolean {
+  let todas: string[] = []
+  try {
+    todas = Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')).map(String)
+  } catch { /* sin claves nuevas */ }
+  const antigua = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (antigua) todas.push(antigua)
+  const a = new TextEncoder().encode(texto)
+  return texto.length > 20 && todas.some((clave) => {
+    const b = new TextEncoder().encode(clave)
+    if (a.length !== b.length) return false
+    let diferencia = 0
+    for (let i = 0; i < a.length; i++) diferencia |= a[i] ^ b[i]
+    return diferencia === 0
+  })
+}
+
 export function clienteAdmin(): SupabaseClient {
   return createClient(URL_SUPABASE, CLAVE_PRIVADA, { auth: { persistSession: false, autoRefreshToken: false } })
 }

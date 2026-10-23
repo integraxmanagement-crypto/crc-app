@@ -64,20 +64,20 @@ export type Ficha = Pick<
 
 export type DatosSede = Omit<Sede, 'id' | 'activa'>
 
-function db() {
+export function db() {
   if (!supabase) throw new Error('La app aún no está conectada a la base de datos.')
   return supabase
 }
 
 /** Mensaje en lenguaje simple a partir de un error de Supabase. */
-function mensaje(error: { message?: string; code?: string } | null): string {
+export function mensaje(error: { message?: string; code?: string } | null): string {
   if (!error) return ''
   if (!navigator.onLine) return 'Sin conexión. Necesitas señal para guardar.'
   if (error.code === '42501' || error.message === 'No autorizado') return 'No tienes permiso para hacer esto.'
   return error.message || 'No se pudo completar. Intenta de nuevo.'
 }
 
-async function rpc<T>(nombre: string, args: Record<string, unknown>): Promise<T> {
+export async function rpc<T>(nombre: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await db().rpc(nombre, args)
   if (error) throw new Error(mensaje(error))
   return data as T
@@ -104,7 +104,7 @@ export async function listarEmpresas(): Promise<Empresa[]> {
 }
 
 /** Si la base de datos no responde a tiempo, se avisa en vez de quedarse cargando para siempre. */
-function conLimite<T>(promesa: PromiseLike<T>, ms = 15000): Promise<T> {
+export function conLimite<T>(promesa: PromiseLike<T>, ms = 15000): Promise<T> {
   return Promise.race([
     Promise.resolve(promesa),
     new Promise<T>((_, rechazar) => setTimeout(() => rechazar(new Error('La respuesta tarda demasiado. Revisa tu señal y reintenta.')), ms)),
@@ -205,20 +205,22 @@ export type DatosAdministrador = {
   numero_documento: string
   apellidos_nombres: string
   fecha_ingreso: string
-  puesto: string
-  area: string
+  puesto: string | null // nombre tal como está en la lista de la empresa
+  area: string | null
 }
 
-export async function crearAdministrador(empresaId: string, datos: DatosAdministrador) {
-  const { data, error } = await db().functions.invoke('crear-cuenta', {
-    body: { ...datos, empresa_id: empresaId, rol: 'admin_empresa' },
-  })
+export const crearAdministrador = (empresaId: string, datos: DatosAdministrador) =>
+  invocar<{ cuenta_nueva: boolean; contrasena_inicial?: string }>('crear-cuenta', { ...datos, empresa_id: empresaId, rol: 'admin_empresa' })
+
+/** Llama a una función del servidor y traduce su error a lenguaje simple. */
+export async function invocar<T>(nombre: string, cuerpo: Record<string, unknown>): Promise<T> {
+  const { data, error } = await db().functions.invoke(nombre, { body: cuerpo })
   if (error) {
     if (error instanceof FunctionsHttpError) {
-      const cuerpo = await error.context.json().catch(() => null)
-      if (cuerpo?.error) throw new Error(cuerpo.error === 'No autorizado' ? 'No tienes permiso para hacer esto.' : String(cuerpo.error))
+      const respuesta = await error.context.json().catch(() => null)
+      if (respuesta?.error) throw new Error(respuesta.error === 'No autorizado' ? 'No tienes permiso para hacer esto.' : String(respuesta.error))
     }
-    throw new Error('No se pudo crear la cuenta. Intenta de nuevo.')
+    throw new Error(navigator.onLine ? 'No se pudo completar. Intenta de nuevo.' : 'Sin conexión. Necesitas señal para hacer esto.')
   }
-  return data as { cuenta_nueva: boolean; contrasena_inicial?: string }
+  return data as T
 }

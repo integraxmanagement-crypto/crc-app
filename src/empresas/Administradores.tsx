@@ -1,7 +1,8 @@
-import { Copy, UserPlus } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
-import { Aviso, Campo, Seccion } from './campos'
+import { type Item, type Lista, leerListas } from '../usuarios/datos'
+import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from './campos'
 import { type Administrador, crearAdministrador, listarAdministradores } from './datos'
 
 const hoy = () => new Date().toLocaleDateString('en-CA')
@@ -14,17 +15,18 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
   const [numero, setNumero] = useState('')
   const [nombres, setNombres] = useState('')
   const [fecha, setFecha] = useState(hoy)
-  const [puesto, setPuesto] = useState('')
-  const [area, setArea] = useState('')
+  const [puestoId, setPuestoId] = useState('')
+  const [areaId, setAreaId] = useState('')
+  const [listas, setListas] = useState<Record<Lista, Item[]>>({ areas: [], puestos: [] })
   const [error, setError] = useState<string | null>(null)
   const [resultado, setResultado] = useState<{ nombre: string; clave?: string } | null>(null)
-  const [copiado, setCopiado] = useState(false)
   const [ocupado, setOcupado] = useState(false)
 
   const [vuelta, setVuelta] = useState(0)
   const cargar = () => setVuelta((v) => v + 1)
   useEffect(() => {
     listarAdministradores(empresaId).then(setLista).catch(() => setLista([]))
+    leerListas(empresaId).then(setListas).catch(() => undefined)
   }, [empresaId, vuelta])
 
   const tipoDoc = TIPOS_DOCUMENTO.find((t) => t.codigo === tipo)!
@@ -38,14 +40,16 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
     setOcupado(true)
     try {
       const r = await crearAdministrador(empresaId, {
-        tipo_documento: tipo, numero_documento: n, apellidos_nombres: nombres, fecha_ingreso: fecha, puesto, area,
+        tipo_documento: tipo, numero_documento: n, apellidos_nombres: nombres, fecha_ingreso: fecha,
+        puesto: listas.puestos.find((i) => i.id === puestoId)?.nombre ?? null,
+        area: listas.areas.find((i) => i.id === areaId)?.nombre ?? null,
       })
       setResultado({ nombre: nombres.trim(), clave: r.contrasena_inicial })
       setAbierto(false)
       setNumero('')
       setNombres('')
-      setPuesto('')
-      setArea('')
+      setPuestoId('')
+      setAreaId('')
       cargar()
     } catch (err) {
       setError((err as Error).message)
@@ -86,30 +90,22 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
         </ul>
       )}
 
-      {resultado && (
-        <div className="clave-unica" role="status">
-          {resultado.clave ? (
-            <>
-              <p>
+      {resultado &&
+        (resultado.clave ? (
+          <ClaveUnica
+            clave={resultado.clave}
+            onOcultar={() => setResultado(null)}
+            texto={
+              <>
                 Cuenta creada para <b>{resultado.nombre}</b>. Esta es su <b>contraseña inicial</b>. Se muestra <b>una sola vez</b>: entrégasela en persona o por un medio seguro. Deberá cambiarla al ingresar.
-              </p>
-              <code>{resultado.clave}</code>
-              <div className="acciones">
-                <button className="btn-sec" type="button" onClick={() => void navigator.clipboard?.writeText(resultado.clave!).then(() => setCopiado(true))}>
-                  <Copy size={18} aria-hidden="true" /> {copiado ? 'Copiada' : 'Copiar'}
-                </button>
-                <button className="btn-link" type="button" onClick={() => { setResultado(null); setCopiado(false) }}>
-                  Ya la anoté, ocultar
-                </button>
-              </div>
-            </>
-          ) : (
-            <p>
-              <b>{resultado.nombre}</b> ya tenía cuenta en CRC (cambió de empresa): se le dio de alta aquí y sigue usando su contraseña de siempre.
-            </p>
-          )}
-        </div>
-      )}
+              </>
+            }
+          />
+        ) : (
+          <p className="aviso-ok" role="status">
+            <b>{resultado.nombre}</b> ya tenía cuenta en CRC (cambió de empresa): se le dio de alta aquí y sigue usando su contraseña de siempre.
+          </p>
+        ))}
 
       {abierto && (
         <form className="form subform" onSubmit={crear} noValidate>
@@ -137,8 +133,8 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
           <Campo etiqueta="Apellidos y nombres" value={nombres} onChange={(e) => setNombres(e.target.value)} maxLength={200} autoComplete="off" />
           <div className="fila3">
             <Campo etiqueta="Fecha de ingreso" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-            <Campo etiqueta="Puesto" opcional value={puesto} onChange={(e) => setPuesto(e.target.value)} maxLength={120} />
-            <Campo etiqueta="Área" opcional value={area} onChange={(e) => setArea(e.target.value)} maxLength={120} />
+            <SelectorLista etiqueta="Puesto" items={listas.puestos} valor={puestoId} onCambio={setPuestoId} />
+            <SelectorLista etiqueta="Área" items={listas.areas} valor={areaId} onCambio={setAreaId} />
           </div>
           <Aviso>{error}</Aviso>
           <div className="acciones">

@@ -1,4 +1,4 @@
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { ArrowLeft, ListChecks, Pencil, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { ir } from '../ruta'
 import { Administradores } from './Administradores'
@@ -20,6 +20,7 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
   const [editandoFicha, setEditandoFicha] = useState(false)
   const [confirmar, setConfirmar] = useState(false)
   const esDueno = modo === 'dueno'
+  const base = esDueno ? `/empresas/${empresaId}` : '/mi-empresa'
 
   const cargar = useCallback(() => {
     leerEmpresa(empresaId)
@@ -110,6 +111,18 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
           <Dato etiqueta="Actividad (para formatos)" valor={empresa.actividad_texto} />
         </dl>
         {!esDueno && <p className="nota">Para cambiar estos datos o las sedes, escribe a Integrax.</p>}
+      </Seccion>
+
+      <Seccion titulo="Personas">
+        <p className="nota">Cuentas de la empresa (crear, cesar, reactivar y dar contraseñas nuevas) y las listas de áreas y puestos.</p>
+        <div className="acciones">
+          <button className="btn" type="button" onClick={() => ir(`${base}/usuarios`)}>
+            <Users size={20} aria-hidden="true" /> Usuarios
+          </button>
+          <button className="btn-sec" type="button" onClick={() => ir(`${base}/listas`)}>
+            <ListChecks size={18} aria-hidden="true" /> Áreas y puestos
+          </button>
+        </div>
       </Seccion>
 
       <Logos empresa={empresa} editable onCambio={cargar} />

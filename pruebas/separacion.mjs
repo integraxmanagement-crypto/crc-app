@@ -19,7 +19,7 @@ const SIN_PERMISO = (r) => r.error?.code === '42501' || /permission denied|No au
 const { c: dueno } = await ingresarComo('DUENO')
 const { data: empresas } = await dueno.from('empresas').select('id, ruc')
 const ID = Object.fromEntries(empresas.map((e) => [e.ruc, e.id]))
-const { data: vinculosTodos } = await dueno.from('vinculos').select('id, empresa_id, estado, personas(numero_documento)')
+const { data: vinculosTodos } = await dueno.from('vinculos').select('id, persona_id, empresa_id, estado, personas(numero_documento)')
 const vinculoDe = (doc) => vinculosTodos.find((v) => v.personas.numero_documento === doc && v.estado === 'activo')
 
 const sesion = {}
@@ -182,11 +182,35 @@ seccion('8. Ampliación 3.2: sedes, contactos y logos tampoco cruzan entre empre
   comprobar('Sin iniciar sesión no se puede descargar ningún logo', Boolean(anon.error), anon.error?.message)
 }
 
+// ───────────────────────────────────────────────
+seccion('9. Ampliación 3.3: áreas, puestos, contraseñas dadas y acciones sobre personas no cruzan entre empresas')
+{
+  for (const [n, propia, ajena] of [['ADMIN_A', RUC_A, RUC_B], ['GESTOR_A', RUC_A, RUC_B], ['USUARIO_A2', RUC_A, RUC_B], ['ADMIN_B', RUC_B, RUC_A], ['GESTOR_B', RUC_B, RUC_A], ['USUARIO_B', RUC_B, RUC_A]]) {
+    const c = sesion[n]
+    const areas = await c.from('areas').select('empresa_id')
+    const puestos = await c.from('puestos').select('empresa_id')
+    comprobar(`${n}: solo ve áreas y puestos de su empresa`, [...(areas.data ?? []), ...(puestos.data ?? [])].every((x) => x.empresa_id === ID[propia]), `${areas.data?.length} áreas, ${puestos.data?.length} puestos`)
+    const dadas = await c.from('contrasenas_dadas').select('empresa_id')
+    comprobar(`${n}: ninguna contraseña dada en la otra empresa`, !(dadas.data ?? []).some((x) => x.empresa_id === ID[ajena]))
+  }
+  const { data: areaB } = await dueno.from('areas').select('id').eq('empresa_id', ID[RUC_B]).limit(1).single()
+  const r1 = await sesion.ADMIN_A.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: ID[RUC_B], p_id: null, p_nombre: 'Área intrusa' })
+  comprobar('ADMIN_A no puede crear áreas en B', SIN_PERMISO(r1), r1.error?.message)
+  const r2 = await sesion.ADMIN_A.rpc('cambiar_vigencia_item_lista', { p_lista: 'areas', p_id: areaB.id, p_vigente: false })
+  comprobar('ADMIN_A no puede desactivar un área de B', SIN_PERMISO(r2), r2.error?.message)
+  const r3 = await sesion.ADMIN_A.rpc('actualizar_persona', { p_vinculo: vinculoDe('30000002').id, p_datos: { apellidos_nombres: 'Cambio indebido' } })
+  comprobar('ADMIN_A no puede corregir datos de una persona de B', SIN_PERMISO(r3), r3.error?.message)
+  const r4 = await llamarFuncion(sesion.ADMIN_A, 'dar-contrasena', { persona_id: vinculoDe('30000002').persona_id ?? '' })
+  comprobar('ADMIN_A no puede dar contraseña nueva a una persona de B', r4.estado === 403, `${r4.estado}`)
+  const r5 = await cliente().from('areas').select('id')
+  comprobar('Sin iniciar sesión no se ve ninguna área ni puesto', (r5.data ?? []).length === 0)
+}
+
 const fallas = resumen()
 
 // Informe legible
 const fecha = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' })
-let md = `# Prueba de separación entre empresas · CRC tarea 3.1\n\nEjecutada: ${fecha} (hora de Lima) · Proyecto Supabase \`crc-dev\` · Solo datos ficticios.\n\n`
+let md = `# Prueba de separación entre empresas · CRC tareas 3.1, 3.2 y 3.3\n\nEjecutada: ${fecha} (hora de Lima) · Proyecto Supabase \`crc-dev\` · Solo datos ficticios.\n\n`
 md += `**Resultado: ${resultados.length - fallas} de ${resultados.length} pruebas pasaron.**\n\n`
 md += 'Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app (clave pública + reglas RLS) e intenta ver o tocar lo que no le corresponde.\n'
 grupos.forEach((g, i) => {

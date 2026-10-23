@@ -1,4 +1,4 @@
-import { Building2, CircleCheck, Database, Download, Home, LogOut, Smartphone, Wifi, WifiOff } from 'lucide-react'
+import { Building2, CircleCheck, Database, Download, Home, LogOut, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { CambioContrasena } from './CambioContrasena'
 import { DetalleEmpresa } from './empresas/DetalleEmpresa'
@@ -9,6 +9,9 @@ import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
 import { Ingreso } from './Ingreso'
 import { ir, useRuta } from './ruta'
 import { type Perfil, salir, useSesion } from './sesion'
+import { Intentos } from './usuarios/Intentos'
+import { Listas } from './usuarios/Listas'
+import { Usuarios } from './usuarios/Usuarios'
 
 const dbText: Record<DbState, { value: string; note?: string; tone: Tone }> = {
   checking: { value: 'Comprobando…', tone: 'idle' },
@@ -115,14 +118,24 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
       {(perfil.esDueno || perfil.rolCodigo === 'admin_empresa') && (
         <div className="accesos">
           {perfil.esDueno && (
-            <button className="btn" type="button" onClick={() => ir('/empresas')}>
-              <Building2 size={20} aria-hidden="true" /> Empresas clientes
-            </button>
+            <>
+              <button className="btn" type="button" onClick={() => ir('/empresas')}>
+                <Building2 size={20} aria-hidden="true" /> Empresas clientes
+              </button>
+              <button className="btn-sec" type="button" onClick={() => ir('/intentos')}>
+                <ShieldCheck size={18} aria-hidden="true" /> Registro de intentos de ingreso
+              </button>
+            </>
           )}
           {perfil.rolCodigo === 'admin_empresa' && perfil.empresaId && (
-            <button className="btn" type="button" onClick={() => ir('/mi-empresa')}>
-              <Building2 size={20} aria-hidden="true" /> Mi empresa
-            </button>
+            <>
+              <button className="btn" type="button" onClick={() => ir('/mi-empresa/usuarios')}>
+                <Users size={20} aria-hidden="true" /> Usuarios de mi empresa
+              </button>
+              <button className="btn-sec" type="button" onClick={() => ir('/mi-empresa')}>
+                <Building2 size={18} aria-hidden="true" /> Mi empresa
+              </button>
+            </>
           )}
         </div>
       )}
@@ -153,10 +166,20 @@ function Barra({ perfil }: { perfil: Perfil }) {
             <Building2 size={18} aria-hidden="true" /> <span>Empresas</span>
           </button>
         )}
-        {perfil.rolCodigo === 'admin_empresa' && (
-          <button type="button" onClick={() => ir('/mi-empresa')}>
-            <Building2 size={18} aria-hidden="true" /> <span>Mi empresa</span>
+        {perfil.esDueno && (
+          <button type="button" onClick={() => ir('/intentos')}>
+            <ShieldCheck size={18} aria-hidden="true" /> <span>Intentos</span>
           </button>
+        )}
+        {perfil.rolCodigo === 'admin_empresa' && (
+          <>
+            <button type="button" onClick={() => ir('/mi-empresa')}>
+              <Building2 size={18} aria-hidden="true" /> <span>Mi empresa</span>
+            </button>
+            <button type="button" onClick={() => ir('/mi-empresa/usuarios')}>
+              <Users size={18} aria-hidden="true" /> <span>Usuarios</span>
+            </button>
+          </>
         )}
         <button type="button" onClick={() => void salir()} aria-label="Cerrar sesión">
           <LogOut size={18} aria-hidden="true" />
@@ -180,10 +203,18 @@ function Gestion({ perfil, ruta }: { perfil: Perfil; ruta: string[] }): ReactNod
           }}
         />
       )
+    const volver = () => ir(`/empresas/${ruta[1]}`)
+    if (ruta[2] === 'usuarios') return <Usuarios key={ruta[1]} empresaId={ruta[1]} esDueno miId={perfil.id} onVolver={volver} />
+    if (ruta[2] === 'listas') return <Listas key={ruta[1]} empresaId={ruta[1]} onVolver={volver} />
     return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
   }
-  if (ruta[0] === 'mi-empresa' && perfil.rolCodigo === 'admin_empresa' && perfil.empresaId)
+  if (ruta[0] === 'intentos' && perfil.esDueno) return <Intentos />
+  if (ruta[0] === 'mi-empresa' && perfil.rolCodigo === 'admin_empresa' && perfil.empresaId) {
+    const volver = () => ir('/mi-empresa')
+    if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} onVolver={volver} />
+    if (ruta[1] === 'listas') return <Listas empresaId={perfil.empresaId} onVolver={volver} />
     return <DetalleEmpresa empresaId={perfil.empresaId} modo="admin" />
+  }
   return null
 }
 
@@ -234,7 +265,7 @@ export default function App() {
 
       <section className="panel">
         {contenido}
-        <footer className="foot">Versión 0.3 · Registro de empresas</footer>
+        <footer className="foot">Versión 0.4 · Usuarios y roles</footer>
       </section>
     </main>
   )

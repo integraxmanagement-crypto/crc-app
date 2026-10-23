@@ -606,3 +606,156 @@
   user-select: all;
   overflow-wrap: anywhere;
 }
+
+/* ───── Tarea 3.3: usuarios, listas de áreas y puestos, registro de intentos ───── */
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.filtros .buscador {
+  flex: 1 1 16rem;
+}
+
+.segmentos {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.segmentos button {
+  min-height: 2.6rem;
+  padding: 0 0.9rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.segmentos button + button {
+  border-left: 1px solid var(--rule);
+}
+
+.segmentos button[aria-pressed="true"] {
+  background: var(--blue);
+  color: var(--on-blue);
+}
+
+.lista-usuarios > li.inactiva:has(.panel-cuenta) {
+  opacity: 1;
+}
+
+.panel-cuenta {
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--ground);
+}
+
+.panel-cuenta .form {
+  gap: 0.9rem;
+}
+
+.btn-sec-peligro {
+  color: #8a2f1f;
+}
+
+.btn-sec-peligro:hover {
+  border-color: #b4432f;
+}
+
+.btn-sec:disabled,
+.btn-peligro:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.roles {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.roles legend {
+  margin-bottom: 0.25rem;
+  font-weight: 650;
+}
+
+.fila-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.fila-form .field {
+  flex: 1 1 14rem;
+}
+
+.listas {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .listas {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.tabla-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla th,
+.tabla td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.tabla th {
+  background: var(--blue);
+  color: var(--on-blue);
+  font-weight: 650;
+}
+
+.tabla tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabla code,
+.mono {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.tabla code {
+  font-size: 1rem;
+  font-weight: 700;
+  user-select: all;
+}
+
+.texto-mal {
+  color: #8a2f1f;
+}
