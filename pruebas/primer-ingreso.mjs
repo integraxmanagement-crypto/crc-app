@@ -8,6 +8,12 @@ if (error) process.exit(1)
 
 const { data: yo } = await c.auth.getUser()
 const persona = await c.from('personas').select('debe_cambiar_contrasena').eq('id', yo.user.id).single()
+// Prueba de UNA sola vez: cambia la contraseña del dueño ficticio. Si ya la cambió, no se toca nada
+// (el dueño usa esa cuenta en el navegador y dejaría de conocer su contraseña).
+if (persona.data?.debe_cambiar_contrasena !== true) {
+  console.log('El dueño ficticio ya cambió su contraseña: esta prueba es solo para el primer ingreso. No se hizo ningún cambio.')
+  process.exit(0)
+}
 comprobar('La app sabe que debe cambiar la contraseña', persona.data?.debe_cambiar_contrasena === true)
 
 const { cuentas } = await import('./comun.mjs')

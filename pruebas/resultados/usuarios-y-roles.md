@@ -1,8 +1,8 @@
 # Usuarios y roles por empresa · CRC tarea 3.3
 
-Ejecutada: 23/10/2026, 9:04:49 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 23/10/2026, 9:17:21 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 81 de 81 pruebas pasaron.**
+**Resultado: 80 de 81 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app e intenta ver o hacer lo que no le corresponde. Las contraseñas nunca se imprimen.
 
@@ -12,7 +12,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 17 personas visibles |
+| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 22 personas visibles |
 | ✅ Pasa | ADMIN_A ve 0 cuentas de B |  |
 | ✅ Pasa | ADMIN_A no puede crear una cuenta en B | 403 No autorizado |
 | ✅ Pasa | ADMIN_A no puede cesar a USUARIO_B | No autorizado |
@@ -71,7 +71,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 | ✅ Pasa | Mientras no la cambie, no ve los datos de su empresa |  |
 | ✅ Pasa | Queda anotado quién la dio y cuándo |  |
 | ✅ Pasa | El registro no guarda la contraseña (ningún campo la contiene) | id, persona_id, empresa_id, vinculo_id, modo, dado_por, dado_en |
-| ✅ Pasa | No hay forma de volver a verla: pedirla otra vez genera una distinta |  |
+| ❌ Falla | No hay forma de volver a verla: pedirla otra vez genera una distinta |  |
 | ✅ Pasa | Al cambiarla, vuelve a ver los datos de su empresa |  |
 | ✅ Pasa | ADMIN_B no ve el registro de contraseñas dadas en A |  |
 | ✅ Pasa | El gestor no ve el registro de contraseñas dadas |  |
@@ -82,7 +82,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve los intentos | 354 intentos |
+| ✅ Pasa | El dueño ve los intentos | 402 intentos |
 | ✅ Pasa | ADMIN_A ve 0 intentos |  |
 | ✅ Pasa | GESTOR_A ve 0 intentos |  |
 | ✅ Pasa | USUARIO_A2 ve 0 intentos |  |

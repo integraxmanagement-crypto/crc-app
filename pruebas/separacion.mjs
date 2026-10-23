@@ -210,6 +210,40 @@ seccion('9. Ampliación 3.3 y 3.6: estructura (gerencia, área, subárea), puest
   comprobar('Sin iniciar sesión no se ve ninguna unidad de la estructura', (r5.data ?? []).length === 0)
 }
 
+// ───────────────────────────────────────────────
+seccion('10. Ampliación 3.6: carga desde Excel, registro de cargas y «por revisar» no cruzan entre empresas')
+{
+  const { data: todas } = await dueno.from('cargas_personal').select('empresa_id')
+  comprobar('Hay cargas registradas en A para probar', (todas ?? []).some((x) => x.empresa_id === ID[RUC_A]), `${todas?.length} cargas en total`)
+  const cargasA = await sesion.ADMIN_A.from('cargas_personal').select('empresa_id')
+  comprobar('ADMIN_A ve el registro de cargas solo de su empresa', cargasA.data?.length > 0 && cargasA.data.every((x) => x.empresa_id === ID[RUC_A]), `${cargasA.data?.length}`)
+  for (const n of ['ADMIN_B', 'GESTOR_A', 'USUARIO_A2', 'GESTOR_B', 'USUARIO_B']) {
+    const r = await sesion[n].from('cargas_personal').select('empresa_id')
+    comprobar(`${n}: no ve cargas de A`, !(r.data ?? []).some((x) => x.empresa_id === ID[RUC_A]), `${r.data?.length ?? 0} visibles`)
+  }
+  const anonCargas = await cliente().from('cargas_personal').select('id')
+  comprobar('Sin iniciar sesión no se ve ninguna carga', (anonCargas.data ?? []).length === 0)
+
+  const marcaB = await sesion.ADMIN_B.from('vinculos').select('id, por_revisar_desde').eq('empresa_id', ID[RUC_A])
+  comprobar('ADMIN_B no ve las marcas «por revisar» de A', (marcaB.data ?? []).length === 0)
+  const sigue = await sesion.ADMIN_A.rpc('confirmar_sigue', { p_vinculo: vinculoDe('30000002').id })
+  comprobar('ADMIN_A no puede resolver «por revisar» de una persona de B', SIN_PERMISO(sigue), sigue.error?.message)
+
+  const fila = { fila: 2, tipo: 'DNI', numero: '75000001', nombres: 'Separación, Prueba', fecha: '2024-01-02', puesto: 'Operario', gerencia: 'General (ficticia)', area: 'Obras', subarea: '', rol: 'usuario' }
+  for (const [n, empresa, esperado] of [['ADMIN_A', RUC_B, 403], ['GESTOR_A', RUC_A, 403], ['USUARIO_A2', RUC_A, 403], ['GESTOR_B', RUC_B, 403]]) {
+    for (const modo of ['revisar', 'grabar']) {
+      const r = await llamarFuncion(sesion[n], 'carga-personal', { modo, empresa_id: ID[empresa], filas: [fila] })
+      comprobar(`${n}: no puede ${modo} una carga en ${empresa === RUC_A ? 'A' : 'B'}`, r.estado === esperado, `${r.estado}`)
+    }
+  }
+  const anon = await llamarFuncion(cliente(), 'carga-personal', { modo: 'revisar', empresa_id: ID[RUC_A], filas: [fila] })
+  comprobar('Sin iniciar sesión no se puede usar la carga', anon.estado === 401, `${anon.estado}`)
+  const directo = await sesion.ADMIN_A.rpc('grabar_carga', { p_empresa: ID[RUC_B], p_por: vinculoDe('20000001')?.persona_id, p_datos: {} })
+  comprobar('ADMIN_A no puede llamar al grabado de la base de datos directamente', SIN_PERMISO(directo), directo.error?.message)
+  const { count } = await dueno.from('personas').select('id', { count: 'exact', head: true }).eq('numero_documento', '75000001')
+  comprobar('Ninguno de esos intentos creó a la persona', count === 0, `${count}`)
+}
+
 const fallas = resumen()
 
 // Informe legible

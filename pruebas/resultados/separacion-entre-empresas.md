@@ -1,8 +1,8 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 23/10/2026, 9:05:30 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 23/10/2026, 9:15:51 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 84 de 84 pruebas pasaron.**
+**Resultado: 105 de 105 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app (clave pública + reglas RLS) e intenta ver o tocar lo que no le corresponde.
 
@@ -134,3 +134,29 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 | ✅ Pasa | ADMIN_A no puede corregir datos de una persona de B | No autorizado |
 | ✅ Pasa | ADMIN_A no puede dar contraseña nueva a una persona de B | 403 |
 | ✅ Pasa | Sin iniciar sesión no se ve ninguna unidad de la estructura |  |
+
+## 10. Ampliación 3.6: carga desde Excel, registro de cargas y «por revisar» no cruzan entre empresas
+
+| Resultado | Prueba | Detalle |
+|---|---|---|
+| ✅ Pasa | Hay cargas registradas en A para probar | 14 cargas en total |
+| ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 12 |
+| ✅ Pasa | ADMIN_B: no ve cargas de A | 0 visibles |
+| ✅ Pasa | GESTOR_A: no ve cargas de A | 0 visibles |
+| ✅ Pasa | USUARIO_A2: no ve cargas de A | 0 visibles |
+| ✅ Pasa | GESTOR_B: no ve cargas de A | 0 visibles |
+| ✅ Pasa | USUARIO_B: no ve cargas de A | 0 visibles |
+| ✅ Pasa | Sin iniciar sesión no se ve ninguna carga |  |
+| ✅ Pasa | ADMIN_B no ve las marcas «por revisar» de A |  |
+| ✅ Pasa | ADMIN_A no puede resolver «por revisar» de una persona de B | No autorizado |
+| ✅ Pasa | ADMIN_A: no puede revisar una carga en B | 403 |
+| ✅ Pasa | ADMIN_A: no puede grabar una carga en B | 403 |
+| ✅ Pasa | GESTOR_A: no puede revisar una carga en A | 403 |
+| ✅ Pasa | GESTOR_A: no puede grabar una carga en A | 403 |
+| ✅ Pasa | USUARIO_A2: no puede revisar una carga en A | 403 |
+| ✅ Pasa | USUARIO_A2: no puede grabar una carga en A | 403 |
+| ✅ Pasa | GESTOR_B: no puede revisar una carga en B | 403 |
+| ✅ Pasa | GESTOR_B: no puede grabar una carga en B | 403 |
+| ✅ Pasa | Sin iniciar sesión no se puede usar la carga | 401 |
+| ✅ Pasa | ADMIN_A no puede llamar al grabado de la base de datos directamente | permission denied for function grabar_carga |
+| ✅ Pasa | Ninguno de esos intentos creó a la persona | 0 |
