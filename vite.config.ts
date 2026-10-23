@@ -9,13 +9,13 @@ export default defineConfig({
     VitePWA({
       // La app se actualiza sola cuando se publica una versión nueva.
       registerType: 'autoUpdate',
-      // Genera los íconos de instalación a partir del logo.
-      pwaAssets: {
-        image: 'public/logo.svg',
-        preset: 'minimal-2023',
-        overrideManifestIcons: true,
-      },
+      // Íconos de instalación (tarea 2.1b): PNG preparados desde el logo oficial, en public/, sin modificarlos.
       manifest: {
+        icons: [
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
         name: 'CRC · Centinel Risk Control',
         short_name: 'CRC',
         description: 'Sistema de gestión de seguridad y salud en el trabajo.',

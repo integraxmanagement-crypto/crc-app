@@ -264,4 +264,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.4.2 · Logo nuevo'
+const VERSION = 'Versión 0.4.3 · Íconos nuevos'
