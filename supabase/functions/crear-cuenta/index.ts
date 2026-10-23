@@ -10,6 +10,10 @@ import {
 
 const texto = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim().replace(/\s+/g, ' ') : null)
 
+// Los rechazos de la base de datos por área o puesto (código 22023) ya vienen en lenguaje simple: se muestran tal cual.
+const motivo = (e: { code?: string; message?: string } | null | undefined, porDefecto: string) =>
+  e?.code === '22023' && e.message ? e.message : porDefecto
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return responder(req, 204, null)
   if (req.method !== 'POST') return responder(req, 405, { error: 'Método no permitido' })
@@ -41,9 +45,10 @@ Deno.serve(async (req) => {
     return responder(req, 400, { error: 'Número de documento no válido para ese tipo' })
   }
 
+  // La unidad (área o subárea, tarea 3.6) se puede enviar por su identificador; si no, se busca por el texto del área.
   const vinculo = {
     empresa_id: empresaId, rol, fecha_ingreso: fechaIngreso,
-    puesto: texto(d.puesto), area: texto(d.area), creado_por: llamada.usuario.id,
+    puesto: texto(d.puesto), area: texto(d.area), unidad_id: texto(d.unidad_id), creado_por: llamada.usuario.id,
   }
 
   // 2. ¿La persona ya existe? (cambió de empresa: se conserva su cuenta y su historial)
@@ -55,7 +60,7 @@ Deno.serve(async (req) => {
       .eq('persona_id', existente.id).eq('estado', 'activo').maybeSingle()
     if (activo) return responder(req, 409, { error: 'Esta persona ya tiene un vínculo activo. Primero debe ser cesada allí.' })
     const nuevo = await admin.from('vinculos').insert({ ...vinculo, persona_id: existente.id }).select('id').single()
-    if (nuevo.error) return responder(req, 400, { error: 'No se pudo crear el vínculo' })
+    if (nuevo.error) return responder(req, 400, { error: motivo(nuevo.error, 'No se pudo crear el vínculo') })
     return responder(req, 200, { persona_id: existente.id, vinculo_id: nuevo.data.id, cuenta_nueva: false })
   }
 
@@ -77,7 +82,7 @@ Deno.serve(async (req) => {
     // Deshace todo para no dejar cuentas a medias.
     if (!persona.error) await admin.from('personas').delete().eq('id', personaId)
     await admin.auth.admin.deleteUser(personaId)
-    return responder(req, 400, { error: 'No se pudo registrar a la persona. Revisa los datos.' })
+    return responder(req, 400, { error: motivo(persona.error ?? nuevo?.error, 'No se pudo registrar a la persona. Revisa los datos.') })
   }
 
   return responder(req, 200, {

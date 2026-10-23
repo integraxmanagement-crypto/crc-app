@@ -1,8 +1,8 @@
-# Prueba de separación entre empresas · CRC tareas 3.1, 3.2 y 3.3
+# Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 22/10/2026, 7:28:44 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 23/10/2026, 12:12:44 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 82 de 82 pruebas pasaron.**
+**Resultado: 84 de 84 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app (clave pública + reglas RLS) e intenta ver o tocar lo que no le corresponde.
 
@@ -111,24 +111,26 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 | ✅ Pasa | ADMIN_A no puede descargar el logo de B | Object not found |
 | ✅ Pasa | Sin iniciar sesión no se puede descargar ningún logo | Object not found |
 
-## 9. Ampliación 3.3: áreas, puestos, contraseñas dadas y acciones sobre personas no cruzan entre empresas
+## 9. Ampliación 3.3 y 3.6: estructura (gerencia, área, subárea), puestos, contraseñas dadas y acciones sobre personas no cruzan entre empresas
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | ADMIN_A: solo ve áreas y puestos de su empresa | 4 áreas, 4 puestos |
+| ✅ Pasa | ADMIN_A: solo ve la estructura y los puestos de su empresa | 5 unidades, 4 puestos |
 | ✅ Pasa | ADMIN_A: ninguna contraseña dada en la otra empresa |  |
-| ✅ Pasa | GESTOR_A: solo ve áreas y puestos de su empresa | 4 áreas, 4 puestos |
+| ✅ Pasa | GESTOR_A: solo ve la estructura y los puestos de su empresa | 5 unidades, 4 puestos |
 | ✅ Pasa | GESTOR_A: ninguna contraseña dada en la otra empresa |  |
-| ✅ Pasa | USUARIO_A2: solo ve áreas y puestos de su empresa | 4 áreas, 4 puestos |
+| ✅ Pasa | USUARIO_A2: solo ve la estructura y los puestos de su empresa | 5 unidades, 4 puestos |
 | ✅ Pasa | USUARIO_A2: ninguna contraseña dada en la otra empresa |  |
-| ✅ Pasa | ADMIN_B: solo ve áreas y puestos de su empresa | 2 áreas, 4 puestos |
+| ✅ Pasa | ADMIN_B: solo ve la estructura y los puestos de su empresa | 3 unidades, 4 puestos |
 | ✅ Pasa | ADMIN_B: ninguna contraseña dada en la otra empresa |  |
-| ✅ Pasa | GESTOR_B: solo ve áreas y puestos de su empresa | 2 áreas, 4 puestos |
+| ✅ Pasa | GESTOR_B: solo ve la estructura y los puestos de su empresa | 3 unidades, 4 puestos |
 | ✅ Pasa | GESTOR_B: ninguna contraseña dada en la otra empresa |  |
-| ✅ Pasa | USUARIO_B: solo ve áreas y puestos de su empresa | 2 áreas, 4 puestos |
+| ✅ Pasa | USUARIO_B: solo ve la estructura y los puestos de su empresa | 3 unidades, 4 puestos |
 | ✅ Pasa | USUARIO_B: ninguna contraseña dada en la otra empresa |  |
-| ✅ Pasa | ADMIN_A no puede crear áreas en B | No autorizado |
+| ✅ Pasa | ADMIN_A no puede crear gerencias en B | No autorizado |
+| ✅ Pasa | ADMIN_A no puede colgar una subárea de un área de B | La unidad superior no es válida |
+| ✅ Pasa | ADMIN_A no puede borrar un área de B | No autorizado |
 | ✅ Pasa | ADMIN_A no puede desactivar un área de B | No autorizado |
 | ✅ Pasa | ADMIN_A no puede corregir datos de una persona de B | No autorizado |
 | ✅ Pasa | ADMIN_A no puede dar contraseña nueva a una persona de B | 403 |
-| ✅ Pasa | Sin iniciar sesión no se ve ninguna área ni puesto |  |
+| ✅ Pasa | Sin iniciar sesión no se ve ninguna unidad de la estructura |  |

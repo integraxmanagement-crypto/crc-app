@@ -1,8 +1,8 @@
 # Usuarios y roles por empresa · CRC tarea 3.3
 
-Ejecutada: 22/10/2026, 7:27:54 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 23/10/2026, 12:12:00 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 80 de 80 pruebas pasaron.**
+**Resultado: 81 de 81 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app e intenta ver o hacer lo que no le corresponde. Las contraseñas nunca se imprimen.
 
@@ -82,7 +82,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve los intentos | 211 intentos |
+| ✅ Pasa | El dueño ve los intentos | 261 intentos |
 | ✅ Pasa | ADMIN_A ve 0 intentos |  |
 | ✅ Pasa | GESTOR_A ve 0 intentos |  |
 | ✅ Pasa | USUARIO_A2 ve 0 intentos |  |
@@ -90,27 +90,28 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 | ✅ Pasa | Sin iniciar sesión no se ve ningún intento | permission denied for table intentos_ingreso |
 | ✅ Pasa | Nadie puede borrar intentos desde la app (ni el dueño) | permission denied for table intentos_ingreso |
 
-## 6. Áreas y puestos: cada empresa tiene los suyos
+## 6. Estructura (gerencia, área, subárea) y puestos: cada empresa tiene los suyos
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | ADMIN_B: las áreas y puestos de A no aparecen | 2 áreas, 4 puestos |
-| ✅ Pasa | GESTOR_B: las áreas y puestos de A no aparecen | 2 áreas, 4 puestos |
-| ✅ Pasa | USUARIO_B: las áreas y puestos de A no aparecen | 2 áreas, 4 puestos |
-| ✅ Pasa | ADMIN_A ve las áreas de su empresa | 4 |
+| ✅ Pasa | ADMIN_B: la estructura y los puestos de A no aparecen | 3 unidades, 4 puestos |
+| ✅ Pasa | GESTOR_B: la estructura y los puestos de A no aparecen | 3 unidades, 4 puestos |
+| ✅ Pasa | USUARIO_B: la estructura y los puestos de A no aparecen | 3 unidades, 4 puestos |
+| ✅ Pasa | ADMIN_A ve la estructura de su empresa | 5 |
 | ✅ Pasa | ADMIN_B no puede agregar áreas en A | No autorizado |
 | ✅ Pasa | ADMIN_B no puede renombrar un área de A | No autorizado |
 | ✅ Pasa | ADMIN_B no puede desactivar un área de A | No autorizado |
 | ✅ Pasa | ADMIN_B no puede borrar un puesto de A | No autorizado |
-| ✅ Pasa | ADMIN_A agrega un área en su empresa |  |
-| ✅ Pasa | No acepta un nombre repetido (aunque cambien mayúsculas o espacios) | Ya existe un área con ese nombre |
-| ✅ Pasa | ADMIN_A renombra el área |  |
-| ✅ Pasa | ADMIN_A desactiva el área |  |
-| ✅ Pasa | No se puede asignar un área desactivada | El área está desactivada |
+| ✅ Pasa | ADMIN_A arma gerencia, área y subárea en su empresa |  |
+| ✅ Pasa | No acepta un nombre repetido (aunque cambien mayúsculas o espacios) | Ya existe una unidad con ese nombre en el mismo lugar |
+| ✅ Pasa | ADMIN_A renombra la subárea |  |
+| ✅ Pasa | ADMIN_A desactiva la gerencia (y con ella su rama) |  |
+| ✅ Pasa | No se puede asignar una subárea cuya gerencia está desactivada | El área está desactivada |
 | ✅ Pasa | No se puede asignar un área de otra empresa | El área no está en la lista de la empresa |
 | ✅ Pasa | No se crea una cuenta con un puesto que no está en la lista | 400 |
-| ✅ Pasa | ADMIN_A borra el área que nunca se usó |  |
-| ✅ Pasa | Un área en uso no se borra: hay que desactivarla | Está en uso: desactívalo en vez de borrarlo |
+| ✅ Pasa | Un área con subáreas dentro no se borra | Tiene unidades dentro: bórralas primero o desactívala |
+| ✅ Pasa | ADMIN_A borra lo que nunca se usó (de abajo hacia arriba) |  |
+| ✅ Pasa | Un área en uso no se borra: hay que desactivarla | Está en uso: desactívala en vez de borrarla |
 
 ## 7. El administrador corrige datos de su gente y el historial lo anota
 

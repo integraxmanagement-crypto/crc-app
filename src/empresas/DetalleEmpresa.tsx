@@ -114,13 +114,13 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
       </Seccion>
 
       <Seccion titulo="Personas">
-        <p className="nota">Cuentas de la empresa (crear, cesar, reactivar y dar contraseñas nuevas) y las listas de áreas y puestos.</p>
+        <p className="nota">Cuentas de la empresa (crear, cesar, reactivar y dar contraseñas nuevas) y la estructura (gerencias, áreas y subáreas) y los puestos.</p>
         <div className="acciones">
           <button className="btn" type="button" onClick={() => ir(`${base}/usuarios`)}>
             <Users size={20} aria-hidden="true" /> Usuarios
           </button>
           <button className="btn-sec" type="button" onClick={() => ir(`${base}/listas`)}>
-            <ListChecks size={18} aria-hidden="true" /> Áreas y puestos
+            <ListChecks size={18} aria-hidden="true" /> Estructura y puestos
           </button>
         </div>
       </Seccion>

@@ -5,8 +5,8 @@ import { normalizar } from '../empresas/datos'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
 import { EnBloque } from './EnBloque'
 import {
-  type ContrasenaDada, type Cuenta, type Item, type Lista, NOMBRE_ROL, type Rol, actualizarPersona, cesarCuenta, crearCuenta,
-  darContrasena, leerListas, listarContrasenasDadas, listarCuentas, reactivarCuenta,
+  type ContrasenaDada, type Cuenta, type Listas, NOMBRE_ROL, type Rol, actualizarPersona, cesarCuenta, crearCuenta,
+  darContrasena, leerListas, listarContrasenasDadas, listarCuentas, reactivarCuenta, unidadesAsignables,
 } from './datos'
 
 const hoy = () => new Date().toLocaleDateString('en-CA')
@@ -24,7 +24,7 @@ const autor = (d: ContrasenaDada) => (d.dado_por ? (d.autor?.apellidos_nombres ?
  */
 export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: string; esDueno: boolean; miId: string; onVolver: () => void }) {
   const [cuentas, setCuentas] = useState<Cuenta[] | null>(null)
-  const [listas, setListas] = useState<Record<Lista, Item[]>>({ areas: [], puestos: [] })
+  const [listas, setListas] = useState<Listas>({ puestos: [], unidades: [] })
   const [dadas, setDadas] = useState<ContrasenaDada[]>([])
   const [error, setError] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
@@ -173,18 +173,18 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
 /** Formulario para crear una cuenta nueva (función crear-cuenta de la 3.1). */
 function NuevaCuenta({
   empresaId, esDueno, listas, onCancelar, onListo,
-}: { empresaId: string; esDueno: boolean; listas: Record<Lista, Item[]>; onCancelar: () => void; onListo: (c?: Clave, texto?: string) => void }) {
+}: { empresaId: string; esDueno: boolean; listas: Listas; onCancelar: () => void; onListo: (c?: Clave, texto?: string) => void }) {
   const [rol, setRol] = useState<Rol>('usuario')
   const [tipo, setTipo] = useState<TipoDocumento>('dni')
   const [numero, setNumero] = useState('')
   const [nombres, setNombres] = useState('')
   const [ingreso, setIngreso] = useState(hoy)
   const [puestoId, setPuestoId] = useState('')
-  const [areaId, setAreaId] = useState('')
+  const [unidadId, setUnidadId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const tipoDoc = TIPOS_DOCUMENTO.find((t) => t.codigo === tipo)!
-  const nombreDe = (l: Lista, id: string) => listas[l].find((i) => i.id === id)?.nombre ?? null
+  const nombrePuesto = (id: string) => listas.puestos.find((i) => i.id === id)?.nombre ?? null
 
   async function crear(e: FormEvent) {
     e.preventDefault()
@@ -196,7 +196,7 @@ function NuevaCuenta({
     try {
       const r = await crearCuenta(empresaId, {
         rol, tipo_documento: tipo, numero_documento: n, apellidos_nombres: nombres, fecha_ingreso: ingreso,
-        puesto: nombreDe('puestos', puestoId), area: nombreDe('areas', areaId),
+        puesto: nombrePuesto(puestoId), unidad_id: unidadId || null,
       })
       if (r.contrasena_inicial) onListo({ nombre: nombres.trim(), clave: r.contrasena_inicial, nueva: true })
       else onListo(undefined, `${nombres.trim()} ya tenía cuenta en CRC (cambió de empresa): se le dio de alta aquí y sigue usando su contraseña de siempre.`)
@@ -244,7 +244,7 @@ function NuevaCuenta({
       <div className="fila3">
         <Campo etiqueta="Fecha de ingreso" type="date" value={ingreso} onChange={(e) => setIngreso(e.target.value)} />
         <SelectorLista etiqueta="Puesto" items={listas.puestos} valor={puestoId} onCambio={setPuestoId} />
-        <SelectorLista etiqueta="Área" items={listas.areas} valor={areaId} onCambio={setAreaId} />
+        <SelectorLista etiqueta="Área o subárea" items={unidadesAsignables(listas.unidades)} valor={unidadId} onCambio={setUnidadId} />
       </div>
       <Aviso>{error}</Aviso>
       <div className="acciones">
@@ -262,13 +262,13 @@ function NuevaCuenta({
 /** Acciones sobre una cuenta: corregir datos, contraseña nueva, cesar o reactivar. */
 function PanelCuenta({
   cuenta: c, esDueno, listas, onCerrar, onListo,
-}: { cuenta: Cuenta; esDueno: boolean; listas: Record<Lista, Item[]>; onCerrar: () => void; onListo: (c?: Clave) => void }) {
+}: { cuenta: Cuenta; esDueno: boolean; listas: Listas; onCerrar: () => void; onListo: (c?: Clave) => void }) {
   const [accion, setAccion] = useState<'menu' | 'corregir' | 'clave' | 'cesar'>('menu')
   const [nombres, setNombres] = useState(c.personas?.apellidos_nombres ?? '')
   const [ingreso, setIngreso] = useState(c.fecha_ingreso)
   const [rol, setRol] = useState<Rol>(c.rol)
   const [puestoId, setPuestoId] = useState(c.puesto_id ?? '')
-  const [areaId, setAreaId] = useState(c.area_id ?? '')
+  const [unidadId, setUnidadId] = useState(c.unidad_id ?? '')
   const [fechaCese, setFechaCese] = useState(hoy)
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -294,7 +294,7 @@ function PanelCuenta({
     if (ingreso !== c.fecha_ingreso) cambios.fecha_ingreso = ingreso
     if (rol !== c.rol) cambios.rol = rol
     if (puestoId !== (c.puesto_id ?? '')) cambios.puesto_id = puestoId || null
-    if (areaId !== (c.area_id ?? '')) cambios.area_id = areaId || null
+    if (unidadId !== (c.unidad_id ?? '')) cambios.unidad_id = unidadId || null
     if (!Object.keys(cambios).length) return setError('No cambiaste ningún dato.')
     void hacer(() => actualizarPersona(c.id, cambios))
   }
@@ -348,7 +348,7 @@ function PanelCuenta({
           </div>
           <div className="fila2">
             <SelectorLista etiqueta="Puesto" items={listas.puestos} valor={puestoId} onCambio={setPuestoId} />
-            <SelectorLista etiqueta="Área" items={listas.areas} valor={areaId} onCambio={setAreaId} />
+            <SelectorLista etiqueta="Área o subárea" items={unidadesAsignables(listas.unidades)} valor={unidadId} onCambio={setUnidadId} />
           </div>
           <p className="nota">El número de documento no se corrige: es con lo que la persona ingresa. Si está mal, cesa esta cuenta y crea una nueva.</p>
           <Aviso>{error}</Aviso>

@@ -183,34 +183,38 @@ seccion('8. Ampliación 3.2: sedes, contactos y logos tampoco cruzan entre empre
 }
 
 // ───────────────────────────────────────────────
-seccion('9. Ampliación 3.3: áreas, puestos, contraseñas dadas y acciones sobre personas no cruzan entre empresas')
+seccion('9. Ampliación 3.3 y 3.6: estructura (gerencia, área, subárea), puestos, contraseñas dadas y acciones sobre personas no cruzan entre empresas')
 {
   for (const [n, propia, ajena] of [['ADMIN_A', RUC_A, RUC_B], ['GESTOR_A', RUC_A, RUC_B], ['USUARIO_A2', RUC_A, RUC_B], ['ADMIN_B', RUC_B, RUC_A], ['GESTOR_B', RUC_B, RUC_A], ['USUARIO_B', RUC_B, RUC_A]]) {
     const c = sesion[n]
-    const areas = await c.from('areas').select('empresa_id')
+    const areas = await c.from('unidades').select('empresa_id')
     const puestos = await c.from('puestos').select('empresa_id')
-    comprobar(`${n}: solo ve áreas y puestos de su empresa`, [...(areas.data ?? []), ...(puestos.data ?? [])].every((x) => x.empresa_id === ID[propia]), `${areas.data?.length} áreas, ${puestos.data?.length} puestos`)
+    comprobar(`${n}: solo ve la estructura y los puestos de su empresa`, [...(areas.data ?? []), ...(puestos.data ?? [])].every((x) => x.empresa_id === ID[propia]), `${areas.data?.length} unidades, ${puestos.data?.length} puestos`)
     const dadas = await c.from('contrasenas_dadas').select('empresa_id')
     comprobar(`${n}: ninguna contraseña dada en la otra empresa`, !(dadas.data ?? []).some((x) => x.empresa_id === ID[ajena]))
   }
-  const { data: areaB } = await dueno.from('areas').select('id').eq('empresa_id', ID[RUC_B]).limit(1).single()
-  const r1 = await sesion.ADMIN_A.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: ID[RUC_B], p_id: null, p_nombre: 'Área intrusa' })
-  comprobar('ADMIN_A no puede crear áreas en B', SIN_PERMISO(r1), r1.error?.message)
-  const r2 = await sesion.ADMIN_A.rpc('cambiar_vigencia_item_lista', { p_lista: 'areas', p_id: areaB.id, p_vigente: false })
+  const { data: areaB } = await dueno.from('unidades').select('id').eq('empresa_id', ID[RUC_B]).eq('nivel', 'area').limit(1).single()
+  const r1 = await sesion.ADMIN_A.rpc('guardar_unidad', { p_empresa: ID[RUC_B], p_id: null, p_nivel: 'gerencia', p_padre: null, p_nombre: 'Gerencia intrusa' })
+  comprobar('ADMIN_A no puede crear gerencias en B', SIN_PERMISO(r1), r1.error?.message)
+  const r1b = await sesion.ADMIN_A.rpc('guardar_unidad', { p_empresa: ID[RUC_A], p_id: null, p_nivel: 'subarea', p_padre: areaB.id, p_nombre: 'Colgada de B' })
+  comprobar('ADMIN_A no puede colgar una subárea de un área de B', Boolean(r1b.error), r1b.error?.message)
+  const r1c = await sesion.ADMIN_A.rpc('borrar_unidad', { p_id: areaB.id })
+  comprobar('ADMIN_A no puede borrar un área de B', SIN_PERMISO(r1c), r1c.error?.message)
+  const r2 = await sesion.ADMIN_A.rpc('cambiar_vigencia_unidad', { p_id: areaB.id, p_vigente: false })
   comprobar('ADMIN_A no puede desactivar un área de B', SIN_PERMISO(r2), r2.error?.message)
   const r3 = await sesion.ADMIN_A.rpc('actualizar_persona', { p_vinculo: vinculoDe('30000002').id, p_datos: { apellidos_nombres: 'Cambio indebido' } })
   comprobar('ADMIN_A no puede corregir datos de una persona de B', SIN_PERMISO(r3), r3.error?.message)
   const r4 = await llamarFuncion(sesion.ADMIN_A, 'dar-contrasena', { persona_id: vinculoDe('30000002').persona_id ?? '' })
   comprobar('ADMIN_A no puede dar contraseña nueva a una persona de B', r4.estado === 403, `${r4.estado}`)
-  const r5 = await cliente().from('areas').select('id')
-  comprobar('Sin iniciar sesión no se ve ninguna área ni puesto', (r5.data ?? []).length === 0)
+  const r5 = await cliente().from('unidades').select('id')
+  comprobar('Sin iniciar sesión no se ve ninguna unidad de la estructura', (r5.data ?? []).length === 0)
 }
 
 const fallas = resumen()
 
 // Informe legible
 const fecha = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' })
-let md = `# Prueba de separación entre empresas · CRC tareas 3.1, 3.2 y 3.3\n\nEjecutada: ${fecha} (hora de Lima) · Proyecto Supabase \`crc-dev\` · Solo datos ficticios.\n\n`
+let md = `# Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6\n\nEjecutada: ${fecha} (hora de Lima) · Proyecto Supabase \`crc-dev\` · Solo datos ficticios.\n\n`
 md += `**Resultado: ${resultados.length - fallas} de ${resultados.length} pruebas pasaron.**\n\n`
 md += 'Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app (clave pública + reglas RLS) e intenta ver o tocar lo que no le corresponde.\n'
 grupos.forEach((g, i) => {

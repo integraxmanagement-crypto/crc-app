@@ -770,3 +770,54 @@
 .texto-mal {
   color: #8a2f1f;
 }
+
+/* ───── Tarea 3.6: estructura de la empresa en árbol (Gerencia → Área → Subárea) ───── */
+
+.rama {
+  margin: 0;
+  padding: 0 0 0 1rem;
+  list-style: none;
+  border-left: 2px solid var(--rule);
+}
+
+.rama-raiz {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.rama > li {
+  padding: 0.35rem 0;
+}
+
+.rama > li.inactiva > .rama-fila {
+  opacity: 0.65;
+}
+
+.rama-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+.rama-fila > div {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.rama-nivel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--teal-ink);
+}
+
+.rama-fila .chip-gris {
+  margin-left: 0.4rem;
+}
+
+.rama-form {
+  list-style: none;
+}

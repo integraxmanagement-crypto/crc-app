@@ -20,7 +20,7 @@ export function ClaveUnica({ texto, clave, onOcultar }: { texto: ReactNode; clav
   )
 }
 
-/** Lista desplegable de áreas o puestos de la empresa (solo los vigentes, más el que ya tenía la persona). */
+/** Lista desplegable de puestos o de áreas y subáreas de la empresa (solo los vigentes, más el que ya tenía la persona). */
 export function SelectorLista({
   etiqueta,
   items,
@@ -42,7 +42,7 @@ export function SelectorLista({
           </option>
         ))}
       </select>
-      {!items.length && <small className="ayuda">La lista está vacía: agrégala en «Áreas y puestos».</small>}
+      {!items.length && <small className="ayuda">La lista está vacía: complétala en «Estructura y puestos».</small>}
     </label>
   )
 }

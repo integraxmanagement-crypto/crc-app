@@ -13,15 +13,43 @@ export type Cuenta = {
   fecha_ingreso: string
   fecha_cese: string | null
   motivo_cese: string | null
-  area_id: string | null
+  unidad_id: string | null
   puesto_id: string | null
-  area: string | null
+  area: string | null // camino completo de su unidad, por ejemplo «Operaciones › Producción › Línea 1»
   puesto: string | null
   personas: { tipo_documento: string; numero_documento: string; apellidos_nombres: string; debe_cambiar_contrasena: boolean } | null
 }
 
-export type Lista = 'areas' | 'puestos'
 export type Item = { id: string; nombre: string; vigente: boolean }
+
+// Estructura de la empresa (tarea 3.6): Gerencia → Área → Subárea o línea (opcional).
+export type Nivel = 'gerencia' | 'area' | 'subarea'
+export type Unidad = Item & { nivel: Nivel; padre_id: string | null }
+export type Listas = { puestos: Item[]; unidades: Unidad[] }
+
+export const NOMBRE_NIVEL: Record<Nivel, string> = { gerencia: 'Gerencia', area: 'Área', subarea: 'Subárea o línea' }
+
+/** Camino de una unidad («Gerencia › Área › Subárea») y si está vigente junto con todas las de arriba. */
+export function caminoUnidad(unidades: Unidad[], id: string): { ruta: string; vigente: boolean } {
+  const partes: string[] = []
+  let vigente = true
+  for (let u = unidades.find((x) => x.id === id); u; u = unidades.find((x) => x.id === u!.padre_id)) {
+    partes.unshift(u.nombre)
+    vigente &&= u.vigente
+  }
+  return { ruta: partes.join(' › '), vigente }
+}
+
+/** Áreas y subáreas que se pueden asignar a una persona, con su camino, ordenadas. */
+export function unidadesAsignables(unidades: Unidad[]): Item[] {
+  return unidades
+    .filter((u) => u.nivel !== 'gerencia')
+    .map((u) => {
+      const c = caminoUnidad(unidades, u.id)
+      return { id: u.id, nombre: c.ruta, vigente: c.vigente }
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+}
 
 export type Intento = {
   id: number
@@ -56,7 +84,7 @@ export async function listarCuentas(empresaId: string): Promise<Cuenta[]> {
     db()
       .from('vinculos')
       .select(
-        'id, persona_id, rol, estado, fecha_ingreso, fecha_cese, motivo_cese, area_id, puesto_id, area, puesto, ' +
+        'id, persona_id, rol, estado, fecha_ingreso, fecha_cese, motivo_cese, unidad_id, puesto_id, area, puesto, ' +
           'personas(tipo_documento, numero_documento, apellidos_nombres, debe_cambiar_contrasena)',
       )
       .eq('empresa_id', empresaId),
@@ -74,7 +102,7 @@ export type DatosCuenta = {
   apellidos_nombres: string
   fecha_ingreso: string
   puesto: string | null // nombre tal como está en la lista (crear-cuenta lo busca en la lista de la empresa)
-  area: string | null
+  unidad_id: string | null // área o subárea elegida en la estructura de la empresa
 }
 
 export const crearCuenta = (empresaId: string, datos: DatosCuenta) =>
@@ -111,24 +139,31 @@ export async function listarContrasenasDadas(empresaId: string): Promise<Contras
   return data as unknown as ContrasenaDada[]
 }
 
-// ───── Áreas y puestos ─────
-export async function leerListas(empresaId: string): Promise<Record<Lista, Item[]>> {
-  const [areas, puestos] = await conLimite(
+// ───── Estructura y puestos ─────
+export async function leerListas(empresaId: string): Promise<Listas> {
+  const [unidades, puestos] = await conLimite(
     Promise.all([
-      db().from('areas').select('id, nombre, vigente').eq('empresa_id', empresaId).order('nombre'),
+      db().from('unidades').select('id, nivel, padre_id, nombre, vigente').eq('empresa_id', empresaId).order('nombre'),
       db().from('puestos').select('id, nombre, vigente').eq('empresa_id', empresaId).order('nombre'),
     ]),
   )
-  const error = areas.error || puestos.error
+  const error = unidades.error || puestos.error
   if (error) throw new Error(mensaje(error))
-  return { areas: areas.data, puestos: puestos.data }
+  return { unidades: unidades.data as Unidad[], puestos: puestos.data }
 }
 
-export const guardarItem = (lista: Lista, empresaId: string, id: string | null, nombre: string) =>
-  rpc<string>('guardar_item_lista', { p_lista: lista, p_empresa: empresaId, p_id: id, p_nombre: nombre })
-export const cambiarVigencia = (lista: Lista, id: string, vigente: boolean) =>
-  rpc<void>('cambiar_vigencia_item_lista', { p_lista: lista, p_id: id, p_vigente: vigente })
-export const borrarItem = (lista: Lista, id: string) => rpc<void>('borrar_item_lista', { p_lista: lista, p_id: id })
+export const guardarPuesto = (empresaId: string, id: string | null, nombre: string) =>
+  rpc<string>('guardar_item_lista', { p_lista: 'puestos', p_empresa: empresaId, p_id: id, p_nombre: nombre })
+export const cambiarVigenciaPuesto = (id: string, vigente: boolean) =>
+  rpc<void>('cambiar_vigencia_item_lista', { p_lista: 'puestos', p_id: id, p_vigente: vigente })
+export const borrarPuesto = (id: string) => rpc<void>('borrar_item_lista', { p_lista: 'puestos', p_id: id })
+
+/** Crea (id vacío) o renombra una gerencia, área o subárea. */
+export const guardarUnidad = (empresaId: string, id: string | null, nivel: Nivel, padreId: string | null, nombre: string) =>
+  rpc<string>('guardar_unidad', { p_empresa: empresaId, p_id: id, p_nivel: nivel, p_padre: padreId, p_nombre: nombre })
+export const cambiarVigenciaUnidad = (id: string, vigente: boolean) =>
+  rpc<void>('cambiar_vigencia_unidad', { p_id: id, p_vigente: vigente })
+export const borrarUnidad = (id: string) => rpc<void>('borrar_unidad', { p_id: id })
 
 // ───── Registro de intentos (solo el dueño de la plataforma lo puede leer) ─────
 export type FiltroIntentos = { desde: string; hasta: string; resultado: string; documento: string }

@@ -136,7 +136,7 @@ for (const n of ['GESTOR_A', 'USUARIO_A2']) {
   comprobar(`${n} no puede cesar cuentas`, NO_AUTORIZADO(cese), cese.error?.message)
   const corr = await c.rpc('actualizar_persona', { p_vinculo: vinculoDe('USUARIO_A3').id, p_datos: { apellidos_nombres: 'Cambio indebido' } })
   comprobar(`${n} no puede corregir datos de otras personas`, NO_AUTORIZADO(corr), corr.error?.message)
-  const lista = await c.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: A.id, p_id: null, p_nombre: 'Área indebida' })
+  const lista = await c.rpc('guardar_unidad', { p_empresa: A.id, p_id: null, p_nivel: 'gerencia', p_padre: null, p_nombre: 'Gerencia indebida' })
   comprobar(`${n} no puede editar las listas de áreas y puestos`, NO_AUTORIZADO(lista), lista.error?.message)
   const bloque = await llamarFuncion(c, 'dar-contrasena', { empresa_id: A.id, roles: ['usuario'] })
   comprobar(`${n} no puede restablecer en bloque`, bloque.estado === 403, `${bloque.estado}`)
@@ -221,48 +221,56 @@ seccion('5. Solo el dueño de la plataforma ve el registro de intentos de ingres
 }
 
 // ───────────────────────────────────────────────
-seccion('6. Áreas y puestos: cada empresa tiene los suyos')
+seccion('6. Estructura (gerencia, área, subárea) y puestos: cada empresa tiene los suyos')
 {
-  const { data: areasA } = await dueno.from('areas').select('id, nombre').eq('empresa_id', A.id)
+  const { data: areasA } = await dueno.from('unidades').select('id, nombre, nivel, padre_id').eq('empresa_id', A.id)
+  const gerenciaA = areasA.find((u) => u.nivel === 'gerencia')
+  const areaA = areasA.find((u) => u.nivel === 'area')
   for (const n of ['ADMIN_B', 'GESTOR_B', 'USUARIO_B']) {
-    const a = await sesion[n].from('areas').select('empresa_id')
+    const a = await sesion[n].from('unidades').select('empresa_id')
     const p = await sesion[n].from('puestos').select('empresa_id')
-    comprobar(`${n}: las áreas y puestos de A no aparecen`, [...(a.data ?? []), ...(p.data ?? [])].every((x) => x.empresa_id === B.id), `${a.data?.length} áreas, ${p.data?.length} puestos`)
+    comprobar(`${n}: la estructura y los puestos de A no aparecen`, [...(a.data ?? []), ...(p.data ?? [])].every((x) => x.empresa_id === B.id), `${a.data?.length} unidades, ${p.data?.length} puestos`)
   }
-  const mias = await adminA.from('areas').select('empresa_id')
-  comprobar('ADMIN_A ve las áreas de su empresa', mias.data?.length === areasA.length && mias.data.every((x) => x.empresa_id === A.id), `${mias.data?.length}`)
+  const mias = await adminA.from('unidades').select('empresa_id')
+  comprobar('ADMIN_A ve la estructura de su empresa', mias.data?.length === areasA.length && mias.data.every((x) => x.empresa_id === A.id), `${mias.data?.length}`)
 
-  const ajena = await sesion.ADMIN_B.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: A.id, p_id: null, p_nombre: 'Área intrusa' })
+  const ajena = await sesion.ADMIN_B.rpc('guardar_unidad', { p_empresa: A.id, p_id: null, p_nivel: 'area', p_padre: gerenciaA.id, p_nombre: 'Área intrusa' })
   comprobar('ADMIN_B no puede agregar áreas en A', NO_AUTORIZADO(ajena), ajena.error?.message)
-  const renombrar = await sesion.ADMIN_B.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: B.id, p_id: areasA[0].id, p_nombre: 'Renombrada' })
+  const renombrar = await sesion.ADMIN_B.rpc('guardar_unidad', { p_empresa: B.id, p_id: areaA.id, p_nivel: 'area', p_padre: null, p_nombre: 'Renombrada' })
   comprobar('ADMIN_B no puede renombrar un área de A', NO_AUTORIZADO(renombrar), renombrar.error?.message)
-  const desact = await sesion.ADMIN_B.rpc('cambiar_vigencia_item_lista', { p_lista: 'areas', p_id: areasA[0].id, p_vigente: false })
+  const desact = await sesion.ADMIN_B.rpc('cambiar_vigencia_unidad', { p_id: areaA.id, p_vigente: false })
   comprobar('ADMIN_B no puede desactivar un área de A', NO_AUTORIZADO(desact), desact.error?.message)
   const borrar = await sesion.ADMIN_B.rpc('borrar_item_lista', { p_lista: 'puestos', p_id: (await dueno.from('puestos').select('id').eq('empresa_id', A.id).limit(1)).data[0].id })
   comprobar('ADMIN_B no puede borrar un puesto de A', NO_AUTORIZADO(borrar), borrar.error?.message)
 
-  // El administrador maneja las listas de su empresa.
-  const nombre = `Área de prueba ${Date.now() % 100000}`
-  const nueva = await adminA.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: A.id, p_id: null, p_nombre: nombre })
-  comprobar('ADMIN_A agrega un área en su empresa', !nueva.error && Boolean(nueva.data), nueva.error?.message)
-  const repetida = await adminA.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: A.id, p_id: null, p_nombre: ` ${nombre.toLowerCase()} ` })
+  // El administrador maneja la estructura de su empresa: gerencia → área → subárea.
+  const nombre = `Prueba ${Date.now() % 100000}`
+  const ger = await adminA.rpc('guardar_unidad', { p_empresa: A.id, p_id: null, p_nivel: 'gerencia', p_padre: null, p_nombre: `Gerencia ${nombre}` })
+  const are = await adminA.rpc('guardar_unidad', { p_empresa: A.id, p_id: null, p_nivel: 'area', p_padre: ger.data, p_nombre: `Área ${nombre}` })
+  const nueva = await adminA.rpc('guardar_unidad', { p_empresa: A.id, p_id: null, p_nivel: 'subarea', p_padre: are.data, p_nombre: nombre })
+  comprobar('ADMIN_A arma gerencia, área y subárea en su empresa', !ger.error && !are.error && !nueva.error && Boolean(nueva.data), (ger.error ?? are.error ?? nueva.error)?.message)
+  const repetida = await adminA.rpc('guardar_unidad', { p_empresa: A.id, p_id: null, p_nivel: 'subarea', p_padre: are.data, p_nombre: ` ${nombre.toLowerCase()} ` })
   comprobar('No acepta un nombre repetido (aunque cambien mayúsculas o espacios)', /Ya existe/.test(repetida.error?.message ?? ''), repetida.error?.message)
-  const cambia = await adminA.rpc('guardar_item_lista', { p_lista: 'areas', p_empresa: A.id, p_id: nueva.data, p_nombre: `${nombre} (renombrada)` })
-  comprobar('ADMIN_A renombra el área', !cambia.error, cambia.error?.message)
-  const off = await adminA.rpc('cambiar_vigencia_item_lista', { p_lista: 'areas', p_id: nueva.data, p_vigente: false })
-  comprobar('ADMIN_A desactiva el área', !off.error, off.error?.message)
-  const usarOff = await adminA.rpc('actualizar_persona', { p_vinculo: vinculoDe('USUARIO_A3').id, p_datos: { area_id: nueva.data } })
-  comprobar('No se puede asignar un área desactivada', /desactivada/.test(usarOff.error?.message ?? ''), usarOff.error?.message)
-  const fuera = await adminA.rpc('actualizar_persona', { p_vinculo: vinculoDe('USUARIO_A3').id, p_datos: { area_id: (await dueno.from('areas').select('id').eq('empresa_id', B.id).limit(1)).data[0].id } })
+  const cambia = await adminA.rpc('guardar_unidad', { p_empresa: A.id, p_id: nueva.data, p_nivel: 'subarea', p_padre: null, p_nombre: `${nombre} (renombrada)` })
+  comprobar('ADMIN_A renombra la subárea', !cambia.error, cambia.error?.message)
+  const off = await adminA.rpc('cambiar_vigencia_unidad', { p_id: ger.data, p_vigente: false })
+  comprobar('ADMIN_A desactiva la gerencia (y con ella su rama)', !off.error, off.error?.message)
+  const usarOff = await adminA.rpc('actualizar_persona', { p_vinculo: vinculoDe('USUARIO_A3').id, p_datos: { unidad_id: nueva.data } })
+  comprobar('No se puede asignar una subárea cuya gerencia está desactivada', /desactivada/.test(usarOff.error?.message ?? ''), usarOff.error?.message)
+  const fuera = await adminA.rpc('actualizar_persona', { p_vinculo: vinculoDe('USUARIO_A3').id, p_datos: { unidad_id: (await dueno.from('unidades').select('id').eq('empresa_id', B.id).eq('nivel', 'area').limit(1)).data[0].id } })
   comprobar('No se puede asignar un área de otra empresa', /lista de la empresa/.test(fuera.error?.message ?? ''), fuera.error?.message)
   const sinLista = await llamarFuncion(adminA, 'crear-cuenta', {
     empresa_id: A.id, rol: 'usuario', tipo_documento: 'dni', numero_documento: '20000097',
     apellidos_nombres: 'PRUEBA SIN LISTA, Saúl (ficticio)', fecha_ingreso: '2026-05-01', puesto: 'Puesto que no existe',
   })
   comprobar('No se crea una cuenta con un puesto que no está en la lista', sinLista.estado === 400, `${sinLista.estado}`)
-  const fuera2 = await adminA.rpc('borrar_item_lista', { p_lista: 'areas', p_id: nueva.data })
-  comprobar('ADMIN_A borra el área que nunca se usó', !fuera2.error, fuera2.error?.message)
-  const enUso = await adminA.rpc('borrar_item_lista', { p_lista: 'areas', p_id: areasA.find((x) => x.nombre === 'Logística').id })
+  const conDentro = await adminA.rpc('borrar_unidad', { p_id: are.data })
+  comprobar('Un área con subáreas dentro no se borra', /dentro/.test(conDentro.error?.message ?? ''), conDentro.error?.message)
+  const fuera2 = await adminA.rpc('borrar_unidad', { p_id: nueva.data })
+  const fuera3 = await adminA.rpc('borrar_unidad', { p_id: are.data })
+  const fuera4 = await adminA.rpc('borrar_unidad', { p_id: ger.data })
+  comprobar('ADMIN_A borra lo que nunca se usó (de abajo hacia arriba)', !fuera2.error && !fuera3.error && !fuera4.error, (fuera2.error ?? fuera3.error ?? fuera4.error)?.message)
+  const enUso = await adminA.rpc('borrar_unidad', { p_id: areasA.find((x) => x.nombre === 'Logística').id })
   comprobar('Un área en uso no se borra: hay que desactivarla', /en uso/.test(enUso.error?.message ?? ''), enUso.error?.message)
 }
 

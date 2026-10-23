@@ -206,7 +206,7 @@ export type DatosAdministrador = {
   apellidos_nombres: string
   fecha_ingreso: string
   puesto: string | null // nombre tal como está en la lista de la empresa
-  area: string | null
+  unidad_id: string | null // área o subárea de la estructura de la empresa (tarea 3.6)
 }
 
 export const crearAdministrador = (empresaId: string, datos: DatosAdministrador) =>

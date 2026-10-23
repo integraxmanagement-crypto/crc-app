@@ -1,7 +1,7 @@
 import { UserPlus } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
-import { type Item, type Lista, leerListas } from '../usuarios/datos'
+import { type Listas, leerListas, unidadesAsignables } from '../usuarios/datos'
 import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from './campos'
 import { type Administrador, crearAdministrador, listarAdministradores } from './datos'
 
@@ -16,8 +16,8 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
   const [nombres, setNombres] = useState('')
   const [fecha, setFecha] = useState(hoy)
   const [puestoId, setPuestoId] = useState('')
-  const [areaId, setAreaId] = useState('')
-  const [listas, setListas] = useState<Record<Lista, Item[]>>({ areas: [], puestos: [] })
+  const [unidadId, setUnidadId] = useState('')
+  const [listas, setListas] = useState<Listas>({ puestos: [], unidades: [] })
   const [error, setError] = useState<string | null>(null)
   const [resultado, setResultado] = useState<{ nombre: string; clave?: string } | null>(null)
   const [ocupado, setOcupado] = useState(false)
@@ -42,14 +42,14 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
       const r = await crearAdministrador(empresaId, {
         tipo_documento: tipo, numero_documento: n, apellidos_nombres: nombres, fecha_ingreso: fecha,
         puesto: listas.puestos.find((i) => i.id === puestoId)?.nombre ?? null,
-        area: listas.areas.find((i) => i.id === areaId)?.nombre ?? null,
+        unidad_id: unidadId || null,
       })
       setResultado({ nombre: nombres.trim(), clave: r.contrasena_inicial })
       setAbierto(false)
       setNumero('')
       setNombres('')
       setPuestoId('')
-      setAreaId('')
+      setUnidadId('')
       cargar()
     } catch (err) {
       setError((err as Error).message)
@@ -134,7 +134,7 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
           <div className="fila3">
             <Campo etiqueta="Fecha de ingreso" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             <SelectorLista etiqueta="Puesto" items={listas.puestos} valor={puestoId} onCambio={setPuestoId} />
-            <SelectorLista etiqueta="Área" items={listas.areas} valor={areaId} onCambio={setAreaId} />
+            <SelectorLista etiqueta="Área o subárea" items={unidadesAsignables(listas.unidades)} valor={unidadId} onCambio={setUnidadId} />
           </div>
           <Aviso>{error}</Aviso>
           <div className="acciones">
