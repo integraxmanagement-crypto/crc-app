@@ -176,6 +176,9 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
   )
   const bloqueado = cuenta.error > 0 || cuenta.falta_lista > 0
   const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`
+  const ausentes = revision?.noAparecen.length === 1
+    ? '1 gestor o usuario activo no aparece'
+    : `${revision?.noAparecen.length ?? 0} gestores o usuarios activos no aparecen`
   const marcarRevisar = listaCompleta ? (revision?.noAparecen.length ?? 0) : 0
   const quitarMarca = (revision?.filas ?? []).filter((f) => f.porRevisar).length
   const resumenGrabar = [
@@ -347,8 +350,8 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
               {revision.noAparecen.length === 0
                 ? 'Todos los gestores y usuarios activos de la empresa aparecen en el Excel.'
                 : listaCompleta
-                  ? `${revision.noAparecen.length} gestores o usuarios activos no aparecen: quedarán «por revisar» hasta que confirmes su cese o que siguen. Nadie se cesa solo.`
-                  : `${revision.noAparecen.length} gestores o usuarios activos no aparecen. Como no marcaste «lista completa», no les pasará nada.`}{' '}
+                  ? `${ausentes}: ${revision.noAparecen.length === 1 ? 'quedará' : 'quedarán'} «por revisar» hasta que confirmes su cese o que siguen. Nadie se cesa solo.`
+                  : `${ausentes}. Como no marcaste «lista completa», no les pasará nada.`}{' '}
               Los administradores no van en el Excel y nunca quedan «por revisar».
             </p>
             {revision.noAparecen.length > 0 && (
