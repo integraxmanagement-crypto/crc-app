@@ -1,6 +1,7 @@
 import { Building2, CircleCheck, Database, Download, Home, LogOut, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { CambioContrasena } from './CambioContrasena'
+import { Carga } from './carga/Carga'
 import { DetalleEmpresa } from './empresas/DetalleEmpresa'
 import { crearEmpresa } from './empresas/datos'
 import { FormFicha } from './empresas/FormFicha'
@@ -190,6 +191,7 @@ function Gestion({ perfil, ruta }: { perfil: Perfil; ruta: string[] }): ReactNod
     const volver = () => ir(`/empresas/${ruta[1]}`)
     if (ruta[2] === 'usuarios') return <Usuarios key={ruta[1]} empresaId={ruta[1]} esDueno miId={perfil.id} onVolver={volver} />
     if (ruta[2] === 'listas') return <Listas key={ruta[1]} empresaId={ruta[1]} onVolver={volver} />
+    if (ruta[2] === 'carga') return <Carga key={ruta[1]} empresaId={ruta[1]} onVolver={() => ir(`/empresas/${ruta[1]}/usuarios`)} />
     return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
   }
   if (ruta[0] === 'intentos' && perfil.esDueno) return <Intentos />
@@ -197,6 +199,7 @@ function Gestion({ perfil, ruta }: { perfil: Perfil; ruta: string[] }): ReactNod
     const volver = () => ir('/mi-empresa')
     if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} onVolver={volver} />
     if (ruta[1] === 'listas') return <Listas empresaId={perfil.empresaId} onVolver={volver} />
+    if (ruta[1] === 'carga') return <Carga empresaId={perfil.empresaId} onVolver={() => ir('/mi-empresa/usuarios')} />
     return <DetalleEmpresa empresaId={perfil.empresaId} modo="admin" />
   }
   return null
@@ -264,4 +267,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.4.4 · Estructura de la empresa'
+const VERSION = 'Versión 0.4.5 · Carga desde Excel (vista previa)'

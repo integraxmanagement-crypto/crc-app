@@ -1,7 +1,8 @@
-import { ArrowLeft, KeyRound, Pencil, Search, UserCheck, UserMinus, UserPlus } from 'lucide-react'
+import { ArrowLeft, FileSpreadsheet, KeyRound, Pencil, Search, UserCheck, UserMinus, UserPlus } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from '../empresas/campos'
 import { normalizar } from '../empresas/datos'
+import { ir } from '../ruta'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
 import { EnBloque } from './EnBloque'
 import {
@@ -73,9 +74,14 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
           <p>{cuentas ? `${cuenta('activo')} activos · ${cuenta('cesado')} cesados` : 'Cargando…'}</p>
         </div>
         {!creando && (
-          <button className="btn" type="button" onClick={() => { setClave(null); setAviso(null); setCreando(true) }}>
-            <UserPlus size={20} aria-hidden="true" /> Nueva cuenta
-          </button>
+          <div className="acciones">
+            <button className="btn-sec" type="button" onClick={() => ir(esDueno ? `/empresas/${empresaId}/carga` : '/mi-empresa/carga')}>
+              <FileSpreadsheet size={18} aria-hidden="true" /> Cargar desde Excel
+            </button>
+            <button className="btn" type="button" onClick={() => { setClave(null); setAviso(null); setCreando(true) }}>
+              <UserPlus size={20} aria-hidden="true" /> Nueva cuenta
+            </button>
+          </div>
         )}
       </header>
 

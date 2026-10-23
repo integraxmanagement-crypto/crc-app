@@ -821,3 +821,65 @@
 .rama-form {
   list-style: none;
 }
+
+/* ───── Tarea 3.6: carga de personal desde Excel ───── */
+
+.subir-excel {
+  position: relative;
+  align-self: flex-start;
+  padding: 0 1.25rem;
+  cursor: pointer;
+}
+
+.subir-excel input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.subir-excel:focus-within {
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 3px;
+}
+
+.resumen-carga {
+  margin: 0;
+}
+
+.faltantes {
+  padding: 0.9rem;
+  border: 1px solid #e8c26a;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+
+.faltantes h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.faltantes ul {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.faltantes small {
+  color: var(--ink-2);
+}
+
+.tabla-carga td.detalle-fila {
+  min-width: 18rem;
+  white-space: normal;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.tabla-carga tr.fila-error td:first-child {
+  box-shadow: inset 4px 0 0 #b4432f;
+}
+
+.tabla-carga tr.fila-falta_lista td:first-child {
+  box-shadow: inset 4px 0 0 #e3a93b;
+}

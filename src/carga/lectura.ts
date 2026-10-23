@@ -38,7 +38,7 @@ export type Registro = {
 export type Lectura = { hoja: string; registros: Registro[]; conSubareas: boolean }
 
 const simple = (s: string) =>
-  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 
 const texto = (c: Celda | undefined) => (c == null ? '' : String(c).replace(/\s+/g, ' ').trim())
 

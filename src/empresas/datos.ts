@@ -137,7 +137,7 @@ export async function listarAdministradores(empresaId: string): Promise<Administ
 }
 
 export function normalizar(texto: string) {
-  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
 export async function buscarCiiu(texto: string): Promise<Ciiu[]> {

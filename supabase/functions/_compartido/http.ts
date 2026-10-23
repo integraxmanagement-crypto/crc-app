@@ -99,10 +99,11 @@ export async function quienLlama(req: Request): Promise<{ usuario: User; token: 
   return { usuario: data.user, token }
 }
 
-export async function leerJson(req: Request): Promise<Record<string, unknown> | null> {
+/** Lee el cuerpo JSON. Por defecto hasta 10 000 caracteres; la carga de personal permite más (hasta 300 filas). */
+export async function leerJson(req: Request, maximo = 10_000): Promise<Record<string, unknown> | null> {
   try {
     const texto = await req.text()
-    if (texto.length > 10_000) return null
+    if (texto.length > maximo) return null
     const datos = JSON.parse(texto)
     return datos && typeof datos === 'object' && !Array.isArray(datos) ? datos : null
   } catch {
