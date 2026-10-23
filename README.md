@@ -110,9 +110,11 @@ Están en `pruebas/` y usan las cuentas de `.env.pruebas.local` (archivo local, 
 | `candado.mjs` | La puerta trasera está cerrada: ni con la contraseña correcta se entra directo a Supabase. |
 | `reglas-contrasena.mjs` | Reglas de contraseña aplicadas por el servidor. |
 | `empresas.mjs` | Registro de empresas (3.2): separación de ficha, sedes, contactos y logos; solo el dueño crea empresas y sedes; RUC, CIIU y archivos; suspensión. Informe en `pruebas/resultados/`. |
+| `carga.mjs` | Carga desde Excel (3.6): permisos, todo o nada, hoja de entrega, actualizar, reactivar, administradores que no se tocan y «por revisar». Usa DNI al azar 71xxxxxx: cada corrida deja unas pocas cuentas ficticias más. |
+| `carga-excel.mjs` | Carga desde Excel (3.6), prueba final: lee `pruebas/excel/CRC_prueba_carga_25_filas_FICTICIO.xlsx` con el lector de la app y revisa fila por fila la respuesta del servidor; archivos dañado, no Excel, .xls, CSV, más de 1 MB, sin personas y 301 personas; límites del servidor. No graba nada. Informe en `pruebas/resultados/`. |
 | `usuarios.mjs` | Usuarios y roles (3.3): un administrador no toca a nadie de otra empresa ni a otros administradores; regla del último administrador; gestor y usuario no crean cuentas ni dan contraseñas; contraseña nueva (una sola vez, obliga a cambiarla, cierra sesiones); registro de intentos solo para el dueño; áreas y puestos por empresa. Crea una sola vez las cuentas ficticias ADMIN_A2 y USUARIO_A3. Informe en `pruebas/resultados/`. |
 
-`preparar-datos.mjs` crea las personas ficticias; `preparar-empresas.mjs` completa la ficha, sedes, contactos y logo ficticios de las empresas A y B; `primer-ingreso.mjs` se usó una sola vez para el primer cambio de contraseña del dueño ficticio.
+`preparar-datos.mjs` crea las personas ficticias; `preparar-empresas.mjs` completa la ficha, sedes, contactos y logo ficticios de las empresas A y B; `primer-ingreso.mjs` se usó una sola vez para el primer cambio de contraseña del dueño ficticio: **no forma parte de «correr todo»** (desde el 23/10/2026 no hace nada si el dueño ya cambió su contraseña). `bloqueo.mjs` deja a USUARIO_B bloqueado 15 minutos: córrelo al final o espera antes de `usuarios` y `separacion`. Los Excel de prueba se crean con `python pruebas/excel/crear_excel_prueba.py`.
 
 ## Registro de empresas clientes (tarea 3.2)
 
@@ -149,7 +151,7 @@ Se mantienen los 3 roles de acceso: **administrador**, **gestor** (equipo SSO) y
 
 ### Pantallas
 - **Usuarios** (administrador: *Inicio → Usuarios de mi empresa*; dueño: dentro de cada empresa → *Personas*): lista con buscador y filtro activos/cesados; crear cuenta eligiendo puesto y área de las listas; **Gestionar** cada persona: corregir datos (nombre, puesto, área, fecha de ingreso, rol gestor/usuario), **contraseña nueva**, cesar con fecha y motivo, reactivar. Abajo, las últimas contraseñas nuevas dadas (quién, a quién y cuándo; nunca la contraseña).
-- **Áreas y puestos**: listas propias de cada empresa. Se agregan, renombran y desactivan; solo se borran si nunca se usaron.
+- **Estructura y puestos** (desde la 3.6): la estructura de cada empresa en tres niveles (gerencia → área → subárea o línea, esta última opcional) y la lista de puestos. Se agregan, renombran y desactivan; solo se borran si nunca se usaron (y, en la estructura, si no tienen nada debajo).
 - **Registro de intentos de ingreso** (solo el dueño, menú *Intentos*): filtros por fecha, resultado y documento; los 200 más recientes.
 - **Restablecer en bloque** (solo el dueño, al final de *Usuarios* de cada empresa): contraseñas nuevas para todos los roles elegidos, que se muestran **una sola vez**.
 
@@ -167,6 +169,28 @@ Se mantienen los 3 roles de acceso: **administrador**, **gestor** (equipo SSO) y
 5. Al terminar: **borrar** `.env.rescate.local` y **cambiar la clave secreta** en Supabase → *Project Settings → API Keys*.
 
 No se ensayó en `crc-dev`: se ensayará en el entorno limpio (decisión del dueño, 22/10/2026).
+
+## Carga de personal desde Excel (tarea 3.6)
+
+Para dar de alta (o actualizar) a muchas personas a la vez. La usan el administrador (*Usuarios → Cargar desde Excel*) y el dueño (dentro de cada empresa). Pasos en la pantalla:
+1. **Descargar plantilla**: un Excel con las listas de puestos y de la estructura de esa empresa, con listas desplegables. Hasta **300 personas y 1 MB** por archivo.
+2. **Elegir el Excel**: se lee **en el equipo** con un lector propio (sin librerías). El archivo **no se sube ni se guarda** (Ley 29733); al servidor solo van los datos de las filas, y la pantalla los olvida después de grabar.
+3. **Vista previa**: el servidor revisa cada fila y dice qué pasará: *Nueva*, *Ya tenía cuenta en CRC*, *Ya existe · con cambios / sin cambios*, *Estaba cesada*, *Administrador · no se toca*, *Falta crear en las listas* o *Error* (con el motivo en simple). Lo que falta en las listas se puede crear ahí mismo.
+4. **Lista completa** (opcional, para la carga mensual): quienes no aparecen en el Excel quedan **«por revisar»**.
+5. **Confirmar y grabar**: **todo o nada**. El servidor vuelve a revisar todo, crea las cuentas nuevas y graba personas y vínculos en una sola transacción; si algo falla, no queda nada a medias.
+
+### Reglas (decisiones del dueño, 23/10/2026)
+- Las personas se reconocen por **tipo + número de documento** (no por el nombre). Si el mismo número existe con otro tipo, es error (posible error de tipeo).
+- Quien ya existe en la empresa se **actualiza** (nombre, fecha de ingreso, puesto, unidad, rol gestor/usuario) y **conserva su contraseña**. Los **administradores nunca se tocan** ni pueden venir en el Excel.
+- Quien estaba cesado en esa empresa solo se **reactiva si se marca** la casilla. Quien está activo en otra empresa es error (sin decir cuál).
+- Las personas nuevas reciben una **contraseña inicial** de 12 caracteres que se muestra **una sola vez** en la **hoja de entrega**: al imprimir sale una lista de control para firmar (sin contraseñas) y una tarjeta recortable por persona.
+- **«Por revisar»:** nadie se cesa solo. En *Usuarios* aparece un aviso y el filtro *Por revisar*; en cada persona, «Sí, sigue en la empresa» o «No, confirmar cese» (el cese de siempre, con la regla del último administrador). La marca se quita sola si la persona vuelve a aparecer en un Excel o si se cesa.
+- Cada carga queda en `cargas_personal`: quién, cuándo y cuántas (nuevas, altas, actualizadas, reactivadas, sin cambios, por revisar). **Nunca** contraseñas, nombres ni el archivo.
+
+### Piezas
+- Base de datos: tabla `unidades` (estructura), `cargas_personal`, marca `por_revisar_desde` en `vinculos`, acciones `grabar_carga` (solo la usa el servidor) y `confirmar_sigue`.
+- Función del servidor `carga-personal` (modos *revisar* y *grabar*). Permiso: lo decide la base de datos (`puedo_crear_cuenta`).
+- Pantallas en `src/carga/`: lector (`xlsx.ts`, `lectura.ts`), plantilla (`plantilla.ts`), pantalla (`Carga.tsx`) y hoja de entrega (`HojaEntrega.tsx`).
 
 ## Seguridad: reglas que no se rompen
 
@@ -188,7 +212,8 @@ src/marca/             Logo oficial de CRC (diseño del dueño, tarea 2.1a): ani
 src/App.tsx            Elige la pantalla: ingreso, cambio de contraseña, inicio o gestión
 src/ruta.ts            Navegación simple (#/empresas, #/mi-empresa…) sin librerías
 src/empresas/          Registro de empresas: lista, ficha, CIIU, sedes, contactos, logos y administrador
-src/usuarios/          Usuarios, áreas y puestos, contraseña nueva, restablecer en bloque y registro de intentos
+src/usuarios/          Usuarios, estructura y puestos, contraseña nueva, «por revisar», restablecer en bloque y registro de intentos
+src/carga/             Carga de personal desde Excel: lector propio de .xlsx, plantilla, vista previa y hoja de entrega (tarea 3.6)
 src/gestion.css        Diseño de las pantallas de gestión
 src/Ingreso.tsx        Pantalla de ingreso (documento y contraseña)
 src/CambioContrasena.tsx  Cambio obligatorio de contraseña
@@ -197,8 +222,8 @@ src/index.css          Colores, letra y diseño (marca: #0B3C5D y #1BA39C)
 src/hooks.ts           Estado de conexión, base de datos e instalación
 src/supabase.ts        Conexión con Supabase (solo clave pública)
 supabase/migrations/   Cada cambio hecho a la base de datos (el nombre coincide con la versión en Supabase)
-supabase/functions/    Funciones del servidor: ingresar, crear-cuenta, cambiar-contrasena, dar-contrasena
-pruebas/               Pruebas automáticas con cuentas ficticias e informes
+supabase/functions/    Funciones del servidor: ingresar, crear-cuenta, cambiar-contrasena, dar-contrasena, carga-personal
+pruebas/               Pruebas automáticas con cuentas ficticias e informes; pruebas/excel/ tiene los Excel ficticios de prueba
 herramientas/          Herramienta de rescate (solo si se pierde CRC_PIMIENTA; nunca va en la app)
 vite.config.ts         Configuración de la app instalable (PWA)
 ```
@@ -217,4 +242,7 @@ vite.config.ts         Configuración de la app instalable (PWA)
 - Las funciones del servidor ya usan las claves nuevas de Supabase; las antiguas (`anon` / `service_role`) dejan de funcionar a fines de 2026. Cuando se desactiven en el panel, confirmar que todo sigue funcionando.
 - **3.2:** cuando SUNAT publique una versión nueva de la tabla CIIU, cargarla con una migración nueva (sin borrar la anterior si ya hay empresas que la usan).
 - **3.2:** la empresa piloto real se cargará en un entorno limpio, que se decidirá aparte; las empresas ficticias de `crc-dev` no se usan para el piloto.
+- **3.6:** «Sí, sigue en la empresa» quita la marca pero no queda en el historial de la persona (el cese sí). Agregarlo si el dueño lo pide.
+- **3.6:** con el plan gratuito, Supabase a veces responde lento o con un error pasajero (502): la pantalla avisa y se puede reintentar; lo ya creado en las listas no se repite.
+- **3.6:** el lector de Excel se probó con archivos guardados por Excel y por la herramienta de prueba; falta probar un archivo exportado desde Google Sheets.
 - **3.2:** la ficha no guarda historial de cambios (quién cambió qué y cuándo, más allá de la última modificación); evaluarlo si un cliente o la auditoría lo pide.
