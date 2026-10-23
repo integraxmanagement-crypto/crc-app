@@ -59,7 +59,7 @@ ul {
   grid-template-rows: auto 1fr;
 }
 
-/* Franja blanca: el "letrero" de la marca con el logo animado (tarea 2.1a) */
+/* Franja azul: el "letrero" de la marca con el logo animado en su versión de letras claras (tarea 2.1a) */
 .sign {
   position: relative;
   display: flex;
@@ -69,8 +69,8 @@ ul {
   gap: 1.25rem;
   min-height: 46svh;
   padding: max(3rem, env(safe-area-inset-top)) 1.5rem 2.5rem;
-  background: var(--surface);
-  color: var(--blue);
+  background: var(--blue);
+  color: var(--on-blue);
 }
 
 /* Contenedor del logo (el SVG va adentro, con su proporción original 901 × 828) */
@@ -114,7 +114,7 @@ ul {
   flex-direction: column;
   gap: 0.2rem;
   margin: 0;
-  color: var(--blue);
+  color: var(--on-blue);
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.01em;

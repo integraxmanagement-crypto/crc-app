@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Logo de CRC (tarea 2.1a). Los dos archivos SVG son el diseño del dueño y se usan tal cual, sin modificarlos.
 // Se insertan dentro de la página (no como imagen) para elegir su versión clara u oscura según el FONDO de la app,
@@ -13,6 +13,12 @@ const cargar: Record<Tipo, () => Promise<{ default: string }>> = {
 const yaCargado: Partial<Record<Tipo, string>> = {}
 
 export const TEXTO_LOGO = 'CRC · Centinel Risk Control'
+
+// El archivo animado termina de dibujarse y rellenarse a los 4,6 s; el dueño pidió 3 s (22/10/2026).
+// Se acelera desde aquí, sin tocar el archivo: el dibujo va más rápido y los pulsos de luz (que se repiten)
+// mantienen su ritmo pero empiezan antes, para que sigan llegando justo después del dibujo.
+const DIBUJO_ORIGINAL_MS = 4600
+const DIBUJO_MS = 3000
 
 /**
  * fondo 'claro': versión con letras oscuras (sobre blanco). fondo 'oscuro': versión con letras claras (sobre azul).
@@ -39,8 +45,19 @@ export function Logo({ animado = false, fondo, className = '' }: { animado?: boo
     ?.replace('class="crc-logo"', `class="crc-logo ${fondo === 'oscuro' ? 'dark' : 'light'}"`)
     .replace('role="img" aria-labelledby="crc-t"', 'aria-hidden="true" focusable="false"')
 
+  // Con «reducir movimiento» no hay animaciones y esto no hace nada.
+  const caja = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!animado || !html || !caja.current) return
+    for (const a of caja.current.getAnimations({ subtree: true })) {
+      if (a.effect?.getTiming().iterations === Infinity) a.currentTime = Number(a.currentTime ?? 0) + (DIBUJO_ORIGINAL_MS - DIBUJO_MS)
+      else a.playbackRate = DIBUJO_ORIGINAL_MS / DIBUJO_MS
+    }
+  }, [animado, html])
+
   return (
     <span
+      ref={caja}
       className={`logo ${className}`}
       role="img"
       aria-label={TEXTO_LOGO}

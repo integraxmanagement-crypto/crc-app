@@ -243,12 +243,12 @@ export default function App() {
     )
   }
 
-  // Antes de entrar (y en el cambio obligatorio de contraseña): franja blanca con el logo animado.
+  // Antes de entrar (y en el cambio obligatorio de contraseña): franja azul con el logo animado.
   return (
     <main className="screen" data-fase={sesion.fase}>
       <header className="sign">
         {/* Mientras se revisa la sesión todavía no se sabe si toca el ingreso: así el animado no se descarga sin necesidad. */}
-        {sesion.fase === 'cargando' ? <span className="logo logo-ingreso" /> : <Logo animado fondo="claro" className="logo-ingreso" />}
+        {sesion.fase === 'cargando' ? <span className="logo logo-ingreso" /> : <Logo animado fondo="oscuro" className="logo-ingreso" />}
         <h1 className="brand">
           <span className="brand-1">Centinel</span> <span className="brand-2">
             Risk <span>Control</span>
@@ -264,4 +264,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.4.1 · Logo nuevo'
+const VERSION = 'Versión 0.4.2 · Logo nuevo'
