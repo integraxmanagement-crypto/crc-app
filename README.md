@@ -2,7 +2,7 @@
 
 Sistema de gestión de seguridad y salud en el trabajo (SST / SGSST) para empresas y profesionales.
 
-> **Estado actual (v0.4, 22/10/2026):** ingreso y seguridad (tarea 3.1), registro de empresas clientes (tarea 3.2) y **usuarios y roles por empresa (tarea 3.3)**. Se ingresa con documento y contraseña; cada empresa ve solo sus datos; Integrax da de alta a cada empresa y a sus administradores; cada administrador maneja a su gente (crear, corregir, cesar, reactivar y dar contraseñas nuevas) y sus listas de áreas y puestos. **Todavía no hay** inspecciones ni las demás funciones de negocio.
+> **Estado actual (v0.5.0, 26/10/2026):** ingreso y seguridad (3.1), registro de empresas (3.2), usuarios y roles (3.3), carga de personal desde Excel (3.6) y **formatos de inspección y activos (3.4-B)**: constructor de formatos por formulario, las 6 plantillas base de CRC, activos, ubicaciones y listas por empresa. **Todavía no** se hacen inspecciones (3.4-C), ni hallazgos y programación (3.4-D), ni el programa anual (3.4-E).
 
 - **App publicada (pruebas internas):** https://crc-app-phi.vercel.app
 - **Repositorio:** https://github.com/integraxmanagement-crypto/crc-app
@@ -112,6 +112,8 @@ Están en `pruebas/` y usan las cuentas de `.env.pruebas.local` (archivo local, 
 | `empresas.mjs` | Registro de empresas (3.2): separación de ficha, sedes, contactos y logos; solo el dueño crea empresas y sedes; RUC, CIIU y archivos; suspensión. Informe en `pruebas/resultados/`. |
 | `carga.mjs` | Carga desde Excel (3.6): permisos, todo o nada, hoja de entrega, actualizar, reactivar, administradores que no se tocan y «por revisar». Usa DNI al azar 71xxxxxx: cada corrida deja unas pocas cuentas ficticias más. |
 | `carga-excel.mjs` | Carga desde Excel (3.6), prueba final: lee `pruebas/excel/CRC_prueba_carga_25_filas_FICTICIO.xlsx` con el lector de la app y revisa fila por fila la respuesta del servidor; archivos dañado, no Excel, .xls, CSV, más de 1 MB, sin personas y 301 personas; límites del servidor. No graba nada. Informe en `pruebas/resultados/`. |
+| `motor.mjs` | Motor de reglas de los formatos (3.4-B), sin base de datos: las 6 plantillas base están bien armadas y dan el resultado, el puntaje y los hallazgos esperados en casos conocidos (por ejemplo LOTO con 10 √, 1 N/A y 1 X = 92 %). Informe en `pruebas/resultados/`. |
+| `formatos.mjs` | Formatos y activos (3.4-B): sin sesión no se ve nada; nadie escribe directo en las 8 tablas nuevas; la base de CRC no la cambia ninguna empresa; copiar, editar, publicar y versiones (lo publicado no cambia); separación entre empresas; activos, ubicaciones, tipos y listas (código único, baja sin borrar, historial, responsable y sede de la misma empresa). Cada corrida deja unos pocos datos ficticios más. Informe en `pruebas/resultados/`. |
 | `usuarios.mjs` | Usuarios y roles (3.3): un administrador no toca a nadie de otra empresa ni a otros administradores; regla del último administrador; gestor y usuario no crean cuentas ni dan contraseñas; contraseña nueva (una sola vez, obliga a cambiarla, cierra sesiones); registro de intentos solo para el dueño; áreas y puestos por empresa. Crea una sola vez las cuentas ficticias ADMIN_A2 y USUARIO_A3. Informe en `pruebas/resultados/`. |
 
 `preparar-datos.mjs` crea las personas ficticias; `preparar-empresas.mjs` completa la ficha, sedes, contactos y logo ficticios de las empresas A y B; `primer-ingreso.mjs` se usó una sola vez para el primer cambio de contraseña del dueño ficticio: **no forma parte de «correr todo»** (desde el 23/10/2026 no hace nada si el dueño ya cambió su contraseña). `bloqueo.mjs` deja a USUARIO_B bloqueado 15 minutos: córrelo al final o espera antes de `usuarios` y `separacion`. Los Excel de prueba se crean con `python pruebas/excel/crear_excel_prueba.py`.
@@ -192,6 +194,29 @@ Para dar de alta (o actualizar) a muchas personas a la vez. La usan el administr
 - Función del servidor `carga-personal` (modos *revisar* y *grabar*). Permiso: lo decide la base de datos (`puedo_crear_cuenta`).
 - Pantallas en `src/carga/`: lector (`xlsx.ts`, `lectura.ts`), plantilla (`plantilla.ts`), pantalla (`Carga.tsx`) y hoja de entrega (`HojaEntrega.tsx`).
 
+## Formatos de inspección y activos (tarea 3.4-B)
+
+Diseño aprobado por el dueño el 26/10/2026 (D-37; documentos en Drive, `05_Formatos_Inspeccion`). Lo usan el **administrador** y el **gestor** (*Inicio → Formatos de inspección* y *Activos y listas*) y el dueño de la plataforma (dentro de cada empresa → *Inspecciones*).
+
+### Cómo funciona un formato
+- Un formato no es una pantalla programada: es una **«receta»** guardada (secciones, puntos, firmas y reglas) que la app lee. La misma pantalla y el mismo **motor de reglas** (`src/formatos/motor.ts`) sirven para cualquier formato.
+- **Plantillas base de CRC:** las 6 del anexo de Cowork (extintores, caseta de ataque rápido, bombas contra incendio, DACI, eficacia LOTO e IPF). Las ven todos y **no las cambia ninguna empresa**. Se cargan con la migración `formatos_base`, generada desde `src/formatos/base.ts` con `node herramientas/generar-formatos-base.mjs`.
+- **Copiar a mi empresa:** crea un **borrador** propio. En el **constructor** se agregan, quitan y mueven secciones y puntos; se cambian textos y marcas (obligatorio, crítico, genera hallazgo, cantidad esperada, observación/foto/acción si no cumple, subtipos); se ponen código, versión, fecha de aprobación y logo (de la ficha: claro, oscuro o ninguno); y se eligen las reglas de una lista fija. *Probar el formato* muestra al instante el resultado, el puntaje y los hallazgos con respuestas inventadas (no guarda nada).
+- **Publicar** (solo el administrador): la versión queda **congelada** con su huella (SHA-256) y pasa a ser la vigente; la anterior queda retirada sin cambios. Para cambiar algo se abre un borrador nuevo. Cada inspección (3.4-C) guardará la versión que usó.
+- Cada punto tiene una **clave fija** (por ejemplo `EXT-07`) que no cambia entre versiones. La **severidad** existe pero queda vacía hasta la v1.1.
+- **Reglas de la v1:** vencido (fecha o años de la ficha del activo), «no cumple» en todos / en los críticos / en una sección / en ciertos puntos, una respuesta dada, observación general, número fuera de rango y bloque repetible con filas. Puntaje = % de favorables (la empresa elige si N/A cuenta). El servidor volverá a calcular todo al recibir la inspección.
+- **Plazos de los extintores (decisión del dueño):** solo se calcula el próximo mantenimiento (+12 meses, editable). Los plazos de prueba hidrostática y vida útil quedan **vacíos** hasta que cada empresa ponga los suyos (validar con la norma y su proveedor).
+
+### Activos, ubicaciones y listas
+- **Tipos de activo:** los 4 base (extintor, caseta, bomba con subtipos electrobomba/motobomba, dispositivo de alarma con panel/pulsador/detector/sirena) traen la ficha del anexo; la empresa puede crear **tipos propios** con la ficha básica (código, sede, área, ubicación, responsable y datos técnicos). La ficha no se edita en la v1 (decisión del dueño).
+- **Activos:** número de ítem correlativo automático, código único por tipo, sede, área (de la estructura), ubicación, responsable (persona de la empresa) y dotación esperada propia (casetas). **No se borran:** se dan de baja con fecha y motivo y se pueden reactivar; cada cambio queda en `activos_historial`.
+- **Ubicaciones:** dentro de cada sede (empresa → sede → área → ubicación), opcionalmente asociadas a un área de «Estructura y puestos».
+- **Listas** (agentes extintores, unidades, tipos de soporte, tipos de bloqueo…): se copian solas de la base; cada empresa agrega, renombra y desactiva. Nada viene precargado con personas ni lugares.
+
+### Piezas
+- Base de datos: tablas `listas`, `listas_valores`, `tipos_activo`, `ubicaciones`, `activos`, `activos_historial`, `plantillas` y `plantillas_versiones` (todas con RLS; lo de empresa vacía es la base de CRC). Permisos nuevos como filas: `plantillas.editar` (administrador y gestor), `plantillas.publicar` (administrador) y `activos.editar` (administrador y gestor). Migraciones `formatos_constructor_activos`, `formatos_base` y `formatos_correccion_lista`.
+- App: `src/formatos/` (receta, motor, base, datos, lista, constructor y prueba) y `src/activos/` (activos, tipos, ubicaciones y listas).
+
 ## Seguridad: reglas que no se rompen
 
 - Las claves van **solo** en variables de entorno (`.env.local` en el equipo, Vercel en la nube). El archivo `.env.local` está excluido de GitHub por `.gitignore`.
@@ -214,6 +239,8 @@ src/ruta.ts            Navegación simple (#/empresas, #/mi-empresa…) sin libr
 src/empresas/          Registro de empresas: lista, ficha, CIIU, sedes, contactos, logos y administrador
 src/usuarios/          Usuarios, estructura y puestos, contraseña nueva, «por revisar», restablecer en bloque y registro de intentos
 src/carga/             Carga de personal desde Excel: lector propio de .xlsx, plantilla, vista previa y hoja de entrega (tarea 3.6)
+src/formatos/          Formatos de inspección (3.4-B): receta, motor de reglas, las 6 plantillas base, constructor y prueba del formato
+src/activos/           Activos, tipos de activo, ubicaciones y listas de los formatos (3.4-B)
 src/gestion.css        Diseño de las pantallas de gestión
 src/Ingreso.tsx        Pantalla de ingreso (documento y contraseña)
 src/CambioContrasena.tsx  Cambio obligatorio de contraseña
@@ -224,7 +251,7 @@ src/supabase.ts        Conexión con Supabase (solo clave pública)
 supabase/migrations/   Cada cambio hecho a la base de datos (el nombre coincide con la versión en Supabase)
 supabase/functions/    Funciones del servidor: ingresar, crear-cuenta, cambiar-contrasena, dar-contrasena, carga-personal
 pruebas/               Pruebas automáticas con cuentas ficticias e informes; pruebas/excel/ tiene los Excel ficticios de prueba
-herramientas/          Herramienta de rescate (solo si se pierde CRC_PIMIENTA; nunca va en la app)
+herramientas/          Herramienta de rescate (solo si se pierde CRC_PIMIENTA; nunca va en la app) y generador de la migración de plantillas base
 vite.config.ts         Configuración de la app instalable (PWA)
 ```
 
@@ -245,4 +272,6 @@ vite.config.ts         Configuración de la app instalable (PWA)
 - **3.6:** «Sí, sigue en la empresa» quita la marca pero no queda en el historial de la persona (el cese sí). Agregarlo si el dueño lo pide.
 - **3.6:** con el plan gratuito, Supabase a veces responde lento o con un error pasajero (502): la pantalla avisa y se puede reintentar; lo ya creado en las listas no se repite.
 - **3.6:** el lector de Excel se probó con archivos guardados por Excel y por la herramienta de prueba; falta probar un archivo exportado desde Google Sheets.
+- **3.4-B:** la prueba `formatos.mjs` deja cada vez unas pocas plantillas, tipos y activos ficticios más en la empresa A de `crc-dev` (códigos con número al azar). Uno de ellos (`EXT-L…`, de la primera corrida) quedó con un agente inventado: es el caso que encontró el error corregido en `formatos_correccion_lista`.
+- **3.4-B:** el dueño de la plataforma ve las plantillas base pero, en la v1, no las edita desde la app: un cambio en la base se hace con una migración nueva generada desde `src/formatos/base.ts`.
 - **3.2:** la ficha no guarda historial de cambios (quién cambió qué y cuándo, más allá de la última modificación); evaluarlo si un cliente o la auditoría lo pide.

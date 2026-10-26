@@ -1071,3 +1071,372 @@
     align-items: center;
   }
 }
+
+/* ───── Formatos de inspección y activos (tarea 3.4-B) ───── */
+.pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pestanas button,
+.botones-respuesta button {
+  min-height: 2.5rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--blue);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.pestanas button[aria-pressed="true"],
+.botones-respuesta button[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-blue);
+}
+
+.icono {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.icono:hover {
+  border-color: var(--rule);
+  color: var(--blue);
+}
+
+.mover {
+  display: inline-flex;
+  gap: 0.1rem;
+}
+
+.barra-editor {
+  position: sticky;
+  top: 4.5rem;
+  z-index: 5;
+  padding: 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.95);
+}
+
+.selector-version {
+  max-width: 28rem;
+}
+
+.tarjeta-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--teal);
+  border-radius: 10px;
+  background: var(--ground);
+}
+
+.tarjeta-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.tarjeta-cab h3,
+.subtitulo {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.titulo-seccion {
+  flex: 1;
+  min-height: 2.5rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--blue);
+  background: var(--surface);
+}
+
+.opciones-seccion summary {
+  cursor: pointer;
+  color: var(--teal-ink);
+  font-weight: 650;
+}
+
+.opciones-seccion[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.puntos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+
+.puntos > li {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.puntos > li.abierto {
+  border-color: var(--teal-ink);
+}
+
+.punto-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+}
+
+.punto-fila code,
+.prueba-punto code {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--teal-ink);
+}
+
+.punto-texto {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.punto-fila .chips {
+  margin: 0;
+}
+
+.form-punto,
+.form-regla,
+.form-opciones,
+.fila-firma {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  margin-top: 0.6rem;
+  padding: 0;
+  border: 0;
+}
+
+.form-punto textarea,
+.prueba textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.marcas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+
+.subtipos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  padding: 0;
+  border: 0;
+}
+
+.subtipos legend {
+  width: 100%;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+.reglas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.reglas > li,
+.lista-firmas > li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--ground);
+}
+
+.reglas fieldset,
+.lista-firmas fieldset {
+  flex: 1;
+  margin-top: 0;
+}
+
+.fila-firma {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 1rem;
+}
+
+.fila-firma .field {
+  flex: 1 1 10rem;
+}
+
+.regla-tipo {
+  align-self: center;
+  color: var(--blue);
+}
+
+.problemas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-left: 1.2rem;
+  color: #8a2f1f;
+}
+
+.prueba {
+  border-color: var(--teal);
+  border-width: 2px;
+}
+
+.resultado-prueba {
+  position: sticky;
+  top: 4.5rem;
+  z-index: 4;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  background: rgb(27 163 156 / 0.12);
+  color: var(--ink);
+}
+
+.resultado-prueba.incompleta {
+  background: #fff4dc;
+}
+
+.resultado-prueba summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.prueba-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.prueba-seccion h3 {
+  font-size: 1rem;
+  color: var(--blue);
+}
+
+.prueba-fila {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--rule);
+  border-radius: 8px;
+}
+
+.prueba-punto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: var(--ground);
+}
+
+.prueba-punto.no-cumple {
+  background: #fbeeeb;
+}
+
+.prueba-punto input,
+.prueba-punto select,
+.lista input,
+.valores input {
+  min-height: 2.5rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  font: inherit;
+  background: var(--surface);
+}
+
+.botones-respuesta {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.botones-respuesta button {
+  min-width: 3.25rem;
+}
+
+.historial {
+  width: 100%;
+  padding-left: 2.2rem;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+.valores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  list-style: none;
+}
+
+.valores .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.btn-link.mini {
+  min-height: 2rem;
+  font-size: 0.8125rem;
+}
+
+.controles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+@media (max-width: 560px) {
+  .barra-editor,
+  .resultado-prueba {
+    top: 4rem;
+  }
+
+  .reglas > li,
+  .lista-firmas > li {
+    flex-direction: column;
+  }
+}

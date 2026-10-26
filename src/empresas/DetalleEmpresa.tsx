@@ -1,4 +1,4 @@
-import { ArrowLeft, ListChecks, Pencil, Users } from 'lucide-react'
+import { ArrowLeft, Boxes, ClipboardCheck, ListChecks, Pencil, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { ir } from '../ruta'
 import { Administradores } from './Administradores'
@@ -121,6 +121,18 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
           </button>
           <button className="btn-sec" type="button" onClick={() => ir(`${base}/listas`)}>
             <ListChecks size={18} aria-hidden="true" /> Estructura y puestos
+          </button>
+        </div>
+      </Seccion>
+
+      <Seccion titulo="Inspecciones">
+        <p className="nota">Formatos de inspección de la empresa (copiados de las plantillas base de CRC y adaptados) y sus activos, ubicaciones y listas.</p>
+        <div className="acciones">
+          <button className="btn" type="button" onClick={() => ir(esDueno ? `${base}/formatos` : '/formatos')}>
+            <ClipboardCheck size={20} aria-hidden="true" /> Formatos de inspección
+          </button>
+          <button className="btn-sec" type="button" onClick={() => ir(esDueno ? `${base}/activos` : '/activos')}>
+            <Boxes size={18} aria-hidden="true" /> Activos y listas
           </button>
         </div>
       </Seccion>

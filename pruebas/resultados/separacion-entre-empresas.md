@@ -1,6 +1,6 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 23/10/2026, 9:15:51 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 26/10/2026, 2:30:31 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 105 de 105 pruebas pasaron.**
 
@@ -32,11 +32,11 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 |---|---|---|
 | ✅ Pasa | Usuario A2: solo ve su propia ficha | 1 ficha(s) |
 | ✅ Pasa | Usuario A2: NO recibe la lista de personas de su empresa |  |
-| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 15 personas |
+| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 19 personas |
 | ✅ Pasa | Gestor A: la lista trae solo nombres, puesto y área (sin documento) | apellidos_nombres, area, persona_id, puesto |
 | ✅ Pasa | Gestor A: la lista no incluye a nadie de B |  |
 | ✅ Pasa | Gestor A: no puede leer los documentos de otras personas |  |
-| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 17 fichas |
+| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 22 fichas |
 | ✅ Pasa | Administrador A: ninguna ficha es de B |  |
 
 ## 3. Un administrador de A no puede crear ni leer cuentas de B
@@ -139,8 +139,8 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | Hay cargas registradas en A para probar | 14 cargas en total |
-| ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 12 |
+| ✅ Pasa | Hay cargas registradas en A para probar | 20 cargas en total |
+| ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 18 |
 | ✅ Pasa | ADMIN_B: no ve cargas de A | 0 visibles |
 | ✅ Pasa | GESTOR_A: no ve cargas de A | 0 visibles |
 | ✅ Pasa | USUARIO_A2: no ve cargas de A | 0 visibles |

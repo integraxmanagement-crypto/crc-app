@@ -1,10 +1,13 @@
-import { Building2, CircleCheck, Database, Download, Home, LogOut, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
+import { Boxes, Building2, CircleCheck, ClipboardCheck, Database, Download, Home, LogOut, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
+import { Activos } from './activos/Activos'
 import { CambioContrasena } from './CambioContrasena'
 import { Carga } from './carga/Carga'
 import { DetalleEmpresa } from './empresas/DetalleEmpresa'
 import { crearEmpresa } from './empresas/datos'
 import { FormFicha } from './empresas/FormFicha'
+import { Editor } from './formatos/Editor'
+import { Formatos, type Rutas } from './formatos/Formatos'
 import { ListaEmpresas } from './empresas/ListaEmpresas'
 import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
 import { Ingreso } from './Ingreso'
@@ -101,7 +104,7 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
         <Check icon={<Database />} label="Base de datos" value={db.value} note={db.note} tone={db.tone} />
       </ul>
 
-      {(perfil.esDueno || perfil.rolCodigo === 'admin_empresa') && (
+      {(perfil.esDueno || perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'gestor') && (
         <div className="accesos">
           {perfil.esDueno && (
             <>
@@ -120,6 +123,16 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
               </button>
               <button className="btn-sec" type="button" onClick={() => ir('/mi-empresa')}>
                 <Building2 size={18} aria-hidden="true" /> Mi empresa
+              </button>
+            </>
+          )}
+          {esEquipoSso(perfil) && (
+            <>
+              <button className={perfil.rolCodigo === 'gestor' ? 'btn' : 'btn-sec'} type="button" onClick={() => ir('/formatos')}>
+                <ClipboardCheck size={18} aria-hidden="true" /> Formatos de inspección
+              </button>
+              <button className="btn-sec" type="button" onClick={() => ir('/activos')}>
+                <Boxes size={18} aria-hidden="true" /> Activos y listas
               </button>
             </>
           )}
@@ -156,6 +169,11 @@ function Barra({ perfil }: { perfil: Perfil }) {
             <ShieldCheck size={18} aria-hidden="true" /> <span>Intentos</span>
           </button>
         )}
+        {esEquipoSso(perfil) && (
+          <button type="button" onClick={() => ir('/formatos')}>
+            <ClipboardCheck size={18} aria-hidden="true" /> <span>Formatos</span>
+          </button>
+        )}
         {perfil.rolCodigo === 'admin_empresa' && (
           <>
             <button type="button" onClick={() => ir('/mi-empresa')}>
@@ -172,6 +190,24 @@ function Barra({ perfil }: { perfil: Perfil }) {
       </nav>
     </header>
   )
+}
+
+/** Administrador y gestor (equipo SSO) de una empresa: trabajan con los formatos y los activos (tarea 3.4-B). */
+function esEquipoSso(perfil: Perfil) {
+  return Boolean(perfil.empresaId) && (perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'gestor')
+}
+
+/**
+ * Formatos y activos de una empresa. Los botones se muestran según el rol (comodidad); quien decide de verdad
+ * qué se puede hacer es la base de datos (permisos plantillas.editar, plantillas.publicar y activos.editar).
+ */
+function PantallasFormatos({ empresaId, partes, rutas, perfil }: { empresaId: string; partes: string[]; rutas: Rutas; perfil: Perfil }): ReactNode {
+  const puedeEditar = perfil.esDueno || perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'gestor'
+  const puedePublicar = perfil.esDueno || perfil.rolCodigo === 'admin_empresa'
+  if (partes[0] === 'activos') return <Activos key={empresaId} empresaId={empresaId} rutas={rutas} puedeEditar={puedeEditar} esDueno={perfil.esDueno} />
+  if (partes[1])
+    return <Editor key={partes[1]} plantillaId={partes[1]} rutas={rutas} puedeEditar={puedeEditar} puedePublicar={puedePublicar} />
+  return <Formatos key={empresaId} empresaId={empresaId} rutas={rutas} puedeEditar={puedeEditar} />
 }
 
 /** Pantallas de gestión según la dirección (#/empresas, #/mi-empresa…). null = pantalla de inicio. */
@@ -192,9 +228,17 @@ function Gestion({ perfil, ruta }: { perfil: Perfil; ruta: string[] }): ReactNod
     if (ruta[2] === 'usuarios') return <Usuarios key={ruta[1]} empresaId={ruta[1]} esDueno miId={perfil.id} onVolver={volver} />
     if (ruta[2] === 'listas') return <Listas key={ruta[1]} empresaId={ruta[1]} onVolver={volver} />
     if (ruta[2] === 'carga') return <Carga key={ruta[1]} empresaId={ruta[1]} onVolver={() => ir(`/empresas/${ruta[1]}/usuarios`)} />
+    if (ruta[2] === 'formatos' || ruta[2] === 'activos') {
+      const rutas: Rutas = { formatos: `/empresas/${ruta[1]}/formatos`, activos: `/empresas/${ruta[1]}/activos`, volver: `/empresas/${ruta[1]}` }
+      return PantallasFormatos({ empresaId: ruta[1], partes: ruta.slice(2), rutas, perfil })
+    }
     return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
   }
   if (ruta[0] === 'intentos' && perfil.esDueno) return <Intentos />
+  if ((ruta[0] === 'formatos' || ruta[0] === 'activos') && esEquipoSso(perfil) && perfil.empresaId) {
+    const rutas: Rutas = { formatos: '/formatos', activos: '/activos', volver: null }
+    return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
+  }
   if (ruta[0] === 'mi-empresa' && perfil.rolCodigo === 'admin_empresa' && perfil.empresaId) {
     const volver = () => ir('/mi-empresa')
     if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} onVolver={volver} />
@@ -267,4 +311,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.4.7 · Carga desde Excel (por revisar)'
+const VERSION = 'Versión 0.5.0 · Formatos de inspección y activos'
