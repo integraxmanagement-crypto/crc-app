@@ -1440,3 +1440,200 @@
     flex-direction: column;
   }
 }
+
+/* ───── Inspecciones en el celular (tarea 3.4-C) ───── */
+.estado-equipo {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+}
+
+.estado-equipo.falta,
+.aviso-suave {
+  border: 1px solid #e8c26a;
+  background: #fff8e8;
+  color: #6b4a00;
+}
+
+.aviso-suave {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+}
+
+.error-linea {
+  display: block;
+  color: #8a2f1f;
+}
+
+.btn-link.peligro,
+.btn.peligro {
+  color: #8a2f1f;
+}
+
+.btn.peligro {
+  background: #fbeeeb;
+}
+
+.prueba-punto .obligatorio {
+  color: #8a2f1f;
+  font-weight: 700;
+}
+
+.prueba-punto .calculo {
+  margin: 0;
+  font-weight: 650;
+}
+
+.campo-fecha {
+  max-width: 16rem;
+}
+
+.fotos-punto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.mini-foto {
+  position: relative;
+  display: inline-block;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ground);
+  border: 1px solid var(--rule);
+}
+
+.mini-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mini-foto button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(11 34 51 / 0.75);
+  color: #fff;
+  cursor: pointer;
+}
+
+.mini-vacia {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.boton-foto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.firmantes {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--rule);
+}
+
+.firmante {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.firmante > select,
+.firmante > .fila2 {
+  flex: 1 1 16rem;
+}
+
+.firma-panel {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.firma-lienzo {
+  width: 100%;
+  max-width: 34rem;
+  height: 11rem;
+  border: 1px dashed var(--ink-2);
+  border-radius: 10px;
+  background: #fff;
+  touch-action: none;
+}
+
+.firma-mini .mini-foto {
+  width: 6rem;
+  height: 3rem;
+  background: #fff;
+}
+
+.firma-mini .mini-foto img {
+  object-fit: contain;
+}
+
+.resultado-prueba.cierre {
+  position: sticky;
+  bottom: 0.5rem;
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  box-shadow: 0 6px 24px rgb(11 34 51 / 0.12);
+}
+
+.hallazgos {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.avisos-inspeccion {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.85rem 0.6rem 1.8rem;
+  border-radius: 10px;
+  background: #fff8e8;
+  color: #6b4a00;
+}
+
+.lista > li.con-panel > div {
+  flex: 1;
+}
+
+/* Hoja imprimible de una inspección (cuando la organización no subió su Excel). Va dentro de .hoja-entrega. */
+.hoja-inspeccion table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4pt 0 8pt;
+}
+
+.hoja-inspeccion th,
+.hoja-inspeccion td {
+  padding: 2pt 4pt;
+  border: 0.5pt solid #000;
+  text-align: left;
+  vertical-align: top;
+  font-size: 9.5pt;
+}
+
+.hoja-inspeccion .firmas-papel td {
+  height: 36pt;
+}

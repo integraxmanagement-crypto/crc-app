@@ -10,9 +10,9 @@ export class ErrorExcel extends Error {}
 
 // ───────────────────────── ZIP: lectura ─────────────────────────
 
-type Entrada = { nombre: string; metodo: number; inicio: number; comprimido: number; tamano: number }
+export type Entrada = { nombre: string; metodo: number; inicio: number; comprimido: number; tamano: number }
 
-function entradasZip(b: Uint8Array): Entrada[] {
+export function entradasZip(b: Uint8Array): Entrada[] {
   const v = new DataView(b.buffer, b.byteOffset, b.byteLength)
   // Fin del directorio central: firma 0x06054b50, buscando desde el final.
   let fin = -1
@@ -43,7 +43,7 @@ function entradasZip(b: Uint8Array): Entrada[] {
   return entradas
 }
 
-async function descomprimir(datos: Uint8Array): Promise<Uint8Array> {
+export async function descomprimir(datos: Uint8Array): Promise<Uint8Array> {
   const flujo = new Blob([datos as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
   return new Uint8Array(await new Response(flujo).arrayBuffer())
 }
@@ -68,7 +68,7 @@ async function abrirZip(b: Uint8Array): Promise<Map<string, string>> {
 
 // ───────────────────────── XML: lo justo ─────────────────────────
 
-function textoXml(s: string): string {
+export function textoXml(s: string): string {
   return s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (_, e: string) => {
     const l = e.toLowerCase()
     if (l === 'amp') return '&'
@@ -86,7 +86,7 @@ function atributo(etiqueta: string, nombre: string): string | null {
 }
 
 /** Todo el texto de los <t> de un bloque, sin la «guía fonética» (<rPh>) que agregan algunos Excel. */
-function textoDe(bloque: string): string {
+export function textoDe(bloque: string): string {
   const sinFonetica = bloque.replace(/<rPh\b[\s\S]*?<\/rPh>/g, '')
   return [...sinFonetica.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((m) => textoXml(m[1])).join('')
 }
@@ -191,14 +191,14 @@ function crc32(d: Uint8Array): number {
   return (c ^ 0xffffffff) >>> 0
 }
 
-/** Arma un ZIP sin comprimir (suficiente para una plantilla de pocos KB). */
-export function crearZip(archivos: { nombre: string; texto: string }[]): Uint8Array {
+/** Arma un ZIP sin comprimir (suficiente para una plantilla de pocos KB). Cada archivo va como texto o como bytes. */
+export function crearZip(archivos: ({ nombre: string; texto: string } | { nombre: string; bytes: Uint8Array })[]): Uint8Array {
   const partes: Uint8Array[] = []
   const centrales: Uint8Array[] = []
   let posicion = 0
   for (const a of archivos) {
     const nombre = new TextEncoder().encode(a.nombre)
-    const datos = new TextEncoder().encode(a.texto)
+    const datos = 'bytes' in a ? a.bytes : new TextEncoder().encode(a.texto)
     const crc = crc32(datos)
     const local = new Uint8Array(30 + nombre.length)
     const lv = new DataView(local.buffer)

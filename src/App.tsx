@@ -1,5 +1,5 @@
-import { Boxes, Building2, CircleCheck, ClipboardCheck, Database, Download, Home, LogOut, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { Boxes, Building2, CircleCheck, ClipboardCheck, ClipboardList, Database, Download, Home, LogOut, PenLine, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Activos } from './activos/Activos'
 import { CambioContrasena } from './CambioContrasena'
 import { Carga } from './carga/Carga'
@@ -11,6 +11,13 @@ import { Formatos, type Rutas } from './formatos/Formatos'
 import { ListaEmpresas } from './empresas/ListaEmpresas'
 import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
 import { Ingreso } from './Ingreso'
+import { pedirPersistencia } from './inspecciones/almacen'
+import { useSincronizacion } from './inspecciones/campo'
+import { DetalleInspeccion } from './inspecciones/Detalle'
+import { espacioLleno, useFirmasPendientes, useUso } from './inspecciones/ayudas'
+import { Inspecciones } from './inspecciones/Inspecciones'
+import { Llenar } from './inspecciones/Llenar'
+import { MisFirmas } from './inspecciones/MisFirmas'
 import { Logo } from './marca/Logo'
 import { ir, useRuta } from './ruta'
 import { type Perfil, salir, useSesion } from './sesion'
@@ -70,7 +77,7 @@ function Install() {
   )
 }
 
-function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
+function Inicio({ perfil, online, firmas }: { perfil: Perfil; online: boolean; firmas: number }) {
   const db = dbText[useDatabase(online)]
   const datos = [
     ['Empresa', perfil.esDueno && !perfil.empresa ? 'Integrax · Dueño de la plataforma' : perfil.empresa],
@@ -128,7 +135,10 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
           )}
           {esEquipoSso(perfil) && (
             <>
-              <button className={perfil.rolCodigo === 'gestor' ? 'btn' : 'btn-sec'} type="button" onClick={() => ir('/formatos')}>
+              <button className="btn" type="button" onClick={() => ir('/inspecciones')}>
+                <ClipboardList size={20} aria-hidden="true" /> Inspecciones
+              </button>
+              <button className="btn-sec" type="button" onClick={() => ir('/formatos')}>
                 <ClipboardCheck size={18} aria-hidden="true" /> Formatos de inspección
               </button>
               <button className="btn-sec" type="button" onClick={() => ir('/activos')}>
@@ -137,6 +147,12 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
             </>
           )}
         </div>
+      )}
+
+      {firmas > 0 && (
+        <button className="btn-sec" type="button" onClick={() => ir('/firmas')}>
+          <PenLine size={18} aria-hidden="true" /> Tienes {firmas} firma(s) pendiente(s)
+        </button>
       )}
 
       <Install />
@@ -149,7 +165,7 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
 }
 
 /** Barra superior compacta de las pantallas de gestión. */
-function Barra({ perfil }: { perfil: Perfil }) {
+function Barra({ perfil, firmas }: { perfil: Perfil; firmas: number }) {
   return (
     <header className="barra">
       <button className="barra-marca" type="button" onClick={() => ir('/')} title="Ir al inicio">
@@ -167,6 +183,16 @@ function Barra({ perfil }: { perfil: Perfil }) {
         {perfil.esDueno && (
           <button type="button" onClick={() => ir('/intentos')}>
             <ShieldCheck size={18} aria-hidden="true" /> <span>Intentos</span>
+          </button>
+        )}
+        {esEquipoSso(perfil) && (
+          <button type="button" onClick={() => ir('/inspecciones')}>
+            <ClipboardList size={18} aria-hidden="true" /> <span>Inspecciones</span>
+          </button>
+        )}
+        {firmas > 0 && (
+          <button type="button" onClick={() => ir('/firmas')}>
+            <PenLine size={18} aria-hidden="true" /> <span>Firmas ({firmas})</span>
           </button>
         )}
         {esEquipoSso(perfil) && (
@@ -210,8 +236,13 @@ function PantallasFormatos({ empresaId, partes, rutas, perfil }: { empresaId: st
   return <Formatos key={empresaId} empresaId={empresaId} rutas={rutas} puedeEditar={puedeEditar} />
 }
 
+function PantallaLlenar({ id, cuenta, empresaId, online }: { id: string; cuenta: string; empresaId: string; online: boolean }) {
+  const uso = useUso(empresaId, online)
+  return <Llenar id={id} cuenta={cuenta} sinEspacio={espacioLleno(uso)} />
+}
+
 /** Pantallas de gestión según la dirección (#/empresas, #/mi-empresa…). null = pantalla de inicio. */
-function Gestion({ perfil, ruta }: { perfil: Perfil; ruta: string[] }): ReactNode {
+function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; online: boolean }): ReactNode {
   if (ruta[0] === 'empresas' && perfil.esDueno) {
     if (!ruta[1]) return <ListaEmpresas />
     if (ruta[1] === 'nueva')
@@ -235,6 +266,15 @@ function Gestion({ perfil, ruta }: { perfil: Perfil; ruta: string[] }): ReactNod
     return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
   }
   if (ruta[0] === 'intentos' && perfil.esDueno) return <Intentos />
+  if (ruta[0] === 'inspecciones' && perfil.empresaId) {
+    if (ruta[1] === 'llenar' && ruta[2] && esEquipoSso(perfil))
+      return <PantallaLlenar key={ruta[2]} id={ruta[2]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} />
+    // El detalle también lo abre cada firmante (la base de datos decide qué puede ver).
+    if (ruta[1])
+      return <DetalleInspeccion key={ruta[1]} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
+    if (esEquipoSso(perfil)) return <Inspecciones empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
+  }
+  if (ruta[0] === 'firmas' && perfil.empresaId) return <MisFirmas cuenta={perfil.id} online={online} />
   if ((ruta[0] === 'formatos' || ruta[0] === 'activos') && esEquipoSso(perfil) && perfil.empresaId) {
     const rutas: Rutas = { formatos: '/formatos', activos: '/activos', volver: null }
     return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
@@ -255,6 +295,12 @@ export default function App() {
   const { sesion, recargar } = useSesion(online)
   // La contraseña recién escrita se guarda solo en memoria, para no volver a pedirla en el cambio obligatorio.
   const [claveIngreso, setClaveIngreso] = useState<string | null>(null)
+  // Inspecciones sin señal (3.4-C): se pide que el navegador no borre la memoria de la app, y con sesión y señal
+  // se envía la cola y se actualiza la copia local de formatos y activos.
+  const perfil = sesion.fase === 'dentro' ? sesion.perfil : null
+  useEffect(() => void pedirPersistencia(), [])
+  useSincronizacion(perfil?.id ?? null, perfil?.empresaId ?? null, online, perfil ? esEquipoSso(perfil) : false)
+  const firmas = useFirmasPendientes(perfil?.empresaId ? perfil.id : null, online)
 
   let contenido: ReactNode
   if (sesion.fase === 'cargando') {
@@ -274,15 +320,15 @@ export default function App() {
     )
   } else {
     // Ya con sesión: barra con el logo pequeño (decisión del dueño, tarea 2.1a), también en el inicio.
-    const gestion = Gestion({ perfil: sesion.perfil, ruta })
+    const gestion = Gestion({ perfil: sesion.perfil, ruta, online })
     return (
       <main className="screen gestion">
-        <Barra perfil={sesion.perfil} />
+        <Barra perfil={sesion.perfil} firmas={firmas} />
         {gestion ? (
           <section className="panel panel-ancho">{gestion}</section>
         ) : (
           <section className="panel panel-inicio">
-            <Inicio perfil={sesion.perfil} online={online} />
+            <Inicio perfil={sesion.perfil} online={online} firmas={firmas} />
             <footer className="foot">{VERSION}</footer>
           </section>
         )}
@@ -311,4 +357,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.5.0 · Formatos de inspección y activos'
+const VERSION = 'Versión 0.6.0 · Inspecciones en el celular'

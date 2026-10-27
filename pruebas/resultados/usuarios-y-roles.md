@@ -1,6 +1,6 @@
 # Usuarios y roles por empresa · CRC tarea 3.3
 
-Ejecutada: 26/10/2026, 2:30:58 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 27/10/2026, 2:20:16 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 81 de 81 pruebas pasaron.**
 
@@ -82,7 +82,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve los intentos | 518 intentos |
+| ✅ Pasa | El dueño ve los intentos | 598 intentos |
 | ✅ Pasa | ADMIN_A ve 0 intentos |  |
 | ✅ Pasa | GESTOR_A ve 0 intentos |  |
 | ✅ Pasa | USUARIO_A2 ve 0 intentos |  |

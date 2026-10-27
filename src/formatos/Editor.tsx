@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowLeft, ArrowUp, FlaskConical, Lock, Pencil, Plus, Save, Send, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion as Caja } from '../empresas/campos'
+import { ExcelFormato } from '../inspecciones/ExcelFormato'
 import { ir } from '../ruta'
 import type { Frecuencia } from './base'
 import {
@@ -291,6 +292,10 @@ export function Editor({
           </select>
         </label>
       </Caja>
+
+      {!esBase && plantilla.empresa_id && (
+        <ExcelFormato plantillaId={plantilla.id} empresaId={plantilla.empresa_id} receta={receta} puedeEditar={puedeEditar} />
+      )}
 
       <Caja
         titulo={`Secciones y puntos (${todosLosPuntos(receta).length} puntos)`}

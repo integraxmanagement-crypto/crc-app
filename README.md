@@ -2,7 +2,7 @@
 
 Sistema de gestión de seguridad y salud en el trabajo (SST / SGSST) para empresas y profesionales.
 
-> **Estado actual (v0.5.0, 26/10/2026):** ingreso y seguridad (3.1), registro de empresas (3.2), usuarios y roles (3.3), carga de personal desde Excel (3.6) y **formatos de inspección y activos (3.4-B)**: constructor de formatos por formulario, las 6 plantillas base de CRC, activos, ubicaciones y listas por empresa. **Todavía no** se hacen inspecciones (3.4-C), ni hallazgos y programación (3.4-D), ni el programa anual (3.4-E).
+> **Estado actual (v0.6.0, 27/10/2026):** ingreso y seguridad (3.1), registro de empresas (3.2), usuarios y roles (3.3), carga de personal desde Excel (3.6), formatos de inspección y activos (3.4-B) e **inspecciones en el celular (3.4-C)**: se llenan con o sin señal, con fotos y firmas, se envían solas al volver la señal y cada organización puede usar su propio formato en Excel. **Todavía no** hay seguimiento de hallazgos ni programación (3.4-D), ni programa anual (3.4-E).
 
 - **App publicada (pruebas internas):** https://crc-app-phi.vercel.app
 - **Repositorio:** https://github.com/integraxmanagement-crypto/crc-app
@@ -217,6 +217,38 @@ Diseño aprobado por el dueño el 26/10/2026 (D-37; documentos en Drive, `05_For
 - Base de datos: tablas `listas`, `listas_valores`, `tipos_activo`, `ubicaciones`, `activos`, `activos_historial`, `plantillas` y `plantillas_versiones` (todas con RLS; lo de empresa vacía es la base de CRC). Permisos nuevos como filas: `plantillas.editar` (administrador y gestor), `plantillas.publicar` (administrador) y `activos.editar` (administrador y gestor). Migraciones `formatos_constructor_activos`, `formatos_base` y `formatos_correccion_lista`.
 - App: `src/formatos/` (receta, motor, base, datos, lista, constructor y prueba) y `src/activos/` (activos, tipos, ubicaciones y listas).
 
+## Inspecciones en el celular (tarea 3.4-C)
+
+Decisiones del dueño del 26 y 27/10/2026 (D-37 y respuestas a la 3.4-C; documentos en Drive, `05_Formatos_Inspeccion`). Las hacen el **administrador** y el **gestor** (*Inicio → Inspecciones*).
+
+### Cómo funciona sin señal
+- La app baja sola a la memoria del equipo (IndexedDB, base `crc-campo`) lo necesario para inspeccionar: formatos vigentes, activos, sedes, áreas, ubicaciones, listas, personas, logos y el Excel de cada formato. Se actualiza cada vez que hay señal (o con *Actualizar*).
+- La inspección nace en el equipo con su propio identificador y **se guarda sola a cada cambio**. Los borradores **solo viven en el equipo** (decisión del dueño): no se ven en otro equipo y se pueden descartar.
+- Al **cerrarla** pasa a la cola de envío. Con señal se suben primero las fotos y la firma y después la inspección, a la función `registrar-inspeccion`, que vuelve a calcular resultado, puntaje y hallazgos con el mismo motor de reglas y la graba **todo o nada**. Si llega dos veces responde «ya recibida»: **nunca se duplica**. Si falla, se reintenta sola (30 s, 1, 2, 5, 15 y 30 min); si el servidor no la acepta, queda en el equipo para revisarla y cerrarla de nuevo.
+- La inspección cuenta como **hecha al cerrarla el inspector**, aunque falten firmas.
+- Fotos: se achican en el equipo a 1600 px y **1 MB como máximo**. Espacio por empresa: **250 MB** (plan gratuito) y **5 GB** (plan de pago), en la tabla `limites_plan`. Si se llena, no se toman fotos nuevas.
+
+### Firmas
+- **Nivel 1, desde la cuenta de cada firmante:** quien registra designa a los firmantes de CRC; cada uno firma con el dedo desde su cuenta (*Mis firmas*). El inspector puede firmar en el momento, también sin señal.
+- **Externos:** solo en papel, en la hoja impresa. De ellos se guardan **nombre y documento**, marcados como externos (la base de datos no acepta un externo sin documento).
+- Si una inspección se corrige después de firmada, la firma queda marcada como «de una versión anterior».
+
+### Ver, corregir y anular
+- Ven todas las inspecciones el **administrador** y el **gestor**; cada firmante ve las suyas.
+- **Corregir** (solo el administrador, con señal): con motivo; guarda cómo estaba en `inspecciones_ediciones`. **Anular** (administrador): con motivo; no se borra nada.
+
+### Excel de cada organización
+- En el constructor (*Excel de la organización*), cada empresa sube y cambia su propio formato **.xlsx sin macros, de hasta 1 MB**, con marcas `{{…}}` donde van los datos. El archivo se revisa y se llena **en el equipo del usuario** (lector propio, sin librerías); se guarda en el almacén privado `formatos-excel` para poder llenarlo después sin señal.
+- Cada inspección se descarga **llena y sin firmas**, para firmarla a mano. Si el formato no tiene Excel, *Imprimir* saca una hoja simple de CRC.
+- Marcas: `{{razon_social}}` `{{ruc}}` `{{domicilio}}` `{{actividad}}` · `{{nombre_formato}}` `{{codigo_formato}}` `{{version_formato}}` `{{fecha_aprobacion}}` · `{{numero_inspeccion}}` `{{fecha}}` `{{hora}}` `{{sede}}` `{{area}}` `{{ubicacion}}` `{{inspector}}` `{{resultado}}` `{{puntaje}}` `{{observacion}}` · `{{activo_codigo}}` `{{activo.<dato>}}` · `{{CLAVE}}` (respuesta), `{{CLAVE.si}}` `{{CLAVE.no}}` `{{CLAVE.na}}` (una «X» en la columna que toca), `{{CLAVE.obs}}` `{{CLAVE.accion}}` `{{CLAVE.responsable}}` `{{CLAVE.plazo}}` · `{{CLAVE#1}}`, `{{CLAVE#2}}`… (filas de un bloque repetible) · `{{firma.<rol>.nombre}}` `{{firma.<rol>.cargo}}` `{{firma.<rol>.fecha}}` (`{{firma.<rol>#2.nombre}}` para el segundo firmante).
+- Las pruebas usan un Excel **ficticio** (`pruebas/excel/CRC_formato_extintores_FICTICIO_v01.xlsx`, diseño inventado). Los formatos del dueño no se suben al repositorio ni a carpetas compartidas.
+
+### Piezas
+- Base de datos: tablas `inspecciones`, `inspecciones_ediciones`, `archivos`, `firmas`, `plantillas_excel` y `limites_plan` (todas con RLS; la app solo lee). Almacenes privados `evidencias` y `formatos-excel`. Permisos nuevos como filas: `inspecciones.registrar` y `inspecciones.ver` (administrador y gestor), `inspecciones.editar_cerrada` e `inspecciones.anular` (administrador). Migraciones `inspecciones`, `inspecciones_aviso_correccion` y `firmas_externo_con_documento`.
+- Servidor: función `registrar-inspeccion` (registrar y corregir). El motor de reglas y la receta viven en `supabase/functions/_compartido/formatos/` y la app los reusa (`src/formatos/motor.ts` y `receta.ts` solo los reexportan).
+- App: `src/inspecciones/` (memoria del equipo, copia local y cola, fotos, firma, Excel, pantallas de inspecciones, llenar, detalle y mis firmas).
+- Pruebas: `pruebas/inspecciones.mjs` (servidor) y `pruebas/excel-inspeccion.mjs` (Excel, sin base de datos). La prueba sin señal se hizo en el navegador (ver `pruebas/resultados/inspecciones-sin-senal.md`).
+
 ## Seguridad: reglas que no se rompen
 
 - Las claves van **solo** en variables de entorno (`.env.local` en el equipo, Vercel en la nube). El archivo `.env.local` está excluido de GitHub por `.gitignore`.
@@ -241,6 +273,7 @@ src/usuarios/          Usuarios, estructura y puestos, contraseña nueva, «por 
 src/carga/             Carga de personal desde Excel: lector propio de .xlsx, plantilla, vista previa y hoja de entrega (tarea 3.6)
 src/formatos/          Formatos de inspección (3.4-B): receta, motor de reglas, las 6 plantillas base, constructor y prueba del formato
 src/activos/           Activos, tipos de activo, ubicaciones y listas de los formatos (3.4-B)
+src/inspecciones/      Inspecciones en el celular (3.4-C): memoria del equipo, cola de envío, fotos, firmas, Excel y pantallas
 src/gestion.css        Diseño de las pantallas de gestión
 src/Ingreso.tsx        Pantalla de ingreso (documento y contraseña)
 src/CambioContrasena.tsx  Cambio obligatorio de contraseña
@@ -249,7 +282,7 @@ src/index.css          Colores, letra y diseño (marca: #0B3C5D y #1BA39C)
 src/hooks.ts           Estado de conexión, base de datos e instalación
 src/supabase.ts        Conexión con Supabase (solo clave pública)
 supabase/migrations/   Cada cambio hecho a la base de datos (el nombre coincide con la versión en Supabase)
-supabase/functions/    Funciones del servidor: ingresar, crear-cuenta, cambiar-contrasena, dar-contrasena, carga-personal
+supabase/functions/    Funciones del servidor: ingresar, crear-cuenta, cambiar-contrasena, dar-contrasena, carga-personal, registrar-inspeccion
 pruebas/               Pruebas automáticas con cuentas ficticias e informes; pruebas/excel/ tiene los Excel ficticios de prueba
 herramientas/          Herramienta de rescate (solo si se pierde CRC_PIMIENTA; nunca va en la app) y generador de la migración de plantillas base
 vite.config.ts         Configuración de la app instalable (PWA)
@@ -275,3 +308,4 @@ vite.config.ts         Configuración de la app instalable (PWA)
 - **3.4-B:** la prueba `formatos.mjs` deja cada vez unas pocas plantillas, tipos y activos ficticios más en la empresa A de `crc-dev` (códigos con número al azar). Uno de ellos (`EXT-L…`, de la primera corrida) quedó con un agente inventado: es el caso que encontró el error corregido en `formatos_correccion_lista`.
 - **3.4-B:** el dueño de la plataforma ve las plantillas base pero, en la v1, no las edita desde la app: un cambio en la base se hace con una migración nueva generada desde `src/formatos/base.ts`.
 - **3.2:** la ficha no guarda historial de cambios (quién cambió qué y cuándo, más allá de la última modificación); evaluarlo si un cliente o la auditoría lo pide.
+- **3.4-C:** la hoja Excel sale sin las imágenes de las firmas (v1). Quien solo firma (sin ser administrador ni gestor) ve los nombres de los demás como «Persona de la empresa» en el detalle.
