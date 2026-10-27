@@ -22,12 +22,12 @@ export function Inspecciones({ empresaId, cuenta, online }: { empresaId: string;
   const [error, setError] = useState<string | null>(null)
   const [nueva, setNueva] = useState(false)
   const [bajando, setBajando] = useState(false)
-  const uso = useUso(empresaId, online)
 
   useEffect(() => {
     void leerCopia(cuenta, empresaId).then((c) => setCopia(c ?? null))
   }, [cuenta, empresaId])
   const enviadas = cola.filter((c) => c.estado === 'enviada').length
+  const uso = useUso(empresaId, online, enviadas)
   useEffect(() => {
     if (!online) return
     listarInspecciones(empresaId).then(setRecibidas, (e) => setError((e as Error).message))

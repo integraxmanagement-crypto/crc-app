@@ -29,11 +29,12 @@ export function faltanFirmantes(receta: Receta, firmantes: Firmante[]): string[]
 }
 
 /** Espacio de fotos de la empresa (D-37). Lleno = no se toman fotos nuevas. */
-export function useUso(empresaId: string, online: boolean) {
+/** `enviadas` hace que se vuelva a leer cuando llegan inspecciones nuevas (sus fotos ocupan espacio). */
+export function useUso(empresaId: string, online: boolean, enviadas = 0) {
   const [uso, setUso] = useState<Uso | null>(null)
   useEffect(() => {
     if (online) void usoAlmacenamiento(empresaId).then(setUso, () => {})
-  }, [empresaId, online])
+  }, [empresaId, online, enviadas])
   return uso
 }
 export const espacioLleno = (uso: Uso | null) => Boolean(uso?.tope && uso.usado >= uso.tope)

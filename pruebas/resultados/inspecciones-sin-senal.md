@@ -17,3 +17,17 @@ La señal se cortó dentro del navegador: toda llamada a internet fallaba y el e
 | Detalle de la inspección | ✅ respuestas, hallazgo, firma y datos; sin errores en la consola |
 
 No se probó con foto en el navegador: el formato de extintores no pide foto en ese punto. La subida de fotos se prueba en `pruebas/inspecciones.mjs` y usa el mismo camino que la firma.
+
+## Fotos (27/10/2026, segunda prueba)
+
+Formato: copia ficticia de DACI en la empresa A, con «foto y observación obligatorias si no cumple» en el punto DACI-P01 (así lo configura una empresa en el constructor). Activo: panel ficticio PANEL-FOTO-87669.
+
+| Paso | Resultado |
+|---|---|
+| Sin señal: X en DACI-P01 | ✅ pide la observación y la foto antes de cerrar |
+| Sin señal: «foto» ficticia de 3000×2000 px y 5,4 MB | ✅ se achica en el equipo a 1600×1067 px y 726 KB (JPEG) y se ve la miniatura |
+| Sin señal: firma y cierre | ✅ queda «Por enviar» con 1 foto y la firma en la memoria del equipo |
+| Volver a abrir la app con señal | ✅ se envía sola: N.º 10, «Inoperativo», 1 hallazgo |
+| En la base de datos | ✅ una sola inspección; la foto queda ligada a DACI-P01 (725 KB, image/jpeg, con huella SHA-256); foto y firma en el almacén privado; firma «firmada» |
+| Detalle | ✅ la foto (1600×1067) y la firma se descargan con enlace temporal del almacén privado |
+| Espacio usado | ✅ 0,7 MB de 250 MB (se corrigió que el contador no se actualizaba al enviar) |
