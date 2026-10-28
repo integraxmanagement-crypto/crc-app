@@ -135,7 +135,7 @@ export function Formatos({ empresaId, rutas, puedeEditar }: { empresaId: string;
                   <b>{p.nombre}</b>
                   {copias > 0 && <span className="chip chip-ok">{copias === 1 ? 'Ya tienes una copia' : `${copias} copias`}</span>}
                   <small>
-                    {p.descripcion} · Frecuencia sugerida: {NOMBRE_FRECUENCIA[p.frecuencia].toLowerCase()}
+                    {p.descripcion} · Frecuencia inicial: {NOMBRE_FRECUENCIA[p.frecuencia].toLowerCase()}
                     {n ? ` · ${NOMBRE_ESTADO.vigente} v${n}` : ''}
                   </small>
                 </div>
@@ -193,7 +193,7 @@ function NuevaPlantilla({ empresaId, tipos, rutas, onCancelar }: { empresaId: st
             <option value="activo">Un activo (equipo del catastro)</option>
           </select>
         </label>
-        {aplica === 'activo' ? (
+        {aplica === 'activo' && (
           <label className="field">
             <span>Tipo de activo</span>
             <select value={tipo} onChange={(e) => setTipo(e.target.value)}>
@@ -206,18 +206,17 @@ function NuevaPlantilla({ empresaId, tipos, rutas, onCancelar }: { empresaId: st
             </select>
             {!vigentes.length && <small className="ayuda">Primero activa o crea un tipo en «Activos y listas».</small>}
           </label>
-        ) : (
-          <label className="field">
-            <span>Frecuencia sugerida</span>
-            <select value={frecuencia} onChange={(e) => setFrecuencia(e.target.value as Frecuencia)}>
-              {Object.entries(NOMBRE_FRECUENCIA).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </label>
         )}
+        <label className="field">
+          <span>Frecuencia</span>
+          <select value={frecuencia} onChange={(e) => setFrecuencia(e.target.value as Frecuencia)}>
+            {Object.entries(NOMBRE_FRECUENCIA).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       <Aviso>{error}</Aviso>
       <div className="acciones">

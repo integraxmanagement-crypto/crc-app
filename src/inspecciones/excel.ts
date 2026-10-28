@@ -22,9 +22,10 @@ export const EXCEL_MAX_BYTES = 1024 * 1024
 const MARCA = /\{\{\s*([^{}]+?)\s*\}\}/g
 const DESCOMPRIMIDO_MAXIMO = 30 * 1024 * 1024
 
-type Parte = { nombre: string; bytes: Uint8Array }
+export type Parte = { nombre: string; bytes: Uint8Array }
 
-async function partes(archivo: Uint8Array): Promise<Parte[]> {
+/** Abre el .xlsx (sin macros) y devuelve cada archivo de adentro, descomprimido. */
+export async function partes(archivo: Uint8Array): Promise<Parte[]> {
   const lista: Parte[] = []
   let total = 0
   for (const e of entradasZip(archivo)) {
@@ -63,7 +64,12 @@ export async function marcasDeExcel(archivo: Uint8Array): Promise<string[]> {
 
 /** Copia del Excel con cada marca cambiada por su valor (las marcas sin valor quedan en blanco). */
 export async function llenarExcel(archivo: Uint8Array, valor: (marca: string) => string | null): Promise<Uint8Array> {
-  const salida = (await partes(archivo)).map((p) => {
+  return crearZip(reemplazarMarcas(await partes(archivo), valor))
+}
+
+/** Cambia las marcas de los textos de celda por su valor, en los textos compartidos y en las hojas. */
+export function reemplazarMarcas(lista: Parte[], valor: (marca: string) => string | null): Parte[] {
+  return lista.map((p) => {
     if (!conTexto(p.nombre)) return p
     const xml = new TextDecoder().decode(p.bytes)
     const nuevo = xml.replace(BLOQUE, (todo, etiqueta: string, dentro: string) => {
@@ -74,7 +80,6 @@ export async function llenarExcel(archivo: Uint8Array, valor: (marca: string) =>
     })
     return { nombre: p.nombre, bytes: new TextEncoder().encode(nuevo) }
   })
-  return crearZip(salida)
 }
 
 // ───────────────────────── Valores de una inspección ─────────────────────────

@@ -127,7 +127,7 @@ const recetaBase = (r: Partial<Receta> & Pick<Receta, 'secciones'>): Receta => (
   ...r,
 })
 
-export type Frecuencia = 'semanal' | 'mensual' | 'sin_frecuencia'
+export type Frecuencia = 'semanal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual' | 'sin_frecuencia'
 export type PlantillaBase = {
   codigo: string
   nombre: string
@@ -326,7 +326,7 @@ const loto: PlantillaBase = {
   descripcion: 'Se aplica a un área: se observa una tarea con bloqueo. Cada X pide acción correctiva, plazo y responsable.',
   aplica_a: 'area',
   tipo_activo: null,
-  frecuencia: 'sin_frecuencia',
+  frecuencia: 'trimestral', // valor inicial aprobado por el dueño (27/10/2026)
   receta: recetaBase({
     secciones: [
       sec('datos', 'Datos de la inspección', [
@@ -371,7 +371,7 @@ const ipf: PlantillaBase = {
   descripcion: 'Se aplica a un área. Se registran las condiciones inseguras encontradas; cada una genera un hallazgo.',
   aplica_a: 'area',
   tipo_activo: null,
-  frecuencia: 'sin_frecuencia',
+  frecuencia: 'mensual', // valor inicial aprobado por el dueño (27/10/2026)
   receta: recetaBase({
     secciones: [
       sec('pregunta', 'Condiciones inseguras', [dato('IPF-01', '¿Se identificaron condiciones inseguras?', 'si_no')]),

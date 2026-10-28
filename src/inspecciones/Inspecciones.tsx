@@ -1,4 +1,4 @@
-import { CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
+import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { ir } from '../ruta'
@@ -54,9 +54,14 @@ export function Inspecciones({ empresaId, cuenta, online }: { empresaId: string;
           <h1>Inspecciones</h1>
           <p>Se llenan en el celular con o sin señal. Al cerrarlas se envían solas cuando vuelve la señal.</p>
         </div>
-        <button className="btn" type="button" disabled={!copia?.formatos.length} onClick={() => setNueva(true)}>
-          <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
-        </button>
+        <span className="acciones">
+          <button className="btn-sec" type="button" onClick={() => ir('/inspecciones/avance')}>
+            <CalendarRange size={18} aria-hidden="true" /> Avance por período
+          </button>
+          <button className="btn" type="button" disabled={!copia?.formatos.length} onClick={() => setNueva(true)}>
+            <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
+          </button>
+        </span>
       </header>
       <Aviso>{error}</Aviso>
 

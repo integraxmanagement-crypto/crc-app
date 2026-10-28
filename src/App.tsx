@@ -1,4 +1,4 @@
-import { Boxes, Building2, CircleCheck, ClipboardCheck, ClipboardList, Database, Download, Home, LogOut, PenLine, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
+import { Boxes, Building2, CircleCheck, ClipboardCheck, ClipboardList, Database, ListChecks, Download, Home, LogOut, PenLine, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Activos } from './activos/Activos'
 import { CambioContrasena } from './CambioContrasena'
@@ -10,9 +10,11 @@ import { Editor } from './formatos/Editor'
 import { Formatos, type Rutas } from './formatos/Formatos'
 import { ListaEmpresas } from './empresas/ListaEmpresas'
 import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
+import { Hallazgos } from './hallazgos/Hallazgos'
 import { Ingreso } from './Ingreso'
 import { pedirPersistencia } from './inspecciones/almacen'
 import { useSincronizacion } from './inspecciones/campo'
+import { Avance } from './inspecciones/Avance'
 import { DetalleInspeccion } from './inspecciones/Detalle'
 import { espacioLleno, useFirmasPendientes, useUso } from './inspecciones/ayudas'
 import { Inspecciones } from './inspecciones/Inspecciones'
@@ -149,6 +151,11 @@ function Inicio({ perfil, online, firmas }: { perfil: Perfil; online: boolean; f
         </div>
       )}
 
+      {perfil.empresaId && !esEquipoSso(perfil) && (
+        <button className="btn" type="button" onClick={() => ir('/hallazgos')}>
+          <ListChecks size={20} aria-hidden="true" /> Mis hallazgos
+        </button>
+      )}
       {firmas > 0 && (
         <button className="btn-sec" type="button" onClick={() => ir('/firmas')}>
           <PenLine size={18} aria-hidden="true" /> Tienes {firmas} firma(s) pendiente(s)
@@ -188,6 +195,11 @@ function Barra({ perfil, firmas }: { perfil: Perfil; firmas: number }) {
         {esEquipoSso(perfil) && (
           <button type="button" onClick={() => ir('/inspecciones')}>
             <ClipboardList size={18} aria-hidden="true" /> <span>Inspecciones</span>
+          </button>
+        )}
+        {perfil.empresaId && (
+          <button type="button" onClick={() => ir('/hallazgos')}>
+            <ListChecks size={18} aria-hidden="true" /> <span>Hallazgos</span>
           </button>
         )}
         {firmas > 0 && (
@@ -269,12 +281,15 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
   if (ruta[0] === 'inspecciones' && perfil.empresaId) {
     if (ruta[1] === 'llenar' && ruta[2] && esEquipoSso(perfil))
       return <PantallaLlenar key={ruta[2]} id={ruta[2]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} />
+    if (ruta[1] === 'avance' && esEquipoSso(perfil)) return <Avance empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
     // El detalle también lo abre cada firmante (la base de datos decide qué puede ver).
     if (ruta[1])
       return <DetalleInspeccion key={ruta[1]} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
     if (esEquipoSso(perfil)) return <Inspecciones empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
   }
   if (ruta[0] === 'firmas' && perfil.empresaId) return <MisFirmas cuenta={perfil.id} online={online} />
+  if (ruta[0] === 'hallazgos' && perfil.empresaId)
+    return <Hallazgos key={ruta[1] ?? 'todos'} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} inspeccionId={ruta[1]} />
   if ((ruta[0] === 'formatos' || ruta[0] === 'activos') && esEquipoSso(perfil) && perfil.empresaId) {
     const rutas: Rutas = { formatos: '/formatos', activos: '/activos', volver: null }
     return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
@@ -357,4 +372,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.6.0 · Inspecciones en el celular'
+const VERSION = 'Versión 0.7.0 · Avance por período'

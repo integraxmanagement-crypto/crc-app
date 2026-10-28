@@ -74,7 +74,15 @@ export type Activo = {
   actualizado_en: string
 }
 
-export const NOMBRE_FRECUENCIA: Record<Frecuencia, string> = { semanal: 'Semanal', mensual: 'Mensual', sin_frecuencia: 'Sin frecuencia fija' }
+export const NOMBRE_FRECUENCIA: Record<Frecuencia, string> = {
+  semanal: 'Semanal',
+  mensual: 'Mensual',
+  bimestral: 'Bimestral',
+  trimestral: 'Trimestral',
+  semestral: 'Semestral',
+  anual: 'Anual',
+  sin_frecuencia: 'Sin frecuencia fija',
+}
 export const NOMBRE_ESTADO: Record<EstadoVersion, string> = { borrador: 'Borrador', vigente: 'Vigente', retirada: 'Retirada' }
 
 async function leer<T>(consulta: PromiseLike<{ data: unknown; error: { message?: string; code?: string } | null }>): Promise<T> {

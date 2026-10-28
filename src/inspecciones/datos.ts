@@ -130,3 +130,35 @@ export const NOMBRE_AVISO: Record<string, string> = {
   hora_equipo_adelantada: 'La hora del equipo estaba adelantada.',
   enviada_mas_de_30_dias_despues: 'Se envió más de 30 días después de cerrarla.',
 }
+
+// ───── Programación (tarea 3.4-D) ─────
+
+/** Una fila del avance: un equipo con su última inspección del período (o, en formatos de área, una inspección). */
+export type FilaAvance = {
+  activo_id: string | null
+  codigo: string | null
+  numero: number | null
+  subtipo: string | null
+  ubicacion_id: string | null
+  unidad_id: string | null
+  inspeccion_id: string | null
+  inspeccion_numero: number | null
+  fecha: string | null
+  resultado: string | null
+  hallazgos: number
+}
+export const avancePeriodo = (plantillaId: string, sedeId: string, desde: string, hasta: string) =>
+  rpc<FilaAvance[]>('avance_periodo', { p_plantilla: plantillaId, p_sede: sedeId, p_desde: desde, p_hasta: hasta })
+
+/** Las inspecciones completas (con la versión del formato que usó cada una), para el Excel del período. */
+export type InspeccionCompleta = Inspeccion & {
+  plantillas_versiones: { receta: Receta; codigo_formato: string | null; version_formato: string | null; fecha_aprobacion: string | null } | null
+  unidades: { nombre: string } | null
+  ubicaciones: { nombre: string } | null
+}
+export async function inspeccionesCompletas(ids: string[]): Promise<InspeccionCompleta[]> {
+  if (!ids.length) return []
+  return leer<InspeccionCompleta[]>(
+    db().from('inspecciones').select('*, plantillas(nombre), sedes(nombre), unidades(nombre), ubicaciones(nombre), plantillas_versiones(receta, codigo_formato, version_formato, fecha_aprobacion)').in('id', ids),
+  )
+}

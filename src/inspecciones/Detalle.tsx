@@ -2,15 +2,15 @@ import { ArrowLeft, Ban, FileSpreadsheet, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
-import { db, mensaje } from '../empresas/datos'
 import { type Fila, type Respuesta, seccionesVisibles } from '../formatos/motor'
 import type { Punto } from '../formatos/receta'
 import { ir } from '../ruta'
-import { type CopiaLocal, bajarCopia, leerArchivo, leerCopia } from './campo'
+import { type CopiaLocal, bajarCopia, leerCopia } from './campo'
 import {
   type ArchivoServidor, type FirmaServidor, NOMBRE_AVISO, anularInspeccion, corregirInspeccion, detalleInspeccion, enlaceEvidencia, marcarEnPapel,
 } from './datos'
 import { llenarExcel, valoresDe } from './excel'
+import { datosHoja, excelDeFormato, guardarExcel } from './hoja'
 import { PuntoCampo } from './Llenar'
 
 type Detalle = Awaited<ReturnType<typeof detalleInspeccion>>
@@ -64,46 +64,23 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
     setError(null)
     setAviso(null)
     try {
-      const { data: x, error: e } = await db().from('plantillas_excel').select('ruta, nombre_archivo').eq('plantilla_id', i.plantilla_id).maybeSingle()
-      if (e) throw new Error(mensaje(e))
-      if (!x) return setAviso('Este formato no tiene un Excel de la organización. Usa «Imprimir» o sube el Excel en el formato.')
-      let archivo = await leerArchivo(`formatos-excel:${x.ruta}`)
-      if (!archivo) {
-        const r = await db().storage.from('formatos-excel').download(x.ruta)
-        if (r.error) throw new Error(mensaje(r.error))
-        archivo = r.data
-      }
+      const archivo = await excelDeFormato(i.plantilla_id)
+      if (!archivo) return setAviso('Este formato no tiene un Excel de la organización. Usa «Imprimir» o sube el Excel en el formato.')
       const firmantes = d!.firmas.map((f) => ({
         rol_clave: f.rol_clave,
         nombre: f.persona_id ? nombre(f.persona_id) : (f.externo_nombre ?? ''),
         cargo: f.persona_id ? (copia?.personas.find((p) => p.persona_id === f.persona_id)?.puesto ?? null) : null,
         fecha: null, // sin firmas: se firma y se fecha a mano
       }))
-      const lleno = await llenarExcel(new Uint8Array(await archivo.arrayBuffer()), valoresDe({
-        empresa: copia?.empresa ?? { razon_social: '', ruc: '', domicilio: '', actividad: '' },
-        formato: { nombre: i.plantillas?.nombre ?? '', codigo_formato: v?.codigo_formato ?? null, version_formato: v?.version_formato ?? null, fecha_aprobacion: v?.fecha_aprobacion ?? null },
-        receta: receta!,
-        numero: i.numero,
-        fecha: i.fecha,
-        hora: new Date(i.iniciada_en_equipo ?? i.cerrada_en_equipo).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        sede: i.sedes?.nombre ?? null,
-        area: i.unidades?.nombre ?? null,
-        ubicacion: i.ubicaciones?.nombre ?? null,
-        inspector: nombre(i.inspector_id),
-        resultado: i.resultado,
-        puntaje: i.puntaje,
-        observacion: i.observacion,
-        activo: i.activo_foto ? { codigo: i.activo_foto.codigo, datos: i.activo_foto.datos } : null,
-        respuestas: i.respuestas,
-        filas: i.filas,
+      const lleno = await llenarExcel(archivo, valoresDe(datosHoja(i, {
+        nombreFormato: i.plantillas?.nombre ?? '',
+        version: v!,
+        copia,
+        nombre,
+        lugares: { sede: i.sedes?.nombre, area: i.unidades?.nombre, ubicacion: i.ubicaciones?.nombre },
         firmantes,
-        persona: (pid) => nombre(pid) || null,
-      }))
-      const enlace = document.createElement('a')
-      enlace.href = URL.createObjectURL(new Blob([lleno as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
-      enlace.download = `Inspeccion-${i.numero}-${(i.plantillas?.nombre ?? 'formato').replace(/[^\p{L}\p{N}]+/gu, '-')}.xlsx`
-      enlace.click()
-      setTimeout(() => URL.revokeObjectURL(enlace.href), 10_000)
+      })))
+      guardarExcel(lleno, `Inspeccion-${i.numero}-${i.plantillas?.nombre ?? 'formato'}`)
     } catch (e) {
       setError(`No se pudo armar el Excel: ${(e as Error).message}`)
     }
@@ -167,7 +144,9 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
               </li>
             ))}
           </ul>
-          <p className="nota">El seguimiento de los hallazgos llega en la siguiente etapa (3.4-D).</p>
+          <button className="btn-link no-imprimir" type="button" onClick={() => ir(`/hallazgos/${i.id}`)}>
+            Ver el seguimiento de estos hallazgos
+          </button>
         </Seccion>
       )}
 

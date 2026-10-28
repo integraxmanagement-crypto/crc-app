@@ -2,7 +2,7 @@
 
 Sistema de gestión de seguridad y salud en el trabajo (SST / SGSST) para empresas y profesionales.
 
-> **Estado actual (v0.6.0, 27/10/2026):** ingreso y seguridad (3.1), registro de empresas (3.2), usuarios y roles (3.3), carga de personal desde Excel (3.6), formatos de inspección y activos (3.4-B) e **inspecciones en el celular (3.4-C)**: se llenan con o sin señal, con fotos y firmas, se envían solas al volver la señal y cada organización puede usar su propio formato en Excel. **Todavía no** hay seguimiento de hallazgos ni programación (3.4-D), ni programa anual (3.4-E).
+> **Estado actual (v0.7.0, 28/10/2026, sin publicar):** ingreso y seguridad (3.1), empresas (3.2), usuarios y roles (3.3), carga de personal (3.6), formatos y activos (3.4-B), inspecciones en el celular (3.4-C) y **programación y hallazgos (3.4-D)**: frecuencia por formato, avance «inspeccionados de total», Excel del período con una fila por equipo y seguimiento de hallazgos. **Falta** el programa anual (3.4-E).
 
 - **App publicada (pruebas internas):** https://crc-app-phi.vercel.app
 - **Repositorio:** https://github.com/integraxmanagement-crypto/crc-app
@@ -249,6 +249,27 @@ Decisiones del dueño del 26 y 27/10/2026 (D-37 y respuestas a la 3.4-C; documen
 - App: `src/inspecciones/` (memoria del equipo, copia local y cola, fotos, firma, Excel, pantallas de inspecciones, llenar, detalle y mis firmas).
 - Pruebas: `pruebas/inspecciones.mjs` (servidor) y `pruebas/excel-inspeccion.mjs` (Excel, sin base de datos). La prueba sin señal se hizo en el navegador (ver `pruebas/resultados/inspecciones-sin-senal.md`).
 
+## Programación por período (tarea 3.4-D, parte 1)
+
+Decisiones del dueño del 27/10/2026 (opción A: una inspección por equipo). Lo usan el administrador y el gestor (*Inspecciones → Avance por período*).
+
+- **Frecuencia de cada formato:** semanal, mensual, bimestral, trimestral, semestral, anual o sin frecuencia (formatos que se usan cuando hace falta; no entran al avance). Se elige al crear el formato; después **solo el administrador** la cambia (la base de datos lo exige con el permiso `plantillas.publicar`, que ya tenía). Valores iniciales de las plantillas base: extintores, caseta, DACI e IPF mensual; bombas semanal; LOTO trimestral. Las copias que ya hizo cada empresa conservan la suya.
+- **Períodos:** semanas ISO de lunes a domingo; **cada semana cuenta en el mes de su jueves** (así los meses, bimestres, trimestres, semestres y años son semanas completas; el año es el año ISO, con semana 53 cuando toca). Bimestres 1-2, 3-4…; trimestres 1-3, 4-6…; semestres enero-junio y julio-diciembre. Código: `src/inspecciones/periodos.ts`.
+- **Avance:** por formato, sede y período, «equipos inspeccionados de total» con porcentaje y la lista de los que faltan. Cuentan los equipos de la sede que **existían al terminar el período y no estaban dados de baja** en ese momento. Inspeccionado = al menos una inspección cerrada (no anulada) en el período, **con cualquier resultado, también «inoperativo»**. Si hay varias, vale la última. En formatos de área se muestran las inspecciones del período (no hay total). Lo calcula la función `avance_periodo` (sin tablas nuevas).
+- **Excel del período:** en el Excel de la organización se escribe una **fila modelo** con marcas `{{fila.…}}`: las mismas de una inspección (`{{fila.activo_codigo}}`, `{{fila.EXT-01.si}}`, `{{fila.resultado}}`, `{{fila.fecha}}`, `{{fila.inspector}}`…) más `{{fila.item}}` (1, 2, 3…) y `{{fila.estado}}` (Inspeccionado / No inspeccionado). CRC la repite una vez por equipo, en orden de código, usando primero las filas dibujadas y vacías del formato; si faltan, agrega filas y corre hacia abajo lo que sigue (pie de firmas, celdas combinadas, validaciones, imágenes y área de impresión). Los equipos sin inspección salen con «No inspeccionado». Marcas generales nuevas: `{{periodo}}`, `{{desde}}`, `{{hasta}}`, `{{avance}}`, `{{inspeccionados}}`, `{{total}}`. Código: `src/inspecciones/excelPeriodo.ts`. Las fórmulas que apunten a filas que se corren no se ajustan (los formatos revisados no las usan).
+- Migración `programacion_frecuencias_avance`. Pruebas: `pruebas/periodos.mjs` (sin base de datos), `pruebas/programacion.mjs` (servidor) y la sección «Excel por período» de `pruebas/excel-inspeccion.mjs`.
+
+## Seguimiento de hallazgos (tarea 3.4-D, parte 2)
+
+Diseño aprobado (3.4-A) y reglas aprobadas por el dueño el 28/10/2026. Pantalla *Hallazgos* (en la barra; los usuarios la ven como *Mis hallazgos*).
+
+- **Nacen solos** al recibir la inspección: uno por cada punto que lo genera (o por cada fila del bloque repetible). Si la inspección trae acción, responsable y plazo, nacen con ellos; si no, **sin asignar**. Una inspección que llega dos veces no los duplica.
+- **Quién ve qué:** el administrador y el gestor ven todos los de su empresa (`hallazgos.gestionar`); el usuario, solo los que tiene asignados (`hallazgos.cerrar_propios`).
+- **Seguimiento:** quien gestiona asigna responsable (persona activa de la empresa), plazo y acción; el responsable lo marca «en proceso» y lo **cierra con un comentario y una foto opcional** (hasta 1 MB, en el almacén privado `evidencias`); quien gestiona lo **reabre con motivo**. Vencido = plazo pasado y todavía abierto o en proceso. En la v1 se necesita señal.
+- **Corrección y anulación de la inspección:** al corregirla nacen los hallazgos nuevos y los que desaparecen (si seguían abiertos) quedan «anulado por corrección»; al anularla, sus hallazgos abiertos se anulan. Los cerrados no cambian.
+- **Nada se borra:** cada cambio queda en `hallazgos_historial` (quién, cuándo, antes y después). La severidad existe pero queda vacía hasta la v1.1.
+- Base de datos: tablas `hallazgos` y `hallazgos_historial` (RLS; la app solo lee), acciones `gestionar_hallazgo`, `hallazgo_en_proceso`, `cerrar_hallazgo` y `reabrir_hallazgo`. Permisos nuevos como filas: `hallazgos.gestionar` (administrador y gestor) y `hallazgos.cerrar_propios` (administrador, gestor y usuario). Migraciones `hallazgos_seguimiento` y `hallazgos_referencia`. App: `src/hallazgos/`. Prueba: `pruebas/hallazgos.mjs`.
+
 ## Seguridad: reglas que no se rompen
 
 - Las claves van **solo** en variables de entorno (`.env.local` en el equipo, Vercel en la nube). El archivo `.env.local` está excluido de GitHub por `.gitignore`.
@@ -273,7 +294,8 @@ src/usuarios/          Usuarios, estructura y puestos, contraseña nueva, «por 
 src/carga/             Carga de personal desde Excel: lector propio de .xlsx, plantilla, vista previa y hoja de entrega (tarea 3.6)
 src/formatos/          Formatos de inspección (3.4-B): receta, motor de reglas, las 6 plantillas base, constructor y prueba del formato
 src/activos/           Activos, tipos de activo, ubicaciones y listas de los formatos (3.4-B)
-src/inspecciones/      Inspecciones en el celular (3.4-C): memoria del equipo, cola de envío, fotos, firmas, Excel y pantallas
+src/inspecciones/      Inspecciones en el celular (3.4-C), avance por período y Excel del período (3.4-D)
+src/hallazgos/         Seguimiento de hallazgos (3.4-D)
 src/gestion.css        Diseño de las pantallas de gestión
 src/Ingreso.tsx        Pantalla de ingreso (documento y contraseña)
 src/CambioContrasena.tsx  Cambio obligatorio de contraseña
@@ -309,3 +331,4 @@ vite.config.ts         Configuración de la app instalable (PWA)
 - **3.4-B:** el dueño de la plataforma ve las plantillas base pero, en la v1, no las edita desde la app: un cambio en la base se hace con una migración nueva generada desde `src/formatos/base.ts`.
 - **3.2:** la ficha no guarda historial de cambios (quién cambió qué y cuándo, más allá de la última modificación); evaluarlo si un cliente o la auditoría lo pide.
 - **3.4-C:** la hoja Excel sale sin las imágenes de las firmas (v1). Quien solo firma (sin ser administrador ni gestor) ve los nombres de los demás como «Persona de la empresa» en el detalle.
+- **3.4-D:** los hallazgos se ven y se cierran con señal (v1); el diseño preveía verlos también sin señal. La programación se calcula al vuelo (sin tabla de pendientes ni tarea diaria).

@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { crearZip, descomprimir, entradasZip, escaparXml, leerHoja } from '../src/carga/xlsx.ts'
 import { PLANTILLAS_BASE } from '../src/formatos/base.ts'
 import { llenarExcel, marcasDeExcel, marcasDesconocidas, valoresDe } from '../src/inspecciones/excel.ts'
+import { llenarExcelPeriodo, valoresFilas, valoresGenerales } from '../src/inspecciones/excelPeriodo.ts'
 import { comprobar, resultados, resumen } from './comun.mjs'
 
 const grupos = []
@@ -145,6 +146,77 @@ const conPartes = (extra) => crearZip([
 comprobar('Rechaza un Excel con macros (trae vbaProject.bin)', await rechaza(conPartes({ vba: true })))
 comprobar('Rechaza un libro que se declara «con macros» (.xlsm renombrado)', await rechaza(conPartes({ tipos: '<Types><Override ContentType="application/vnd.ms-excel.sheet.macroEnabled.main+xml"/></Types>' })))
 comprobar('Acepta un .xlsx normal sin macros', !(await rechaza(conPartes({}))))
+
+// ───── Excel por período: una fila por equipo (3.4-D, opción A) ─────
+seccion('Excel por período: una fila por equipo')
+const celdaI = (ref, t, s = 1) => `<c r="${ref}" t="inlineStr" s="${s}"><is><t>${escaparXml(t)}</t></is></c>`
+const vacia = (ref) => `<c r="${ref}" s="1"/>`
+const hojaPeriodo = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="${raiz}/spreadsheetml/2006/main" xmlns:r="${raiz}/officeDocument/2006/relationships"><dimension ref="A1:E12"/><sheetData>` +
+  `<row r="1">${celdaI('A1', '{{razon_social}} · {{nombre_formato}}')}${celdaI('D1', 'Período: {{periodo}}')}</row>` +
+  `<row r="2">${celdaI('A2', 'Sede: {{sede}}')}${celdaI('D2', 'Avance: {{avance}}')}</row>` +
+  `<row r="4">${celdaI('A4', 'Ítem')}${celdaI('B4', 'Código')}${celdaI('C4', 'Resultado')}${celdaI('D4', 'Fecha')}${celdaI('E4', 'Observación')}</row>` +
+  `<row r="5" ht="18" customHeight="1">${celdaI('A5', '{{fila.item}}')}${celdaI('B5', '{{fila.activo_codigo}}')}${celdaI('C5', '{{fila.resultado}}')}${celdaI('D5', '{{fila.fecha}}')}${celdaI('E5', '{{fila.EXT-03.obs}}')}</row>` +
+  [6, 7, 8].map((n) => `<row r="${n}" ht="18" customHeight="1">${['A', 'B', 'C', 'D', 'E'].map((c) => vacia(`${c}${n}`)).join('')}</row>`).join('') +
+  `<row r="10">${celdaI('A10', 'Firma del inspector: ________')}</row><row r="12">${celdaI('A12', 'Nota al pie')}</row>` +
+  `</sheetData><mergeCells count="3"><mergeCell ref="D5:E5"/><mergeCell ref="D6:E6"/><mergeCell ref="A10:C10"/></mergeCells>` +
+  `<dataValidations count="1"><dataValidation type="list" sqref="C5:C8"><formula1>"a,b"</formula1></dataValidation></dataValidations><drawing r:id="rId1"/></worksheet>`
+const dibujo = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"><xdr:twoCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:row>0</xdr:row></xdr:from><xdr:to><xdr:col>1</xdr:col><xdr:row>1</xdr:row></xdr:to></xdr:twoCellAnchor><xdr:twoCellAnchor><xdr:from><xdr:col>3</xdr:col><xdr:row>9</xdr:row></xdr:from><xdr:to><xdr:col>4</xdr:col><xdr:row>10</xdr:row></xdr:to></xdr:twoCellAnchor></xdr:wsDr>`
+const libroPeriodo = (hoja) => crearZip([
+  { nombre: '[Content_Types].xml', texto: '<Types/>' },
+  { nombre: 'xl/workbook.xml', texto: `<workbook xmlns="${raiz}/spreadsheetml/2006/main" xmlns:r="${raiz}/officeDocument/2006/relationships"><sheets><sheet name="Ronda" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">Ronda!$A$1:$E$12</definedName></definedNames></workbook>` },
+  { nombre: 'xl/_rels/workbook.xml.rels', texto: `<Relationships xmlns="${raiz}/package/2006/relationships"><Relationship Id="rId1" Type="${raiz}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>` },
+  { nombre: 'xl/worksheets/sheet1.xml', texto: hoja },
+  { nombre: 'xl/worksheets/_rels/sheet1.xml.rels', texto: `<Relationships xmlns="${raiz}/package/2006/relationships"><Relationship Id="rId1" Type="${raiz}/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>` },
+  { nombre: 'xl/drawings/drawing1.xml', texto: dibujo },
+])
+const ronda = libroPeriodo(hojaPeriodo)
+const inspeccionDe = (codigo, valor, obs) => ({ ...datos, numero: 1, fecha: '2026-10-20', activo: { codigo, datos: {} }, respuestas: { ...respuestas, 'EXT-03': { valor, obs } } })
+const codigoN = (k) => `EXT-${String(k + 1).padStart(3, '0')}`
+const equipos = (n) => Array.from({ length: n }, (_, k) => ({ codigo: codigoN(k), datos: {}, inspeccion: k % 3 === 2 ? null : inspeccionDe(codigoN(k), k === 1 ? 'no' : 'si', k === 1 ? 'Sin manómetro (ficticio)' : null) }))
+const periodo = { etiqueta: 'Octubre 2026 · 28/09/2026 al 01/11/2026', desde: '2026-09-28', hasta: '2026-11-01' }
+const abrir = async (bytes) => {
+  const p = new Map()
+  for (const e of entradasZip(bytes)) {
+    const crudo = bytes.subarray(e.inicio, e.inicio + e.comprimido)
+    p.set(e.nombre, new TextDecoder().decode(e.metodo === 8 ? await descomprimir(crudo) : crudo))
+  }
+  const h = await leerHoja(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), 'Ronda')
+  return { p, fila: (n) => h.filas.get(n) ?? [] }
+}
+const sinBytes = (r) => JSON.stringify({ ...r, bytes: undefined })
+
+const r3 = await llenarExcelPeriodo(ronda, valoresGenerales(valoresDe(datos), periodo, { hechos: 2, total: 3 }), valoresFilas(equipos(3)))
+const x3 = await abrir(r3.bytes)
+comprobar('3 equipos caben en las filas dibujadas: no se agregan filas', r3.filas === 3 && r3.agregadas === 0 && r3.usadasDelFormato === 3, sinBytes(r3))
+comprobar('Fila 1: ítem, código, resultado y fecha', JSON.stringify(x3.fila(5).slice(0, 4)) === JSON.stringify(['1', 'EXT-001', 'No conforme', '20/10/2026']), JSON.stringify(x3.fila(5)))
+comprobar('Fila 2: la observación del punto', x3.fila(6)[4] === 'Sin manómetro (ficticio)', JSON.stringify(x3.fila(6)))
+comprobar('Equipo sin inspección: «No inspeccionado»', x3.fila(7)[1] === 'EXT-003' && x3.fila(7)[2] === 'No inspeccionado', JSON.stringify(x3.fila(7)))
+comprobar('Encabezado: período y avance', x3.fila(1)[3] === 'Período: Octubre 2026' && x3.fila(2)[3] === 'Avance: 2 de 3 (67 %)', JSON.stringify([x3.fila(1), x3.fila(2)]))
+comprobar('El pie de firmas no se mueve', x3.fila(10)[0] === 'Firma del inspector: ________')
+comprobar('No queda ninguna marca', ![...x3.p.values()].some((t) => t.includes('{{')))
+comprobar('La fila 3 recibe la celda combinada de la fila modelo', x3.p.get('xl/worksheets/sheet1.xml').includes('<mergeCell ref="D7:E7"/>'))
+comprobar('Las filas mantienen su estilo (bordes)', /<c r="B7" s="1" t="inlineStr">/.test(x3.p.get('xl/worksheets/sheet1.xml')))
+
+const r6 = await llenarExcelPeriodo(ronda, valoresGenerales(valoresDe(datos), periodo, { hechos: 4, total: 6 }), valoresFilas(equipos(6)))
+const x6 = await abrir(r6.bytes)
+const h6 = x6.p.get('xl/worksheets/sheet1.xml')
+comprobar('6 equipos: usa las 4 filas del formato y agrega 2', r6.agregadas === 2 && r6.usadasDelFormato === 4, sinBytes(r6))
+comprobar('Las 6 filas en orden, la 6.ª en la fila 10', x6.fila(10)[1] === 'EXT-006' && x6.fila(9)[1] === 'EXT-005', JSON.stringify([x6.fila(9), x6.fila(10)]))
+comprobar('El pie de firmas baja 2 filas (de la 10 a la 12)', x6.fila(12)[0] === 'Firma del inspector: ________' && x6.fila(14)[0] === 'Nota al pie', JSON.stringify([x6.fila(12), x6.fila(14)]))
+comprobar('La celda combinada del pie baja con él', h6.includes('<mergeCell ref="A12:C12"/>') && !h6.includes('A10:C10'))
+comprobar('Las filas nuevas reciben la celda combinada de la fila modelo', h6.includes('<mergeCell ref="D9:E9"/>') && h6.includes('<mergeCell ref="D10:E10"/>'))
+const d6 = x6.p.get('xl/drawings/drawing1.xml')
+comprobar('La imagen del pie baja con él; la del encabezado no', d6.includes('<xdr:row>11</xdr:row>') && d6.includes('<xdr:row>0</xdr:row>'), d6)
+comprobar('El área de impresión se agranda', x6.p.get('xl/workbook.xml').includes('Ronda!$A$1:$E$14'))
+comprobar('El tamaño de la hoja se actualiza', h6.includes('<dimension ref="A1:E14"/>'))
+comprobar('Las filas nuevas copian la altura de la fila modelo', /<row r="10"[^>]*ht="18"/.test(h6), h6.match(/<row r="10"[^>]*>/)?.[0])
+
+const r0 = await llenarExcelPeriodo(ronda, valoresGenerales(valoresDe(datos), periodo, { hechos: 0, total: 0 }), [])
+const x0 = await abrir(r0.bytes)
+comprobar('Sin equipos: la fila modelo queda en blanco y sin marcas', !x0.fila(5).some((c) => typeof c === 'string' && c.trim()) && ![...x0.p.values()].some((t) => t.includes('{{')), JSON.stringify(x0.fila(5)))
+const sinModelo = await llenarExcelPeriodo(original, valoresGenerales(valoresDe(datos), periodo, { hechos: 1, total: 1 }), valoresFilas(equipos(3)))
+comprobar('Un Excel sin fila modelo solo llena las marcas generales', sinModelo.hoja === null && sinModelo.filas === 0)
 
 const r = resumen()
 const lineas = [
