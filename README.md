@@ -2,7 +2,7 @@
 
 Sistema de gestión de seguridad y salud en el trabajo (SST / SGSST) para empresas y profesionales.
 
-> **Estado actual (v0.7.0, 28/10/2026, sin publicar):** ingreso y seguridad (3.1), empresas (3.2), usuarios y roles (3.3), carga de personal (3.6), formatos y activos (3.4-B), inspecciones en el celular (3.4-C) y **programación y hallazgos (3.4-D)**: frecuencia por formato, avance «inspeccionados de total», Excel del período con una fila por equipo y seguimiento de hallazgos. **Falta** el programa anual (3.4-E).
+> **Estado actual (v0.8.0, 28/10/2026, sin publicar):** ingreso y seguridad (3.1), empresas (3.2), usuarios y roles (3.3), carga de personal (3.6), formatos y activos (3.4-B), inspecciones en el celular (3.4-C), programación y hallazgos (3.4-D) y **programa anual de SST (3.4-E, lo mínimo para el piloto)**. Si entra al piloto se decide el 13/11.
 
 - **App publicada (pruebas internas):** https://crc-app-phi.vercel.app
 - **Repositorio:** https://github.com/integraxmanagement-crypto/crc-app
@@ -270,6 +270,23 @@ Diseño aprobado (3.4-A) y reglas aprobadas por el dueño el 28/10/2026. Pantall
 - **Nada se borra:** cada cambio queda en `hallazgos_historial` (quién, cuándo, antes y después). La severidad existe pero queda vacía hasta la v1.1.
 - Base de datos: tablas `hallazgos` y `hallazgos_historial` (RLS; la app solo lee), acciones `gestionar_hallazgo`, `hallazgo_en_proceso`, `cerrar_hallazgo` y `reabrir_hallazgo`. Permisos nuevos como filas: `hallazgos.gestionar` (administrador y gestor) y `hallazgos.cerrar_propios` (administrador, gestor y usuario). Migraciones `hallazgos_seguimiento` y `hallazgos_referencia`. App: `src/hallazgos/`. Prueba: `pruebas/hallazgos.mjs`.
 
+## Programa anual de SST — PASST (tarea 3.4-E, lo mínimo)
+
+Reglas del dueño: D-41 y decisiones del 28/10/2026 (Drive, `05_Formatos_Inspeccion/3.4-E_diseno_passt_v01_2026-10-28.md` y `3.4-E_decisiones_dueno_2026-10-28.md`). Lo usan el administrador y el gestor (*PASST* en la barra).
+
+- **Programas:** uno general (todas las sedes) o uno por sede, por año ISO. Se crean desde cero o **duplicando** otro (copia el árbol, las metas y las semanas programadas; no lo ejecutado).
+- **Encabezado:** razón social, RUC, domicilio, actividad y N.° de trabajadores salen solos; código, versión, fecha de aprobación y **meta de cumplimiento** (95 % al inicio) los pone la empresa.
+- **Árbol:** objetivo general → objetivos específicos (recursos y hasta 5 metas con indicador) → secciones → actividades (responsable, meta %, observaciones y, si se quiere, un **formato de inspección vinculado**). Alta, baja (no se borra), subir, bajar y cambiar de lugar. **La numeración (1, 1.1, 1.1.1) no se guarda: se calcula del orden**, así nunca se salta ni se repite.
+- **Calendario P/E:** las semanas del año ISO (52 o 53; 2026 tiene 53), cada una en el mes de su jueves. Un clic programa o quita una semana (P). Lo ejecutado (E):
+  - **solo, al consultar** (sin tarea diaria): una semana de una actividad vinculada queda ejecutada si hay al menos una inspección cerrada (no anulada) de ese formato en esa semana —y en la sede del programa, si es por sede—, de **cualquier inspector** y con cualquier resultado. Si la inspección se anula, vuelve a quedar pendiente;
+  - **a mano**, con comentario y foto opcional: el administrador en cualquier actividad; el responsable en las suyas sin formato vinculado.
+- **Totales:** por mes, programadas, ejecutadas y % de cumplimiento (ejecutadas ÷ programadas) contra la meta; por actividad, # y % contra su meta. Una semana ejecutada sin programar se muestra pero no suma al %. Sin programadas se ve «—». Vencida = programada, ya pasó y no se ejecutó.
+- **Aprobar:** solo el administrador. Después, **solo el administrador** cambia semanas o la estructura, con motivo; todo queda en el historial.
+- **Responsables:** administradores o gestores (los usuarios no). *Mis actividades* muestra a cada uno lo de esta semana, lo vencido y lo próximo. Cada actividad vinculada muestra los hallazgos abiertos que dejaron sus inspecciones.
+- **Imprimir:** hoja apaisada con encabezado, árbol, grilla P/E, totales y el pie de firmas en blanco.
+- Base de datos: tablas `passt_programas`, `passt_nodos`, `passt_metas`, `passt_semanas` y `passt_historial` (RLS; la app solo lee) y sus acciones. Permisos nuevos como filas: `passt.ver` y `passt.editar` (administrador y gestor), `passt.aprobar`, `passt.reprogramar` y `passt.marcar_manual` (administrador). Migraciones `passt_programa_anual` y `passt_responsables`. App: `src/passt/`. Pruebas: `pruebas/passt.mjs` (servidor) y `pruebas/passt-numeracion.mjs` (numeración y semanas, sin base de datos).
+- **v1.1:** cargar el PASST desde Excel (3.11), descargarlo en el Excel de la organización, ejecución por % de equipos, vínculo con otros registros (capacitaciones, simulacros, comité), firmas dentro de CRC, avisos por correo y vista de todas las sedes juntas.
+
 ## Seguridad: reglas que no se rompen
 
 - Las claves van **solo** en variables de entorno (`.env.local` en el equipo, Vercel en la nube). El archivo `.env.local` está excluido de GitHub por `.gitignore`.
@@ -296,6 +313,7 @@ src/formatos/          Formatos de inspección (3.4-B): receta, motor de reglas,
 src/activos/           Activos, tipos de activo, ubicaciones y listas de los formatos (3.4-B)
 src/inspecciones/      Inspecciones en el celular (3.4-C), avance por período y Excel del período (3.4-D)
 src/hallazgos/         Seguimiento de hallazgos (3.4-D)
+src/passt/             Programa anual de SST (3.4-E): programas, árbol con numeración automática, calendario P/E e impresión
 src/gestion.css        Diseño de las pantallas de gestión
 src/Ingreso.tsx        Pantalla de ingreso (documento y contraseña)
 src/CambioContrasena.tsx  Cambio obligatorio de contraseña

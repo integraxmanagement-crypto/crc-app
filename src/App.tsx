@@ -1,4 +1,4 @@
-import { Boxes, Building2, CircleCheck, ClipboardCheck, ClipboardList, Database, ListChecks, Download, Home, LogOut, PenLine, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
+import { Boxes, Building2, CircleCheck, ClipboardCheck, CalendarDays, ClipboardList, Database, ListChecks, Download, Home, LogOut, PenLine, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Activos } from './activos/Activos'
 import { CambioContrasena } from './CambioContrasena'
@@ -11,6 +11,9 @@ import { Formatos, type Rutas } from './formatos/Formatos'
 import { ListaEmpresas } from './empresas/ListaEmpresas'
 import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
 import { Hallazgos } from './hallazgos/Hallazgos'
+import { MisActividades } from './passt/MisActividades'
+import { ProgramaAnual } from './passt/Programa'
+import { Programas } from './passt/Programas'
 import { Ingreso } from './Ingreso'
 import { pedirPersistencia } from './inspecciones/almacen'
 import { useSincronizacion } from './inspecciones/campo'
@@ -140,6 +143,9 @@ function Inicio({ perfil, online, firmas }: { perfil: Perfil; online: boolean; f
               <button className="btn" type="button" onClick={() => ir('/inspecciones')}>
                 <ClipboardList size={20} aria-hidden="true" /> Inspecciones
               </button>
+              <button className="btn-sec" type="button" onClick={() => ir('/passt')}>
+                <CalendarDays size={18} aria-hidden="true" /> Programa anual de SST
+              </button>
               <button className="btn-sec" type="button" onClick={() => ir('/formatos')}>
                 <ClipboardCheck size={18} aria-hidden="true" /> Formatos de inspección
               </button>
@@ -195,6 +201,11 @@ function Barra({ perfil, firmas }: { perfil: Perfil; firmas: number }) {
         {esEquipoSso(perfil) && (
           <button type="button" onClick={() => ir('/inspecciones')}>
             <ClipboardList size={18} aria-hidden="true" /> <span>Inspecciones</span>
+          </button>
+        )}
+        {esEquipoSso(perfil) && (
+          <button type="button" onClick={() => ir('/passt')}>
+            <CalendarDays size={18} aria-hidden="true" /> <span>PASST</span>
           </button>
         )}
         {perfil.empresaId && (
@@ -288,6 +299,13 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     if (esEquipoSso(perfil)) return <Inspecciones empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
   }
   if (ruta[0] === 'firmas' && perfil.empresaId) return <MisFirmas cuenta={perfil.id} online={online} />
+  if (ruta[0] === 'passt' && esEquipoSso(perfil) && perfil.empresaId) {
+    if (ruta[1] === 'mis-actividades') return <MisActividades empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
+    if (ruta[1])
+      return <ProgramaAnual key={ruta[1]} id={ruta[1]} empresaId={perfil.empresaId} online={online}
+        permisos={{ editar: true, admin: perfil.rolCodigo === 'admin_empresa', cuenta: perfil.id }} />
+    return <Programas empresaId={perfil.empresaId} online={online} />
+  }
   if (ruta[0] === 'hallazgos' && perfil.empresaId)
     return <Hallazgos key={ruta[1] ?? 'todos'} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} inspeccionId={ruta[1]} />
   if ((ruta[0] === 'formatos' || ruta[0] === 'activos') && esEquipoSso(perfil) && perfil.empresaId) {
@@ -372,4 +390,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.7.0 · Avance por período'
+const VERSION = 'Versión 0.8.0 · Programa anual de SST'

@@ -79,3 +79,23 @@ export function periodosHasta(fecha: string, frecuencia: Frecuencia, cantidad: n
   }
   return lista
 }
+
+// ───── Semanas de un año ISO (para el programa anual, 3.4-E) ─────
+
+/** Semanas del año ISO: 52 o 53 (el 28 de diciembre siempre cae en la última). */
+export const semanasDelAnio = (anio: number) => semanaIso(`${anio}-12-28`).semana
+
+/** Lunes de la semana `semana` del año ISO `anio`. */
+export function lunesDeSemana(anio: number, semana: number): string {
+  const cuatroEnero = Date.UTC(anio, 0, 4) // siempre en la semana 1
+  const lunes1 = cuatroEnero - diaSemana(cuatroEnero) * DIA
+  return aTexto(lunes1 + (semana - 1) * 7 * DIA)
+}
+
+/** Las semanas del año con el mes en que cuentan (el de su jueves): para armar la grilla de 12 meses. */
+export function semanasConMes(anio: number): { semana: number; mes: number; lunes: string }[] {
+  return Array.from({ length: semanasDelAnio(anio) }, (_, k) => {
+    const lunes = lunesDeSemana(anio, k + 1)
+    return { semana: k + 1, mes: mesDeLaSemana(lunes).mes, lunes }
+  })
+}

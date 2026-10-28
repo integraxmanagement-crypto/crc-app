@@ -1,6 +1,6 @@
 # Pruebas de la programación (tarea 3.4-D, parte 1)
 
-Fecha: 2026-10-28T14:31:42.303Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
+Fecha: 2026-10-28T17:05:53.252Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
 
 ## 1. Frecuencias de las plantillas base
 
@@ -21,10 +21,10 @@ Fecha: 2026-10-28T14:31:42.303Z · Base: crc-dev · Datos FICTICIOS · **undefin
 
 ## 3. Avance por período
 
-- ❌ Se inspecciona el equipo 1 con una X: «Inoperativo» — {"id":"d7883afb-4f98-465d-a471-ecebca177992","estado":"grabada","huella":"04941dc5a3e7cc270228a55187d653ebfcb04c0c0eac45ff30ff18bd49f7416c","numero":19}
+- ❌ Se inspecciona el equipo 1 con una X: «Inoperativo» — {"id":"eaf71084-9687-4cd1-8e4f-74182a7b8740","estado":"grabada","huella":"6414e9a1f60e88808c6f14366e26d502ac465d29813e9bbc6b875005cc27f8cc","numero":24}
 - ❌ El equipo 3 se da de baja hoy
-- ❌ Mes actual (Octubre 2026 · 28/09/2026 al 01/11/2026): total 2 (el dado de baja no cuenta) — ["LUZ-30073-1","LUZ-30073-2"]
-- ❌ 1 de 2 inspeccionados: el «Inoperativo» cuenta como inspeccionado — [{"activo_id":"22e36834-37fe-4e07-b318-29e4036a35ca","codigo":"LUZ-30073-1","numero":1,"subtipo":null,"ubicacion_id":null,"unidad_id":null,"inspeccion_id":"d7883afb-4f98-465d-a471-ecebca177992","inspeccion_numero":19,"fecha":"2026-10-28","resultado":"Inoperativo","hallazgos":1}]
+- ❌ Mes actual (Octubre 2026 · 28/09/2026 al 01/11/2026): total 2 (el dado de baja no cuenta) — ["LUZ-36686-1","LUZ-36686-2"]
+- ❌ 1 de 2 inspeccionados: el «Inoperativo» cuenta como inspeccionado — [{"activo_id":"599c92a0-17f9-4700-ae7c-b414ecdb83ab","codigo":"LUZ-36686-1","numero":1,"subtipo":null,"ubicacion_id":null,"unidad_id":null,"inspeccion_id":"eaf71084-9687-4cd1-8e4f-74182a7b8740","inspeccion_numero":24,"fecha":"2026-10-28","resultado":"Inoperativo","hallazgos":1}]
 - ❌ Falta el equipo 2
 - ❌ El equipo inspeccionado trae su hallazgo
 - ❌ Mes anterior: los equipos todavía no existían, total 0 — []
