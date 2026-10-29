@@ -1,6 +1,6 @@
 # Pruebas del Programa Anual de SST (tarea 3.4-E)
 
-Fecha: 2026-10-28T17:06:21.224Z · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: 44 de 2026 · **undefined de undefined correctas**
+Fecha: 2026-10-29T14:40:00.111Z · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: 44 de 2026 · **undefined de undefined correctas**
 
 ## 1. Quién ve y quién crea
 
@@ -40,9 +40,9 @@ Fecha: 2026-10-28T17:06:21.224Z · Base: crc-dev · Datos FICTICIOS · Semana de
 ## 4. Lo ejecutado: por inspección y a mano
 
 - ❌ Sin inspecciones, nada ejecutado por inspección
-- ❌ El administrador (no el responsable) inspecciona con resultado «Inoperativo» — {"id":"0a74f356-42f2-4e41-aee6-4101b1967532","estado":"grabada","huella":"2ea18edb1a239275181e274e3aa872c16b5a2da437c8683fdbfd003350f800ff","numero":26}
-- ❌ La semana queda ejecutada sola, con cualquier inspector y resultado — [{"actividad_id":"aef82c06-38fd-4dec-ab44-07fa2b0dfcfe","semana":44,"inspecciones":1,"ultima":"0a74f356-42f2-4e41-aee6-4101b1967532"}]
-- ❌ La actividad muestra el hallazgo abierto de su inspección — [{"actividad_id":"aef82c06-38fd-4dec-ab44-07fa2b0dfcfe","abiertos":1,"vencidos":0}]
+- ❌ El administrador (no el responsable) inspecciona con resultado «Inoperativo» — {"id":"43cbeab9-5860-48f5-ac8f-e79d87eabd14","estado":"grabada","huella":"23db68bbd6bb5d986c2daae1c08c965fe4cc1b987fe461338d5a50c2753870cf","numero":43}
+- ❌ La semana queda ejecutada sola, con cualquier inspector y resultado — [{"actividad_id":"c10c120c-93bf-4bf3-9809-9a81e781eff4","semana":44,"inspecciones":1,"ultima":"43cbeab9-5860-48f5-ac8f-e79d87eabd14"}]
+- ❌ La actividad muestra el hallazgo abierto de su inspección — [{"actividad_id":"c10c120c-93bf-4bf3-9809-9a81e781eff4","abiertos":1,"vencidos":0}]
 - ❌ El gestor no marca una actividad que no es suya — No autorizado
 - ❌ El responsable no marca a mano una actividad vinculada a un formato — No autorizado
 - ❌ Sin explicar qué se hizo no se marca

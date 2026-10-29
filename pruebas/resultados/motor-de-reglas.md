@@ -1,6 +1,6 @@
 # Motor de reglas de los formatos (tarea 3.4-B)
 
-Fecha: 2026-10-28 · Resultado: **44 de 44** · Sin base de datos, casos ficticios.
+Fecha: 2026-10-29 · Resultado: **44 de 44** · Sin base de datos, casos ficticios.
 
 | Prueba | Resultado |
 |---|---|
@@ -11,7 +11,7 @@ Fecha: 2026-10-28 · Resultado: **44 de 44** · Sin base de datos, casos fictici
 | Inspección del sistema DACI (detección y alarma contra incendio): sin problemas para publicar | ✅ |
 | Eficacia del programa de bloqueo y etiquetado (LOTO): sin problemas para publicar | ✅ |
 | IPF · Inspección programada focalizada: sin problemas para publicar | ✅ |
-| Ninguna clave de punto se repite entre las 6 (97 puntos) | ✅ |
+| Ninguna clave de punto se repite entre las 6 (96 puntos) | ✅ |
 | Ningún punto trae severidad (queda para la v1.1) | ✅ |
 | Ningún texto de la base menciona un código de formato tipo «SO.R.G.» | ✅ |
 | Todo √ y al día → Conforme, sin hallazgos (Conforme) | ✅ |

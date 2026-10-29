@@ -1,6 +1,6 @@
 # Pruebas del Excel de la organización (tarea 3.4-C)
 
-Fecha: 2026-10-28T17:05:43.977Z · Datos: FICTICIOS, sin base de datos · **undefined de undefined correctas**
+Fecha: 2026-10-29T14:39:24.727Z · Datos: FICTICIOS, sin base de datos · **undefined de undefined correctas**
 
 Ejemplo ficticio generado: `pruebas/excel/CRC_formato_extintores_FICTICIO_v01.xlsx` (diseño inventado; no copia formatos reales).
 
@@ -28,6 +28,9 @@ Ejemplo ficticio generado: `pruebas/excel/CRC_formato_extintores_FICTICIO_v01.xl
 - ❌ Fila 1 de un bloque repetible
 - ❌ Persona de la fila: su nombre, no su código
 - ❌ Fila que no existe: en blanco
+- ❌ «X» en la casilla de la opción elegida y en blanco en la otra
+- ❌ La opción se compara sin tildes ni mayúsculas
+- ❌ Reconoce la marca de opción y avisa si el punto no existe
 
 ## Copia llena del Excel
 
@@ -73,3 +76,13 @@ Ejemplo ficticio generado: `pruebas/excel/CRC_formato_extintores_FICTICIO_v01.xl
 - ❌ Las filas nuevas copian la altura de la fila modelo — <row r="10" ht="18" customHeight="1">
 - ❌ Sin equipos: la fila modelo queda en blanco y sin marcas — [null,null,null,null,null]
 - ❌ Un Excel sin fila modelo solo llena las marcas generales
+
+## Firma como imagen dentro del Excel
+
+- ❌ Reconoce la marca de la imagen de la firma
+- ❌ La imagen de la firma va dentro del archivo, sin cambios
+- ❌ La hoja enlaza un dibujo y el dibujo, la imagen
+- ❌ La firma ocupa el bloque combinado (C20:D21)
+- ❌ Declara el dibujo y el PNG en los tipos de contenido
+- ❌ La marca de la imagen queda en blanco y el logo no cambia
+- ❌ Sin firma hecha en CRC (en papel), no agrega imagen

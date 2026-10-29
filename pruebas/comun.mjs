@@ -96,3 +96,20 @@ export function resumen() {
 /** Imagen PNG ficticia de 1×1 píxel, para probar la carga de logos. */
 export const PNG_FICTICIO = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64')
+
+/**
+ * Formato de la empresa copiado de un formato base de CRC, con versión publicada (revisión de diseño, obs. 12: una sola
+ * copia por formato base). Si la empresa ya lo tiene publicado, se usa ese; si no, se copia y se publica con datos ficticios.
+ */
+export async function formatoDeEmpresa(c, empresa, codigo, fecha) {
+  const base = (await c.from('plantillas').select('id').is('empresa_id', null).eq('codigo', codigo).single()).data.id
+  const actual = (await c.from('plantillas').select('id, versiones:plantillas_versiones(id, estado, receta)').eq('empresa_id', empresa).eq('base_id', base).eq('vigente', true)).data?.[0]
+  const vigente = actual?.versiones.find((v) => v.estado === 'vigente')
+  if (vigente) return { loto: actual.id, id: actual.id, version: { id: vigente.id, receta: vigente.receta } }
+  const id = actual?.id ?? (await c.rpc('copiar_plantilla', { p_empresa: empresa, p_origen: base })).data
+  const v = (await c.from('plantillas_versiones').select('id, receta').eq('plantilla_id', id).eq('estado', 'borrador').single()).data
+  await c.rpc('guardar_borrador', { p_version: v.id, p_datos: { receta: v.receta, codigo_formato: `FIC-${codigo.toUpperCase()}`, version_formato: '03', fecha_aprobacion: fecha, logo: 'positivo' } })
+  const pub = await c.rpc('publicar_version', { p_version: v.id })
+  if (pub.error) throw new Error(`No se pudo publicar ${codigo}: ${pub.error.message}`)
+  return { loto: id, id, version: v }
+}

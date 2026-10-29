@@ -329,34 +329,34 @@ const loto: PlantillaBase = {
   frecuencia: 'trimestral', // valor inicial aprobado por el dueño (27/10/2026)
   receta: recetaBase({
     secciones: [
+      // Textos tal como el formato de referencia del dueño (decisión del dueño, 29/10/2026: ajusta D-22 para LOTO).
       sec('datos', 'Datos de la inspección', [
-        dato('LOTO-D01', 'Equipo o máquina', 'texto'),
         dato('LOTO-D02', 'Tipo de bloqueo', 'lista', { lista: 'tipos_bloqueo' }),
-        dato('LOTO-D03', 'Número de trabajadores del área', 'numero', { obligatorio: false }),
+        dato('LOTO-D03', 'N° de trabajadores del centro laboral', 'numero'),
       ]),
-      sec('procedimiento', 'Procedimiento', [
-        loto_('LOTO-01', '¿El trabajador conoce el propósito del bloqueo y etiquetado?'),
-        loto_('LOTO-02', '¿Identifica el procedimiento o mapa de bloqueo del equipo?'),
-        loto_('LOTO-03', '¿Está capacitado y autorizado para bloquear este equipo?'),
-        loto_('LOTO-04', '¿Bloquea todas las fuentes de energía peligrosa en el orden indicado?'),
-        loto_('LOTO-05', '¿Verifica la ausencia de energía antes de empezar el trabajo?'),
-        loto_('LOTO-06', '¿Cada persona que trabaja coloca su propio candado y tarjeta (bloqueo grupal, si aplica)?'),
+      sec('procedimiento', 'PROCEDIMIENTO DE LOTO', [
+        loto_('LOTO-01', '¿El responsable de bloqueo conoce la importancia de LOTO?'),
+        loto_('LOTO-02', '¿El responsable de bloqueo identifica el mapa LOTO en el equipo? Según aplique.'),
+        loto_('LOTO-03', '¿El Responsable de Bloqueo está capacitado y autorizado para realizar el bloqueo del equipo?'),
+        loto_('LOTO-04', '¿El Responsable bloquea correctamente las fuentes de energía peligrosa? (Según el mapa LOTO)'),
+        loto_('LOTO-05', '¿Se verificó que el Responsable efectuara el bloqueo principal y que el personal de apoyo colocara correctamente su candado y tarjeta LOTO en la pinza o caja grupal, según aplique?'),
       ]),
-      sec('equipo', 'Equipo', [
-        loto_('LOTO-07', '¿El equipo tiene su procedimiento o mapa visible, legible y vigente?'),
-        loto_('LOTO-08', '¿Los puntos de bloqueo son accesibles?'),
-        loto_('LOTO-09', '¿Los puntos de bloqueo sirven para la tarea que se ejecuta?'),
+      sec('equipo', 'EQUIPO O MÁQUINA', [
+        loto_('LOTO-06', '¿El equipo o maquina cuenta con Mapa LOTO visible, en buen estado y la versión vigente?'),
+        loto_('LOTO-07', '¿Los puntos de bloqueo se encuentran accesibles?'),
+        loto_('LOTO-08', '¿Los puntos de bloqueo permite utilizarse para la tarea ejecutada?'),
       ]),
-      sec('dispositivos', 'Dispositivos y estación', [
-        loto_('LOTO-10', '¿Los candados, pinzas y otros dispositivos están en buen estado?'),
-        loto_('LOTO-11', '¿Las tarjetas de bloqueo están completas y legibles?'),
-        loto_('LOTO-12', '¿La estación de bloqueo está ordenada y con los dispositivos completos?'),
+      sec('dispositivos', 'DISPOSITIVOS DE BLOQUEO Y ETIQUETADO', [
+        loto_('LOTO-09', '¿Los dispositivos de bloqueo se encuentran en óptimas condiciones para su uso?'),
+        loto_('LOTO-10', '¿Tarjeta LOTO del trabajador se encuentra en buen estado?'),
+        loto_('LOTO-11', '¿Estación LOTO se encuentra limpia, ordenada y en buen estado?'),
+        loto_('LOTO-12', '¿Cuenta con los dispositivos de bloqueo completos? (según cartilla de estación LOTO)'),
       ]),
     ],
     firmas: [
-      { clave: 'observado', titulo: 'Trabajador observado', obligatoria: true, externo: true, minimo: 1 },
-      { clave: 'responsable_area', titulo: 'Responsable del área', obligatoria: true, externo: false, minimo: 1 },
-      { clave: 'responsable_registro', titulo: 'Responsable del registro', obligatoria: true, externo: false, minimo: 1 },
+      { clave: 'observado', titulo: 'Observado', obligatoria: true, externo: true, minimo: 1 },
+      { clave: 'responsable_area', titulo: 'Responsable del área inspeccionada', obligatoria: true, externo: false, minimo: 1 },
+      { clave: 'responsable_registro', titulo: 'Responsable del registro e inspección', obligatoria: true, externo: false, minimo: 1 },
     ],
     reglas: [{ tipo: 'x_en', etiqueta: 'No conforme', alcance: 'todos' }],
     resultado_defecto: 'Conforme',

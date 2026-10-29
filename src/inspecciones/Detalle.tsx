@@ -1,7 +1,8 @@
-import { ArrowLeft, Ban, FileSpreadsheet, Pencil, Printer } from 'lucide-react'
+import { ArrowLeft, Ban, FileSpreadsheet, FileText, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
+import { db } from '../empresas/datos'
 import { type Fila, type Respuesta, seccionesVisibles } from '../formatos/motor'
 import type { Punto } from '../formatos/receta'
 import { ir } from '../ruta'
@@ -9,8 +10,11 @@ import { type CopiaLocal, bajarCopia, leerCopia } from './campo'
 import {
   type ArchivoServidor, type FirmaServidor, NOMBRE_AVISO, anularInspeccion, corregirInspeccion, detalleInspeccion, enlaceEvidencia, marcarEnPapel,
 } from './datos'
-import { llenarExcel, valoresDe } from './excel'
+import { llenarExcel, partes, valoresDe } from './excel'
+import { vistaDeExcel } from './excelVista'
+import { VistaExcel } from './VistaExcel'
 import { datosHoja, excelDeFormato, guardarExcel } from './hoja'
+import { hoyLocal } from './ayudas'
 import { PuntoCampo } from './Llenar'
 
 type Detalle = Awaited<ReturnType<typeof detalleInspeccion>>
@@ -25,7 +29,7 @@ const ESTADO_FIRMA: Record<FirmaServidor['estado'], [string, string]> = {
 
 /**
  * Una inspección recibida (tarea 3.4-C): respuestas, fotos, firmas, hallazgos, avisos e historial. La hoja Excel de
- * la organización se descarga llena y sin firmas, para firmarla a mano. Corregir (con motivo, deja historial) y
+ * la organización se descarga llena, con las firmas hechas en CRC como imágenes (las de papel se firman a mano). Corregir (con motivo, deja historial) y
  * anular las puede el administrador.
  */
 export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { id: string; cuenta: string; empresaId: string; online: boolean; esAdmin: boolean }) {
@@ -34,6 +38,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [modo, setModo] = useState<'ver' | 'corregir' | 'anular'>('ver')
+  const [vistaPdf, setVistaPdf] = useState<ReturnType<typeof vistaDeExcel> | null>(null)
 
   const cargar = useCallback(() => {
     detalleInspeccion(id).then(setD, (e) => setError((e as Error).message))
@@ -41,6 +46,17 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
   useEffect(() => {
     if (online) cargar()
   }, [online, cargar])
+  // PDF igual al Excel: cuando la hoja ya está dibujada, se abre «Imprimir» (ahí se elige «Guardar como PDF»).
+  useEffect(() => {
+    if (!vistaPdf) return
+    const listo = () => setVistaPdf(null)
+    window.addEventListener('afterprint', listo)
+    const t = setTimeout(() => window.print(), 300)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('afterprint', listo)
+    }
+  }, [vistaPdf])
   useEffect(() => {
     void leerCopia(cuenta, empresaId).then((c) => (c ? setCopia(c) : online ? bajarCopia(cuenta, empresaId).then(setCopia, () => {}) : null))
   }, [cuenta, empresaId, online])
@@ -60,29 +76,51 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
   const fotosDe = (punto: string, fila: number | null) => d.archivos.filter((a) => a.punto_clave === punto && a.fila === fila)
   const puedePapel = (i.inspector_id === cuenta || esAdmin) && i.estado === 'cerrada'
 
-  async function descargarExcel() {
+  /** El Excel de la organización lleno con esta inspección y sus firmas (null si el formato no tiene Excel). */
+  async function armarExcel(): Promise<Uint8Array | null> {
+    const archivo = await excelDeFormato(i.plantilla_id)
+    if (!archivo) {
+      setAviso('Este formato no tiene un Excel de la organización. Usa «Imprimir» o sube el Excel en el formato.')
+      return null
+    }
+    const ordenadas = [...d!.firmas].sort((a, b) => a.orden - b.orden)
+    const firmantes = ordenadas.map((f) => ({
+      rol_clave: f.rol_clave,
+      nombre: f.persona_id ? nombre(f.persona_id) : (f.externo_nombre ?? ''),
+      cargo: f.persona_id ? (copia?.personas.find((p) => p.persona_id === f.persona_id)?.puesto ?? null) : null,
+      // Con la firma dentro del Excel (revisión LOTO, 29/10/2026), la fecha es la de la firma; en papel se fecha a mano.
+      fecha: f.estado === 'firmada' && f.firmado_en ? hoyLocal(new Date(f.firmado_en)) : null,
+    }))
+    // Las imágenes de las firmas hechas en CRC, para las marcas {{firma.<rol>.imagen}} (las de papel quedan vacías).
+    const imagenes = new Map<string, Uint8Array>()
+    const vistos = new Map<string, number>()
+    for (const f of ordenadas) {
+      const n = (vistos.get(f.rol_clave) ?? 0) + 1
+      vistos.set(f.rol_clave, n)
+      if (f.estado !== 'firmada' || !f.imagen_ruta) continue
+      const r = await db().storage.from('evidencias').download(f.imagen_ruta)
+      if (!r.error) imagenes.set(`firma.${f.rol_clave}${n > 1 ? `#${n}` : ''}.imagen`, new Uint8Array(await r.data.arrayBuffer()))
+    }
+    return llenarExcel(archivo, valoresDe(datosHoja(i, {
+      nombreFormato: i.plantillas?.nombre ?? '',
+      version: v!,
+      copia,
+      nombre,
+      lugares: { sede: i.sedes?.nombre, area: i.unidades?.nombre, ubicacion: i.ubicaciones?.nombre },
+      firmantes,
+    })), imagenes)
+  }
+
+  async function descargar(como: 'excel' | 'pdf') {
     setError(null)
     setAviso(null)
     try {
-      const archivo = await excelDeFormato(i.plantilla_id)
-      if (!archivo) return setAviso('Este formato no tiene un Excel de la organización. Usa «Imprimir» o sube el Excel en el formato.')
-      const firmantes = d!.firmas.map((f) => ({
-        rol_clave: f.rol_clave,
-        nombre: f.persona_id ? nombre(f.persona_id) : (f.externo_nombre ?? ''),
-        cargo: f.persona_id ? (copia?.personas.find((p) => p.persona_id === f.persona_id)?.puesto ?? null) : null,
-        fecha: null, // sin firmas: se firma y se fecha a mano
-      }))
-      const lleno = await llenarExcel(archivo, valoresDe(datosHoja(i, {
-        nombreFormato: i.plantillas?.nombre ?? '',
-        version: v!,
-        copia,
-        nombre,
-        lugares: { sede: i.sedes?.nombre, area: i.unidades?.nombre, ubicacion: i.ubicaciones?.nombre },
-        firmantes,
-      })))
-      guardarExcel(lleno, `Inspeccion-${i.numero}-${i.plantillas?.nombre ?? 'formato'}`)
+      const lleno = await armarExcel()
+      if (!lleno) return
+      if (como === 'excel') guardarExcel(lleno, `Inspeccion-${i.numero}-${i.plantillas?.nombre ?? 'formato'}`)
+      else setVistaPdf(vistaDeExcel(await partes(lleno)))
     } catch (e) {
-      setError(`No se pudo armar el Excel: ${(e as Error).message}`)
+      setError(`No se pudo armar el ${como === 'excel' ? 'Excel' : 'PDF'}: ${(e as Error).message}`)
     }
   }
 
@@ -102,8 +140,12 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
           </p>
         </div>
         <div className="acciones no-imprimir">
-          <button className="btn-sec" type="button" onClick={() => void descargarExcel()}>
-            <FileSpreadsheet size={18} aria-hidden="true" /> Excel sin firmas
+          <button className="btn-sec" type="button" onClick={() => void descargar('excel')}>
+            <FileSpreadsheet size={18} aria-hidden="true" /> Excel
+          </button>
+          {/* PDF idéntico al Excel de la organización (revisión LOTO, 29/10/2026). */}
+          <button className="btn-sec" type="button" onClick={() => void descargar('pdf')}>
+            <FileText size={18} aria-hidden="true" /> PDF
           </button>
           <button className="btn-link" type="button" onClick={() => window.print()}>
             <Printer size={18} aria-hidden="true" /> Imprimir
@@ -212,7 +254,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
         </div>
       )}
       {modo === 'anular' && <Anular id={i.id} onListo={() => (setModo('ver'), cargar())} onCancelar={() => setModo('ver')} />}
-      {createPortal(<HojaImpresa d={d} copia={copia} nombre={nombre} />, document.body)}
+      {createPortal(vistaPdf ? <VistaExcel vista={vistaPdf.vista} medias={vistaPdf.medias} /> : <HojaImpresa d={d} copia={copia} nombre={nombre} />, document.body)}
     </div>
   )
 }

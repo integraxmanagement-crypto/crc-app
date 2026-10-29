@@ -1,6 +1,6 @@
 # Formatos de inspección, activos y listas (tarea 3.4-B)
 
-Fecha: 2026-10-28 · Resultado: **101 de 101** · Cuentas y datos ficticios de crc-dev.
+Fecha: 2026-10-29 · Resultado: **103 de 103** · Cuentas y datos ficticios de crc-dev.
 
 ## 1. Sin sesión no se ve nada
 
@@ -60,7 +60,9 @@ Fecha: 2026-10-28 · Resultado: **101 de 101** · Cuentas y datos ficticios de c
 
 | Prueba | Resultado |
 |---|---|
+| Si la empresa ya tiene el formato de extintores, no se copia otra vez | ✅ |
 | Gestor A puede copiar la plantilla base de extintores a su empresa | ✅ |
+| No se reactiva una segunda copia del mismo formato base | ✅ |
 | La copia nace como borrador v1 | ✅ |
 | Al copiar, la empresa recibe su propio tipo «extintor» | ✅ |
 | …y sus listas (agentes, unidades, soportes) | ✅ |

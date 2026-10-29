@@ -1,6 +1,7 @@
 // Excel de cada organización (tarea 3.4-C, decisión del dueño 26/10/2026): la organización sube su propio formato en
-// Excel con marcas {{…}} donde van los datos, y CRC llena una copia por inspección, sin firmas, para imprimirla y
-// firmarla a mano. Sin librerías: se cambian los textos de las celdas dentro del archivo y se vuelve a armar.
+// Excel con marcas {{…}} donde van los datos, y CRC llena una copia por inspección, con las firmas hechas en CRC
+// como imágenes (revisión LOTO, 29/10/2026); quien firmó en papel firma a mano sobre la hoja impresa.
+// Sin librerías: se cambian los textos de las celdas dentro del archivo y se vuelve a armar.
 // Lo que no es una marca no se toca (logos, bordes, combinaciones, anchos). No usa nada propio del navegador,
 // así también se prueba en la computadora (pruebas/excel.mjs).
 //
@@ -12,11 +13,14 @@
 //   Activo:     {{activo_codigo}} {{activo.<dato>}} (p. ej. {{activo.capacidad}})
 //   Puntos:     {{CLAVE}} respuesta · {{CLAVE.si}} {{CLAVE.no}} {{CLAVE.na}} una «X» en la columna que toca
 //               {{CLAVE.obs}} {{CLAVE.accion}} {{CLAVE.responsable}} {{CLAVE.plazo}}
+//               {{CLAVE=opción}} una «X» si la respuesta es esa opción (p. ej. {{LOTO-D02=Individual}} y {{LOTO-D02=Grupal}})
 //   Filas:      {{CLAVE#1}}, {{CLAVE#2}}… el punto CLAVE de la fila 1, 2… de un bloque repetible
 //   Firmas:     {{firma.<rol>.nombre}} {{firma.<rol>.cargo}} {{firma.<rol>.fecha}} (con dos firmantes: {{firma.<rol>#2.nombre}})
+//               {{firma.<rol>.imagen}} la imagen de la firma en esa celda o en su bloque combinado (ver excelImagenes.ts)
 import { ErrorExcel, crearZip, descomprimir, entradasZip, escaparXml, textoDe } from '../carga/xlsx.ts'
 import type { Fila, Respuesta, Valor } from '../formatos/motor.ts'
 import { type Punto, type Receta, todosLosPuntos } from '../formatos/receta.ts'
+import { anclasDeFirmas, insertarImagenes } from './excelImagenes.ts'
 
 export const EXCEL_MAX_BYTES = 1024 * 1024
 const MARCA = /\{\{\s*([^{}]+?)\s*\}\}/g
@@ -62,9 +66,15 @@ export async function marcasDeExcel(archivo: Uint8Array): Promise<string[]> {
   return [...encontradas].sort()
 }
 
-/** Copia del Excel con cada marca cambiada por su valor (las marcas sin valor quedan en blanco). */
-export async function llenarExcel(archivo: Uint8Array, valor: (marca: string) => string | null): Promise<Uint8Array> {
-  return crearZip(reemplazarMarcas(await partes(archivo), valor))
+/**
+ * Copia del Excel con cada marca cambiada por su valor (las marcas sin valor quedan en blanco). Con imagenes
+ * (marca {{firma.<rol>.imagen}} → PNG), las firmas van como imágenes en su celda.
+ */
+export async function llenarExcel(archivo: Uint8Array, valor: (marca: string) => string | null, imagenes?: Map<string, Uint8Array>): Promise<Uint8Array> {
+  const lista = await partes(archivo)
+  const anclas = imagenes?.size ? anclasDeFirmas(lista) : []
+  const llenas = reemplazarMarcas(lista, valor)
+  return crearZip(anclas.length ? insertarImagenes(llenas, anclas, imagenes!) : llenas)
 }
 
 /** Cambia las marcas de los textos de celda por su valor, en los textos compartidos y en las hojas. */
@@ -83,6 +93,9 @@ export function reemplazarMarcas(lista: Parte[], valor: (marca: string) => strin
 }
 
 // ───────────────────────── Valores de una inspección ─────────────────────────
+
+/** Para comparar opciones sin tildes, mayúsculas ni espacios de más. */
+const normalizar = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 
 export type DatosHoja = {
   empresa: { razon_social: string; ruc: string; domicilio: string; actividad: string }
@@ -159,11 +172,20 @@ export function valoresDe(d: DatosHoja): (marca: string) => string | null {
       const v = d.activo?.datos[marca.slice(7)]
       return v == null ? '' : /^\d{4}-\d{2}$/.test(String(v)) ? `${String(v).slice(5)}/${String(v).slice(0, 4)}` : String(v)
     }
+    if (/^firma\.[^.#]+(?:#\d+)?\.imagen$/.test(marca)) return '' // la imagen se agrega aparte (excelImagenes.ts)
     const firma = marca.match(/^firma\.([^.#]+)(?:#(\d+))?\.(nombre|cargo|fecha)$/)
     if (firma) {
       const f = d.firmantes.filter((x) => x.rol_clave === firma[1])[Number(firma[2] ?? 1) - 1]
       if (!f) return ''
       return firma[3] === 'nombre' ? f.nombre : firma[3] === 'cargo' ? (f.cargo ?? '') : fechaPeru(f.fecha)
+    }
+    // «X» si la respuesta es esa opción (revisión del formato LOTO: tipo de bloqueo Individual / Grupal en dos casillas).
+    const op = marca.match(/^([^.#=]+)(?:#(\d+))?=(.+)$/)
+    if (op) {
+      const x = puntos.get(op[1])
+      if (!x) return null
+      const r = op[2] ? (x.seccion.repetible ? d.filas[x.seccion.clave]?.[Number(op[2]) - 1]?.[op[1]] : undefined) : d.respuestas[op[1]]
+      return r?.valor != null && normalizar(String(r.valor)) === normalizar(op[3]) ? 'X' : ''
     }
     const m = marca.match(/^([^.#]+)(?:#(\d+))?(?:\.(\w+))?$/)
     if (!m) return null
@@ -187,8 +209,10 @@ export function marcasDesconocidas(marcas: string[], receta: Receta): string[] {
     'numero_inspeccion', 'fecha', 'hora', 'sede', 'area', 'ubicacion', 'inspector', 'resultado', 'puntaje', 'observacion', 'activo_codigo'])
   return marcas.filter((m) => {
     if (FIJAS.has(m) || /^activo\.\w+$/.test(m)) return false
-    const f = m.match(/^firma\.([^.#]+)(?:#\d+)?\.(nombre|cargo|fecha)$/)
+    const f = m.match(/^firma\.([^.#]+)(?:#\d+)?\.(nombre|cargo|fecha|imagen)$/)
     if (f) return !roles.has(f[1])
+    const op = m.match(/^([^.#=]+)(?:#\d+)?=.+$/)
+    if (op) return !claves.has(op[1])
     const p = m.match(/^([^.#]+)(?:#\d+)?(?:\.(si|no|na|obs|accion|responsable|plazo))?$/)
     return !p || !claves.has(p[1])
   })

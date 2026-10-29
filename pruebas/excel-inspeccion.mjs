@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { crearZip, descomprimir, entradasZip, escaparXml, leerHoja } from '../src/carga/xlsx.ts'
 import { PLANTILLAS_BASE } from '../src/formatos/base.ts'
-import { llenarExcel, marcasDeExcel, marcasDesconocidas, valoresDe } from '../src/inspecciones/excel.ts'
+import { llenarExcel, marcasDeExcel, marcasDesconocidas, partes as partesDe, valoresDe } from '../src/inspecciones/excel.ts'
 import { llenarExcelPeriodo, valoresFilas, valoresGenerales } from '../src/inspecciones/excelPeriodo.ts'
 import { comprobar, resultados, resumen } from './comun.mjs'
 
@@ -109,6 +109,13 @@ const vIpf = valoresDe({ ...datos, receta: ipf, respuestas: {}, filas: { [rep.cl
 comprobar('Fila 1 de un bloque repetible', vIpf(`${texto.clave}#1`) === 'Cable expuesto')
 comprobar('Persona de la fila: su nombre, no su código', vIpf(`${persona.clave}#1`) === 'Prueba Ficticia, Ana')
 comprobar('Fila que no existe: en blanco', vIpf(`${texto.clave}#2`) === '')
+
+// Opción marcada con «X» en su casilla (revisión del formato LOTO: tipo de bloqueo Individual / Grupal).
+const loto = PLANTILLAS_BASE.find((p) => p.codigo === 'loto').receta
+const vLoto = valoresDe({ ...datos, receta: loto, respuestas: { 'LOTO-D02': { valor: 'Grupal' } } })
+comprobar('«X» en la casilla de la opción elegida y en blanco en la otra', vLoto('LOTO-D02=Grupal') === 'X' && vLoto('LOTO-D02=Individual') === '')
+comprobar('La opción se compara sin tildes ni mayúsculas', vLoto('LOTO-D02= grupal ') === 'X')
+comprobar('Reconoce la marca de opción y avisa si el punto no existe', marcasDesconocidas(['LOTO-D02=Individual', 'LOTO-99=Grupal'], loto).join() === 'LOTO-99=Grupal')
 
 seccion('Copia llena del Excel')
 const lleno = await llenarExcel(original, v)
@@ -217,6 +224,27 @@ const x0 = await abrir(r0.bytes)
 comprobar('Sin equipos: la fila modelo queda en blanco y sin marcas', !x0.fila(5).some((c) => typeof c === 'string' && c.trim()) && ![...x0.p.values()].some((t) => t.includes('{{')), JSON.stringify(x0.fila(5)))
 const sinModelo = await llenarExcelPeriodo(original, valoresGenerales(valoresDe(datos), periodo, { hechos: 1, total: 1 }), valoresFilas(equipos(3)))
 comprobar('Un Excel sin fila modelo solo llena las marcas generales', sinModelo.hoja === null && sinModelo.filas === 0)
+
+seccion('Firma como imagen dentro del Excel')
+// Mismo Excel, con la marca {{firma.inspector.imagen}} en la celda «Firma: ____________» combinada en un bloque de 2×2.
+const conFirma = crearZip((await partesDe(original)).map((x) => {
+  let t = new TextDecoder().decode(x.bytes)
+  if (x.nombre === 'xl/sharedStrings.xml') t = t.replace('Firma: ____________', 'Firma: {{firma.inspector.imagen}}')
+  if (x.nombre === 'xl/worksheets/sheet1.xml') t = t.replace('</sheetData>', '</sheetData><mergeCells count="1"><mergeCell ref="C20:D21"/></mergeCells>')
+  return x.nombre.endsWith('.png') ? x : { nombre: x.nombre, texto: t }
+}))
+comprobar('Reconoce la marca de la imagen de la firma', (await marcasDeExcel(conFirma)).includes('firma.inspector.imagen') && marcasDesconocidas(['firma.inspector.imagen'], receta).length === 0)
+const firmaPng = Uint8Array.from({ length: 120 }, (_, i) => (i * 11) % 256)
+const conImagen = await llenarExcel(conFirma, valoresDe(datos), new Map([['firma.inspector.imagen', firmaPng]]))
+const piezas = new Map((await partesDe(conImagen)).map((x) => [x.nombre, x]))
+const textoParte = (n) => new TextDecoder().decode(piezas.get(n)?.bytes ?? new Uint8Array())
+comprobar('La imagen de la firma va dentro del archivo, sin cambios', [...piezas.values()].some((x) => /^xl\/media\/crc_firma_\d+\.png$/.test(x.nombre) && x.bytes.length === 120 && x.bytes.every((b, i) => b === firmaPng[i])))
+comprobar('La hoja enlaza un dibujo y el dibujo, la imagen', /<drawing r:id="[^"]+"\/>/.test(textoParte('xl/worksheets/sheet1.xml')) && /crc_firma_1\.png/.test(textoParte('xl/drawings/_rels/drawing1.xml.rels')))
+comprobar('La firma ocupa el bloque combinado (C20:D21)', /<xdr:from><xdr:col>2<\/xdr:col>.*<xdr:row>19<\/xdr:row>.*<xdr:to><xdr:col>4<\/xdr:col>.*<xdr:row>21<\/xdr:row>/.test(textoParte('xl/drawings/drawing1.xml')))
+comprobar('Declara el dibujo y el PNG en los tipos de contenido', textoParte('[Content_Types].xml').includes('/xl/drawings/drawing1.xml') && /Extension="png"/i.test(textoParte('[Content_Types].xml')))
+comprobar('La marca de la imagen queda en blanco y el logo no cambia', !textoParte('xl/sharedStrings.xml').includes('{{') && piezas.get('xl/media/logo.png')?.bytes.every((b, i) => b === LOGO[i]))
+const sinImagen = new Map((await partesDe(await llenarExcel(conFirma, valoresDe(datos), new Map()))).map((x) => [x.nombre, x]))
+comprobar('Sin firma hecha en CRC (en papel), no agrega imagen', ![...sinImagen.keys()].some((n) => n.includes('crc_firma')))
 
 const r = resumen()
 const lineas = [

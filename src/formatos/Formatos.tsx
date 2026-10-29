@@ -56,7 +56,8 @@ export function Formatos({ empresaId, rutas, puedeEditar }: { empresaId: string;
     }
   }
 
-  const copiasDe = (baseId: string) => propias?.filter((p) => p.base_id === baseId).length ?? 0
+  // Una sola copia activa por formato base (revisión de diseño, obs. 12): si ya la tiene, se abre esa en vez de copiar.
+  const copiaDe = (baseId: string) => propias?.find((p) => p.base_id === baseId && p.vigente)
 
   return (
     <div className="detalle">
@@ -126,14 +127,14 @@ export function Formatos({ empresaId, rutas, puedeEditar }: { empresaId: string;
         </p>
         <ul className="lista">
           {base.map((p) => {
-            const copias = copiasDe(p.id)
+            const copia = copiaDe(p.id)
             const n = estadoDe(p).vigente?.numero
             return (
               <li key={p.id}>
                 <ClipboardCheck aria-hidden="true" />
                 <div>
                   <b>{p.nombre}</b>
-                  {copias > 0 && <span className="chip chip-ok">{copias === 1 ? 'Ya tienes una copia' : `${copias} copias`}</span>}
+                  {copia && <span className="chip chip-ok">Ya está en tu empresa</span>}
                   <small>
                     {p.descripcion} · Frecuencia inicial: {NOMBRE_FRECUENCIA[p.frecuencia].toLowerCase()}
                     {n ? ` · ${NOMBRE_ESTADO.vigente} v${n}` : ''}
@@ -143,10 +144,16 @@ export function Formatos({ empresaId, rutas, puedeEditar }: { empresaId: string;
                   <button className="btn-link" type="button" onClick={() => ir(`${rutas.formatos}/${p.id}`)}>
                     <Eye size={16} aria-hidden="true" /> Ver
                   </button>
-                  {puedeEditar && (
-                    <button className="btn-link" type="button" disabled={ocupado !== null} onClick={() => void copiar(p.id)}>
-                      <Copy size={16} aria-hidden="true" /> {ocupado === p.id ? 'Copiando…' : 'Copiar a mi empresa'}
+                  {copia ? (
+                    <button className="btn-link" type="button" onClick={() => ir(`${rutas.formatos}/${copia.id}`)}>
+                      <Pencil size={16} aria-hidden="true" /> Abrir el de mi empresa
                     </button>
+                  ) : (
+                    puedeEditar && (
+                      <button className="btn-link" type="button" disabled={ocupado !== null} onClick={() => void copiar(p.id)}>
+                        <Copy size={16} aria-hidden="true" /> {ocupado === p.id ? 'Copiando…' : 'Copiar a mi empresa'}
+                      </button>
+                    )
                   )}
                 </span>
               </li>

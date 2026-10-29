@@ -2333,3 +2333,45 @@
 .hoja-passt {
   page: passt;
 }
+
+/* PDF igual al Excel de la organización (revisión del formato LOTO, 29/10/2026): solo sale al imprimir. */
+@page excel-v {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
+@page excel-h {
+  size: A4 landscape;
+  margin: 8mm;
+}
+
+.hoja-excel-v {
+  page: excel-v;
+}
+
+.hoja-excel-h {
+  page: excel-h;
+}
+
+.hoja-excel-lienzo {
+  position: relative;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.hoja-excel table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.hoja-excel td {
+  overflow: hidden;
+  padding: 0 2px;
+  line-height: 1.15;
+}
+
+.hoja-excel img {
+  position: absolute;
+  object-fit: fill;
+}

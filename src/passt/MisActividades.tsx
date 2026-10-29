@@ -8,7 +8,7 @@ import { estadosPorActividad, semanaActual, textoPct, totalesActividad } from '.
 import { type DatosPrograma, leerPrograma, listarProgramas } from './datos'
 import { numerar } from './numeracion'
 
-type Fila = { programa: DatosPrograma['programa']; id: string; numero: string; texto: string; vinculada: boolean; estaSemana: string; vencidas: number[]; proxima: number | null; pct: string }
+type Fila = { programa: DatosPrograma['programa']; id: string; numero: string; texto: string; vinculada: boolean; plantilla: string | null; unidad: string | null; estaSemana: string; vencidas: number[]; proxima: number | null; pct: string }
 
 /**
  * Mis actividades del programa anual (tarea 3.4-E): las que tiene a su cargo el administrador o el gestor, con lo de
@@ -33,7 +33,7 @@ export function MisActividades({ empresaId, cuenta, online }: { empresaId: strin
           const e = estados.get(n.id)
           const ahora = e?.get(actual)
           salida.push({
-            programa: d.programa, id: n.id, numero: n.numero, texto: n.texto, vinculada: Boolean(n.plantilla_id),
+            programa: d.programa, id: n.id, numero: n.numero, texto: n.texto, vinculada: Boolean(n.plantilla_id), plantilla: n.plantilla_id, unidad: n.unidad_id,
             estaSemana: ahora?.programada ? (ahora.ejecutada ? 'Ejecutada' : 'Programada esta semana') : ahora?.ejecutada ? 'Ejecutada (sin programar)' : '—',
             vencidas: [...(e?.entries() ?? [])].filter(([, x]) => x.vencida).map(([w]) => w).sort((a, b) => a - b),
             proxima: [...(e?.entries() ?? [])].filter(([w, x]) => x.programada && !x.ejecutada && w > actual).map(([w]) => w).sort((a, b) => a - b)[0] ?? null,
@@ -77,8 +77,8 @@ export function MisActividades({ empresaId, cuenta, online }: { empresaId: strin
               </div>
               <span className="lista-acciones">
                 {f.vinculada && (
-                  <button className="btn-link" type="button" onClick={() => ir('/inspecciones')}>
-                    <ClipboardList size={16} aria-hidden="true" /> Inspeccionar
+                  <button className="btn-link" type="button" onClick={() => ir(`/inspecciones/nueva/${f.plantilla}${f.unidad ? `/${f.unidad}` : ''}`)}>
+                    <ClipboardList size={16} aria-hidden="true" /> Realizar
                   </button>
                 )}
                 <button className="btn-link" type="button" onClick={() => ir(`/passt/${f.programa.id}`)}>

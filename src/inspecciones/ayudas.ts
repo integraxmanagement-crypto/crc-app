@@ -4,8 +4,7 @@ import type { Receta } from '../formatos/receta'
 import type { Firmante } from './campo'
 import { type Uso, misFirmasPendientes, usoAlmacenamiento } from './datos'
 
-export function hoyLocal() {
-  const d = new Date()
+export function hoyLocal(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 

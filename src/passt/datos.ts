@@ -28,6 +28,7 @@ export type Nodo = NodoBase & {
   meta_pct: number | null
   observaciones: string | null
   plantilla_id: string | null
+  unidad_id: string | null // área de la actividad (revisión LOTO, 29/10/2026)
 }
 export type Meta = { id: string; nodo_id: string; orden: number; texto: string; indicador: string | null }
 export type Semana = {
@@ -70,6 +71,11 @@ export async function leerPrograma(id: string) {
 }
 export type DatosPrograma = Awaited<ReturnType<typeof leerPrograma>>
 
+/** Áreas vigentes de la empresa, en árbol, para elegir el área de una actividad. */
+export const areasDeEmpresa = (empresaId: string) =>
+  leer<{ id: string; nombre: string; nivel: string; padre_id: string | null; vigente: boolean }[]>(
+    db().from('unidades').select('id, nombre, nivel, padre_id, vigente').eq('empresa_id', empresaId).eq('vigente', true).order('nombre'),
+  )
 export const responsables = (empresaId: string) => rpc<Responsable[]>('passt_responsables', { p_empresa: empresaId })
 export const trabajadores = (empresaId: string) => rpc<number | null>('passt_trabajadores', { p_empresa: empresaId })
 export const formatosDeEmpresa = (empresaId: string) =>

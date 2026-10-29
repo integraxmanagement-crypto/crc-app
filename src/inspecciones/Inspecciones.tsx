@@ -1,5 +1,5 @@
 import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { ir } from '../ruta'
 import { NOMBRE_NIVEL, type Nivel } from '../usuarios/datos'
@@ -15,12 +15,13 @@ const mb = (b: number) => `${(b / 1048576).toFixed(b < 10 * 1048576 ? 1 : 0)} MB
  * Inspecciones (tarea 3.4-C): nueva inspección, lo que está en este equipo (borradores y cola de envío) y las ya
  * recibidas por el servidor. Lo del equipo funciona sin señal.
  */
-export function Inspecciones({ empresaId, cuenta, online }: { empresaId: string; cuenta: string; online: boolean }) {
+/** preset: formato y área ya elegidos, cuando se llega con «Realizar» desde una actividad del PASST (revisión LOTO, 29/10/2026). */
+export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId: string; cuenta: string; online: boolean; preset?: { plantilla: string; unidad: string | null } }) {
   const { borradores, cola } = useCampo(cuenta)
   const [copia, setCopia] = useState<CopiaLocal | null | undefined>(undefined)
   const [recibidas, setRecibidas] = useState<ResumenInspeccion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [nueva, setNueva] = useState(false)
+  const [nueva, setNueva] = useState(Boolean(preset))
   const [bajando, setBajando] = useState(false)
 
   useEffect(() => {
@@ -90,7 +91,7 @@ export function Inspecciones({ empresaId, cuenta, online }: { empresaId: string;
         </p>
       )}
 
-      {nueva && copia && <NuevaInspeccion copia={copia} cuenta={cuenta} onCancelar={() => setNueva(false)} />}
+      {nueva && copia && <NuevaInspeccion copia={copia} cuenta={cuenta} preset={preset} onCancelar={() => setNueva(false)} />}
 
       <Seccion
         titulo="En este equipo"
@@ -235,12 +236,14 @@ function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
 }
 
 /** Elegir formato y qué se inspecciona (un activo, o un área: sede, área y ubicación). Todo sale de la copia local. */
-function NuevaInspeccion({ copia, cuenta, onCancelar }: { copia: CopiaLocal; cuenta: string; onCancelar: () => void }) {
-  const [formatoId, setFormatoId] = useState(copia.formatos[0]?.plantilla.id ?? '')
+function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLocal; cuenta: string; preset?: { plantilla: string; unidad: string | null }; onCancelar: () => void }) {
+  const [formatoId, setFormatoId] = useState(
+    preset && copia.formatos.some((x) => x.plantilla.id === preset.plantilla) ? preset.plantilla : (copia.formatos[0]?.plantilla.id ?? ''),
+  )
   const [activoId, setActivoId] = useState('')
   const [buscar, setBuscar] = useState('')
   const [sede, setSede] = useState(copia.sedes.length === 1 ? copia.sedes[0].id : '')
-  const [unidad, setUnidad] = useState('')
+  const [unidad, setUnidad] = useState(preset?.unidad && copia.unidades.some((u) => u.id === preset.unidad) ? preset.unidad : '')
   const [ubicacion, setUbicacion] = useState('')
   const [error, setError] = useState<string | null>(null)
   const f = copia.formatos.find((x) => x.plantilla.id === formatoId)
@@ -249,6 +252,18 @@ function NuevaInspeccion({ copia, cuenta, onCancelar }: { copia: CopiaLocal; cue
   // Áreas en árbol, con su nivel a la vista (gerencia, área o subárea).
   const unidades = ordenarUnidades(copia.unidades.filter((u) => u.vigente))
   const ubicaciones = copia.ubicaciones.filter((u) => !sede || u.sede_id === sede)
+  // Formatos en orden alfabético, con su código y versión (revisión de diseño, obs. 12). Cada formato base está una
+  // sola vez en la empresa, así que no hace falta numerar copias.
+  const formatosOrdenados = useMemo(
+    () =>
+      [...copia.formatos]
+        .sort((a, b) => a.plantilla.nombre.localeCompare(b.plantilla.nombre, 'es'))
+        .map((x) => ({
+          x,
+          etiqueta: [x.plantilla.nombre, x.version.codigo_formato, x.version.version_formato && `versión ${x.version.version_formato}`].filter(Boolean).join(' · '),
+        })),
+    [copia.formatos],
+  )
 
   async function crear(e: FormEvent) {
     e.preventDefault()
@@ -259,8 +274,10 @@ function NuevaInspeccion({ copia, cuenta, onCancelar }: { copia: CopiaLocal; cue
     if (!activo && !sede) return setError('Elige la sede.')
     const tipo = activo ? copia.tipos.find((t) => t.id === activo.tipo_id) : null
     const ahora = new Date().toISOString()
-    // La firma de quien registra suele ser la primera: se propone su nombre (se puede cambiar).
-    const primera = f.version.receta.firmas[0]
+    // Se propone a quien registra en el rol del inspector o del responsable del registro (en LOTO el primero es el
+    // observado); si no hay ninguno, en el primer rol. Se puede cambiar.
+    const firmas = f.version.receta.firmas
+    const primera = firmas.find((x) => /inspector|registro/.test(x.clave)) ?? firmas[0]
     const b: Borrador = {
       id: crypto.randomUUID(),
       cuenta,
@@ -299,9 +316,9 @@ function NuevaInspeccion({ copia, cuenta, onCancelar }: { copia: CopiaLocal; cue
       <label className="field">
         <span>Formato</span>
         <select value={formatoId} onChange={(e) => (setFormatoId(e.target.value), setActivoId(''))}>
-          {copia.formatos.map((x) => (
+          {formatosOrdenados.map(({ x, etiqueta }) => (
             <option key={x.plantilla.id} value={x.plantilla.id}>
-              {x.plantilla.nombre} (v{x.version.numero})
+              {etiqueta}
             </option>
           ))}
         </select>

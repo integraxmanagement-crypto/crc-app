@@ -96,7 +96,7 @@ function Inicio({ perfil, firmas, online }: { perfil: Perfil; firmas: number; on
               <button className="btn" type="button" onClick={() => ir('/mi-empresa/usuarios')}>
                 <Users size={20} aria-hidden="true" /> Usuarios de mi empresa
               </button>
-              <button className="btn-sec" type="button" onClick={() => ir('/mi-empresa')}>
+              <button className="btn-sec" type="button" onClick={() => ir('/perfil/empresa')}>
                 <Building2 size={18} aria-hidden="true" /> Mi empresa
               </button>
             </>
@@ -182,16 +182,6 @@ function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; onl
             <ClipboardCheck size={18} aria-hidden="true" /> <span>Formatos</span>
           </button>
         )}
-        {perfil.rolCodigo === 'admin_empresa' && (
-          <>
-            <button type="button" onClick={() => ir('/mi-empresa')} title="Mi empresa">
-              <Building2 size={18} aria-hidden="true" /> <span>Mi empresa</span>
-            </button>
-            <button type="button" onClick={() => ir('/mi-empresa/usuarios')} title="Usuarios">
-              <Users size={18} aria-hidden="true" /> <span>Usuarios</span>
-            </button>
-          </>
-        )}
         {perfil.empresaId && <Campana firmas={firmas} />}
         <MenuPerfil perfil={perfil} />
       </nav>
@@ -247,7 +237,7 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
   }
   if (ruta[0] === 'perfil') {
-    if (ruta[1] === 'empresa' && perfil.empresaId) return <InfoEmpresa empresaId={perfil.empresaId} online={online} />
+    if (ruta[1] === 'empresa' && perfil.empresaId) return <InfoEmpresa empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
     return <MiInformacion perfil={perfil} online={online} />
   }
   if (ruta[0] === 'intentos' && perfil.esDueno) return <Intentos />
@@ -255,6 +245,8 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     if (ruta[1] === 'llenar' && ruta[2] && esEquipoSso(perfil))
       return <PantallaLlenar key={ruta[2]} id={ruta[2]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} />
     if (ruta[1] === 'avance' && esEquipoSso(perfil)) return <Avance empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
+    if (ruta[1] === 'nueva' && ruta[2] && esEquipoSso(perfil))
+      return <Inspecciones key={ruta.join('/')} empresaId={perfil.empresaId} cuenta={perfil.id} online={online} preset={{ plantilla: ruta[2], unidad: ruta[3] ?? null }} />
     // El detalle también lo abre cada firmante (la base de datos decide qué puede ver).
     if (ruta[1])
       return <DetalleInspeccion key={ruta[1]} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
@@ -275,11 +267,12 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
   }
   if (ruta[0] === 'mi-empresa' && perfil.rolCodigo === 'admin_empresa' && perfil.empresaId) {
-    const volver = () => ir('/mi-empresa')
+    // «Mi empresa» vive ahora en Perfil → Información de la empresa (revisión de diseño, obs. 11).
+    const volver = () => ir('/perfil/empresa')
     if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} onVolver={volver} />
     if (ruta[1] === 'listas') return <Listas empresaId={perfil.empresaId} onVolver={volver} />
     if (ruta[1] === 'carga') return <Carga empresaId={perfil.empresaId} onVolver={() => ir('/mi-empresa/usuarios')} />
-    return <DetalleEmpresa empresaId={perfil.empresaId} modo="admin" />
+    return <InfoEmpresa empresaId={perfil.empresaId} online={online} esAdmin />
   }
   return null
 }
@@ -352,4 +345,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.8.1 · Inicio, perfil y avisos'
+const VERSION = 'Versión 0.9.0 · Formato LOTO, firmas en Excel y PDF'

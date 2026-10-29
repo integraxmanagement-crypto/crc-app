@@ -166,6 +166,8 @@ comprobar('Copia las 5 metas', metas2.length === 5)
 const dupB = await s.GESTOR_B.rpc('duplicar_programa', { p_id: P, p_datos: { anio: ANIO } })
 comprobar('Otra empresa no duplica', NO_AUTORIZADO(dupB))
 
+// Al terminar, el formato ficticio de esta prueba se desactiva para que no se acumulen en la lista (revisión de diseño, obs. 12).
+await s.ADMIN_A.rpc('cambiar_vigencia_plantilla', { p_plantilla: formato, p_vigente: false })
 const res = resumen()
 const lineas = ['# Pruebas del Programa Anual de SST (tarea 3.4-E)', '', `Fecha: ${new Date().toISOString()} · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: ${SEM} de ${ANIO} · **${res.ok} de ${res.total} correctas**`, '']
 for (const [k, g] of grupos.entries()) {

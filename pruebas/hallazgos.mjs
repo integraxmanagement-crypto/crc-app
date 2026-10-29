@@ -149,6 +149,8 @@ comprobar('El que ya estaba cerrado no cambia', por2['HAL-01']?.estado === 'cerr
 const tarde = await s.GESTOR_A.rpc('gestionar_hallazgo', { p_id: por2['HAL-03'].id, p_datos: { responsable_id: ID.USUARIO_A2 } })
 comprobar('Un hallazgo anulado ya no se asigna', Boolean(tarde.error))
 
+// Al terminar, el formato ficticio de esta prueba se desactiva para que no se acumulen en la lista (revisión de diseño, obs. 12).
+await s.ADMIN_A.rpc('cambiar_vigencia_plantilla', { p_plantilla: plantilla, p_vigente: false })
 const res = resumen()
 const lineas = ['# Pruebas del seguimiento de hallazgos (tarea 3.4-D, parte 2)', '', `Fecha: ${new Date().toISOString()} · Base: crc-dev · Datos FICTICIOS · **${res.ok} de ${res.total} correctas**`, '']
 for (const [k, g] of grupos.entries()) {

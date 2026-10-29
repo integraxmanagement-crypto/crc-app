@@ -2,7 +2,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Pencil, Plus, Printer, Tra
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
-import { hoyLocal } from '../inspecciones/ayudas'
+import { hoyLocal, ordenarUnidades } from '../inspecciones/ayudas'
 import { leerCopia } from '../inspecciones/campo'
 import { prepararFoto } from '../inspecciones/imagen'
 import { semanasConMes } from '../inspecciones/periodos'
@@ -10,7 +10,7 @@ import { ir } from '../ruta'
 import { type EstadoSemana, estadosPorActividad, textoPct, totalesActividad, totalesPorMes } from './calculo'
 import {
   type DatosPrograma, HIJO_DE, NOMBRE_TIPO, type Nodo, type Responsable, aprobarPrograma, bajaNodo, formatosDeEmpresa, guardarMetas, guardarNodo,
-  guardarPrograma, leerPrograma, marcarSemana, moverNodo, programarSemana, responsables, trabajadores,
+  areasDeEmpresa, guardarPrograma, leerPrograma, marcarSemana, moverNodo, programarSemana, responsables, trabajadores,
 } from './datos'
 import { type NodoNumerado, numerar } from './numeracion'
 
@@ -18,6 +18,7 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
 const MESES_LARGOS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const fechaHora = (iso: string) => new Date(iso).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })
 type Pestana = 'estructura' | 'calendario' | 'historial'
+type Area = { id: string; nombre: string; nivel: string; padre_id: string | null; vigente: boolean; profundidad: number }
 
 export type PermisosPasst = { editar: boolean; admin: boolean; cuenta: string }
 
@@ -33,6 +34,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
   const [pestana, setPestana] = useState<Pestana>('calendario')
   const [personas, setPersonas] = useState<Responsable[]>([])
   const [formatos, setFormatos] = useState<{ id: string; nombre: string; vigente: boolean }[]>([])
+  const [areas, setAreas] = useState<Area[]>([])
   const [motivo, setMotivo] = useState('')
   const [empresa, setEmpresa] = useState<{ razon_social: string; ruc: string; domicilio: string; actividad: string } | null>(null)
   const [nTrabajadores, setNTrabajadores] = useState<number | null>(null)
@@ -45,6 +47,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
     cargar()
     responsables(empresaId).then(setPersonas, () => {})
     formatosDeEmpresa(empresaId).then(setFormatos, () => {})
+    areasDeEmpresa(empresaId).then((a) => setAreas(ordenarUnidades(a)), () => {})
     trabajadores(empresaId).then(setNTrabajadores, () => {})
     void leerCopia(permisos.cuenta, empresaId).then((c) => c && setEmpresa(c.empresa))
   }, [online, cargar, empresaId, permisos.cuenta])
@@ -123,8 +126,8 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
         ))}
       </div>
 
-      {pestana === 'estructura' && <Estructura d={d} arbol={arbol} puedeCambiar={puedeCambiar} personas={personas} formatos={formatos} nombre={nombre} hacer={hacer} />}
-      {pestana === 'calendario' && <Calendario d={d} arbol={arbol} puedeCambiar={puedeCambiar} permisos={permisos} nombre={nombre} formatos={formatos} hacer={hacer} />}
+      {pestana === 'estructura' && <Estructura d={d} arbol={arbol} puedeCambiar={puedeCambiar} personas={personas} formatos={formatos} areas={areas} nombre={nombre} hacer={hacer} />}
+      {pestana === 'calendario' && <Calendario d={d} arbol={arbol} puedeCambiar={puedeCambiar} permisos={permisos} nombre={nombre} formatos={formatos} areas={areas} hacer={hacer} />}
       {pestana === 'historial' && (
         <Seccion titulo="Historial">
           <ul className="historial">
@@ -186,9 +189,9 @@ function Encabezado({ d, empresa, nTrabajadores, puedeCambiar, hacer }: { d: Dat
 
 // ───────────────────────── Estructura ─────────────────────────
 
-function Estructura({ d, arbol, puedeCambiar, personas, formatos, nombre, hacer }: {
+function Estructura({ d, arbol, puedeCambiar, personas, formatos, areas, nombre, hacer }: {
   d: DatosPrograma; arbol: NodoNumerado<Nodo>[]; puedeCambiar: boolean; personas: Responsable[]; formatos: { id: string; nombre: string; vigente: boolean }[]
-  nombre: (id: string | null) => string; hacer: Hacer
+  areas: Area[]; nombre: (id: string | null) => string; hacer: Hacer
 }) {
   const [editando, setEditando] = useState<string | null>(null)
   const [agregando, setAgregando] = useState<string | null>(null)
@@ -215,6 +218,7 @@ function Estructura({ d, arbol, puedeCambiar, personas, formatos, nombre, hacer 
                   {n.tipo === 'actividad' && (
                     <small>
                       Responsable: {nombre(n.responsable_id)} · Meta {Number(n.meta_pct ?? 100)} %
+                      {n.unidad_id ? ` · Área: ${areas.find((a) => a.id === n.unidad_id)?.nombre ?? 'área'}` : ''}
                       {n.plantilla_id ? ` · Se ejecuta con: ${formato(n.plantilla_id) ?? 'formato'}` : ' · Se marca a mano'}
                       {n.observaciones ? ` · ${n.observaciones}` : ''}
                     </small>
@@ -236,10 +240,10 @@ function Estructura({ d, arbol, puedeCambiar, personas, formatos, nombre, hacer 
                 )}
               </div>
               {editando === n.id && (
-                <FormNodo d={d} nodo={n} tipo={n.tipo} padreId={n.padre_id} arbol={arbol} personas={personas} formatos={formatos} hacer={hacer} onListo={() => setEditando(null)} />
+                <FormNodo d={d} nodo={n} tipo={n.tipo} padreId={n.padre_id} arbol={arbol} personas={personas} formatos={formatos} areas={areas} hacer={hacer} onListo={() => setEditando(null)} />
               )}
               {agregando === n.id && hijo && (
-                <FormNodo d={d} nodo={null} tipo={hijo} padreId={n.id} arbol={arbol} personas={personas} formatos={formatos} hacer={hacer} onListo={() => setAgregando(null)} />
+                <FormNodo d={d} nodo={null} tipo={hijo} padreId={n.id} arbol={arbol} personas={personas} formatos={formatos} areas={areas} hacer={hacer} onListo={() => setAgregando(null)} />
               )}
             </li>
           )
@@ -249,9 +253,9 @@ function Estructura({ d, arbol, puedeCambiar, personas, formatos, nombre, hacer 
   )
 }
 
-function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, hacer, onListo }: {
+function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, areas, hacer, onListo }: {
   d: DatosPrograma; nodo: Nodo | null; tipo: Nodo['tipo']; padreId: string | null; arbol: NodoNumerado<Nodo>[]; personas: Responsable[]
-  formatos: { id: string; nombre: string; vigente: boolean }[]; hacer: Hacer; onListo: () => void
+  formatos: { id: string; nombre: string; vigente: boolean }[]; areas: Area[]; hacer: Hacer; onListo: () => void
 }) {
   const [texto, setTexto] = useState(nodo?.texto ?? '')
   const [recursos, setRecursos] = useState(nodo?.recursos ?? '')
@@ -259,6 +263,7 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, hacer, on
   const [meta, setMeta] = useState(String(Number(nodo?.meta_pct ?? 100)))
   const [obs, setObs] = useState(nodo?.observaciones ?? '')
   const [plantilla, setPlantilla] = useState(nodo?.plantilla_id ?? '')
+  const [unidad, setUnidad] = useState(nodo?.unidad_id ?? '')
   const [mover, setMover] = useState('')
   const metasIniciales = nodo ? d.metas.filter((m) => m.nodo_id === nodo.id).map((m) => ({ texto: m.texto, indicador: m.indicador ?? '' })) : []
   const [metas, setMetas] = useState(metasIniciales.length ? metasIniciales : [{ texto: '', indicador: '' }])
@@ -266,7 +271,7 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, hacer, on
   const otrosPadres = nodo && tipoPadre ? arbol.filter((x) => x.tipo === tipoPadre && x.id !== padreId) : []
 
   async function guardar() {
-    const datos = { tipo, padre_id: padreId, texto, recursos, responsable_id: resp || null, meta_pct: meta, observaciones: obs, plantilla_id: plantilla || null }
+    const datos = { tipo, padre_id: padreId, texto, recursos, responsable_id: resp || null, meta_pct: meta, observaciones: obs, plantilla_id: plantilla || null, unidad_id: unidad || null }
     const ok = await hacer(async (motivo) => {
       const id = await guardarNodo(d.programa.id, nodo?.id ?? null, { ...datos, motivo })
       if (tipo === 'objetivo_especifico') await guardarMetas(id, metas, motivo)
@@ -327,10 +332,23 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, hacer, on
               ))}
             </select>
           </label>
+          {/* Área de la actividad (revisión LOTO, 29/10/2026): p. ej. estrategia «Eficacia LOTO» con una actividad por área. */}
+          <label className="field">
+            <span>Área (opcional)</span>
+            <select value={unidad} onChange={(e) => setUnidad(e.target.value)}>
+              <option value="">— Cualquier área —</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {'\u00a0\u00a0'.repeat(a.profundidad)}{a.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="field">
             <span>Observaciones</span>
             <input type="text" maxLength={1000} value={obs} onChange={(e) => setObs(e.target.value)} />
           </label>
+          {plantilla && unidad && <p className="nota">Se ejecuta sola con una inspección de ese formato hecha en esa área (o en una subárea) en la semana programada.</p>}
         </div>
       )}
       {otrosPadres.length > 0 && (
@@ -356,9 +374,9 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, hacer, on
 
 // ───────────────────────── Calendario ─────────────────────────
 
-function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, hacer }: {
+function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas, hacer }: {
   d: DatosPrograma; arbol: NodoNumerado<Nodo>[]; puedeCambiar: boolean; permisos: PermisosPasst; nombre: (id: string | null) => string
-  formatos: { id: string; nombre: string; vigente: boolean }[]; hacer: Hacer
+  formatos: { id: string; nombre: string; vigente: boolean }[]; areas: Area[]; hacer: Hacer
 }) {
   const p = d.programa
   const [mes, setMes] = useState(0) // 0 = todo el año
@@ -426,7 +444,10 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, hacer 
                     <tr>
                       <td rowSpan={2} className="col-act">
                         <b>{n.numero}</b> {n.texto}
-                        <small>{nombre(n.responsable_id)}{n.plantilla_id ? ` · ${formatos.find((f) => f.id === n.plantilla_id)?.nombre ?? 'formato'}` : ''}</small>
+                        <small>
+                          {nombre(n.responsable_id)}{n.plantilla_id ? ` · ${formatos.find((f) => f.id === n.plantilla_id)?.nombre ?? 'formato'}` : ''}
+                          {n.unidad_id ? ` · Área: ${areas.find((a) => a.id === n.unidad_id)?.nombre ?? 'área'}` : ''}
+                        </small>
                         {h && h.abiertos > 0 && (
                           <button className="btn-link mini" type="button" onClick={() => ir('/hallazgos')}>
                             {h.abiertos} hallazgo(s) abierto(s){h.vencidos ? `, ${h.vencidos} vencido(s)` : ''}

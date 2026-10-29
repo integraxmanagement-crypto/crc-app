@@ -65,7 +65,7 @@ seccion('2. Contenido base de CRC: lo ven todos, nadie de una empresa lo cambia'
   comprobar('Usuario A2 ve las 6 plantillas base', pl.data?.length === 6, `${pl.data?.length}`)
   const vs = await s.ADMIN_B.from('plantillas_versiones').select('receta, huella, estado, plantillas(codigo)').is('empresa_id', null)
   const iguales = PLANTILLAS_BASE.every((p) => {
-    const v = vs.data.find((x) => x.plantillas.codigo === p.codigo)
+    const v = vs.data.find((x) => x.plantillas.codigo === p.codigo && x.estado === 'vigente')
     return v && v.estado === 'vigente' && v.huella && JSON.stringify(canon(v.receta)) === JSON.stringify(canon(p.receta))
   })
   comprobar('Las 6 recetas guardadas son idénticas al anexo (src/formatos/base.ts) y están publicadas con huella', iguales)
@@ -96,8 +96,19 @@ seccion('4. Copiar una plantilla base y editarla (constructor)')
 let plantillaA, versionA
 {
   const huellaAntes = (await s.ADMIN_A.from('plantillas_versiones').select('huella').eq('plantilla_id', baseId('extintores')).single()).data.huella
+  // Una sola copia activa por formato base (revisión de diseño, obs. 12): se desactiva la de la corrida anterior.
+  const previas = (await s.ADMIN_A.from('plantillas').select('id').eq('empresa_id', A).eq('base_id', baseId('extintores')).eq('vigente', true)).data ?? []
+  if (previas.length) {
+    const otra = await s.GESTOR_A.rpc('copiar_plantilla', { p_empresa: A, p_origen: baseId('extintores') })
+    comprobar('Si la empresa ya tiene el formato de extintores, no se copia otra vez', /ya tiene este formato/.test(otra.error?.message ?? ''), otra.error?.message)
+    for (const x of previas) await s.ADMIN_A.rpc('cambiar_vigencia_plantilla', { p_plantilla: x.id, p_vigente: false })
+  }
   const r = await s.GESTOR_A.rpc('copiar_plantilla', { p_empresa: A, p_origen: baseId('extintores') })
   comprobar('Gestor A puede copiar la plantilla base de extintores a su empresa', !r.error && Boolean(r.data), r.error?.message)
+  if (previas.length) {
+    const reactivar = await s.ADMIN_A.rpc('cambiar_vigencia_plantilla', { p_plantilla: previas[0].id, p_vigente: true })
+    comprobar('No se reactiva una segunda copia del mismo formato base', /otro formato activo/.test(reactivar.error?.message ?? ''), reactivar.error?.message)
+  }
   plantillaA = r.data
   const v = (await s.GESTOR_A.from('plantillas_versiones').select('id, numero, estado, receta').eq('plantilla_id', plantillaA).single()).data
   versionA = v.id

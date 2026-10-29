@@ -5,7 +5,7 @@
 // Uso: node pruebas/inspecciones.mjs   (cada corrida deja unas pocas inspecciones ficticias más)
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { PNG_FICTICIO, cliente, comprobar, ingresarComo, llamarFuncion, resultados, resumen } from './comun.mjs'
+import { PNG_FICTICIO, formatoDeEmpresa, cliente, comprobar, ingresarComo, llamarFuncion, resultados, resumen } from './comun.mjs'
 
 const grupos = []
 function seccion(titulo) {
@@ -45,11 +45,8 @@ if (nuevoExt.error) throw new Error(`No se pudo crear el extintor ficticio: ${nu
 const activo = (await s.ADMIN_A.from('activos').select('id, codigo, numero, subtipo, datos, dotacion').eq('id', nuevoExt.data).single()).data
 
 // Formato LOTO de A, publicado para esta prueba (se aplica a un área, con firmantes de varias cuentas).
-const loto = (await s.ADMIN_A.rpc('copiar_plantilla', { p_empresa: A, p_origen: (await s.ADMIN_A.from('plantillas').select('id').is('empresa_id', null).eq('codigo', 'loto').single()).data.id })).data
-const lotoV = (await s.ADMIN_A.from('plantillas_versiones').select('id, receta').eq('plantilla_id', loto).single()).data
-await s.ADMIN_A.rpc('guardar_borrador', { p_version: lotoV.id, p_datos: { receta: lotoV.receta, codigo_formato: 'FIC-LOTO', version_formato: '01', fecha_aprobacion: HOY, logo: 'positivo' } })
-const pub = await s.ADMIN_A.rpc('publicar_version', { p_version: lotoV.id })
-if (pub.error) throw new Error(`No se pudo publicar LOTO: ${pub.error.message}`)
+// Una sola copia por formato base (revisión de diseño, obs. 12): se usa la que ya tiene la empresa, o se copia y publica.
+const { version: lotoV } = await formatoDeEmpresa(s.ADMIN_A, A, 'loto', HOY)
 
 const todasSi = (receta) => Object.fromEntries(receta.secciones.flatMap((sec) => sec.puntos.map((p) =>
   [p.clave, { valor: p.tipo === 'cumple' || p.tipo === 'si_no' ? 'si' : p.tipo === 'numero' ? 3 : p.tipo === 'lista' ? 'Individual' : 'Dato ficticio' }])))

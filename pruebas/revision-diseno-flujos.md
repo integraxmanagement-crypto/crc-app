@@ -19,3 +19,21 @@ Estados: pendiente · en curso · hecho (esperando ok) · aprobado · alcance (l
 | 8c | Campana: mensajes | — | alcance | Sí (no existe mensajería) |
 | 8d | Campana: nueva tarea delegada | — | por definir (¿hallazgo o actividad asignada?) | — |
 | 8e | Campana: contar «sin leer» | — | por definir (en el equipo o en el servidor) | Sí, si es en el servidor |
+
+## Ronda 2 · Formato LOTO y perfil (desde el 29/10/2026) — hecho, esperando aprobación general
+
+| N.º | Pedido del dueño | Qué se cambió y por qué | ¿Tablas o permisos? |
+|---|---|---|---|
+| L1 | Datos de la empresa | Salen de la ficha de cada empresa en CRC; no se guardan datos reales en ningún lado | No |
+| L2 | Textos del LOTO como el formato (opción b) | LOTO base versión 2 con las 12 preguntas, los títulos de sección y de firmantes del formato de referencia; la versión 1 queda retirada; las copias ya hechas no cambian. Ajusta D-22 para LOTO (decisión del dueño). Cada empresa pone logo, código, versión y fecha de aprobación en su copia | Datos de `plantillas_versiones` (migración 20261029132606) |
+| L3 | Guardar respuestas y firmas | Sin cambios: CRC sigue guardando todo | No |
+| L4 | Programación semanal con el PASST | Cada actividad del PASST puede tener su área: estrategia «Eficacia LOTO» con una actividad por área y sus semanas. Con área, solo la ejecuta una inspección del formato en esa área (o subárea). Botón «Realizar» en pendientes y en «Mis actividades» abre la inspección con formato y área elegidos. Las frecuencias no se tocaron | Sí: columna nueva `passt_nodos.unidad_id` y funciones `guardar_nodo`, `duplicar_programa`, `passt_ejecucion` (migración 20261029133027). No toca personas, empresas, sedes, unidades, roles ni permisos |
+| L5 | Firmas dentro del Excel | Marca nueva `{{firma.<rol>.imagen}}`: la firma hecha en CRC va como imagen en su celda o bloque combinado; la fecha es la de la firma. Botón «Excel» (antes «Excel sin firmas») | No |
+| L6 | PDF idéntico al Excel | Botón «PDF»: CRC dibuja la hoja del Excel ya lleno (anchos, altos, combinadas, letras, rellenos, bordes, logo y firmas, orientación) y abre «Imprimir → Guardar como PDF» | No |
+| L7 | X en Individual / Grupal | Marca nueva `{{CLAVE=opción}}` (p. ej. `{{LOTO-D02=Individual}}`) | No |
+| 10 | Quitar ícono «Usuarios»; «Configuración de usuarios» en Perfil, según permisos | Quitado de la barra; en Perfil, debajo de «Información de la empresa», solo para el administrador de la empresa | No |
+| 11 | Quitar ícono «Mi empresa»; todo en «Información de la empresa» | El administrador ve ahí la ficha, personas, inspecciones, logos, contactos, sedes y administradores; los demás, ficha y sedes | No |
+| 12 | Formatos repetidos en «Nueva inspección»: el formato debe ser uno solo | Las copias venían de las pruebas automáticas. Con el ok del dueño: (1) en crc-dev se desactivaron las copias de prueba (queda una de LOTO, extintores y DACI; no se borró nada); (2) las pruebas ahora usan la copia que ya existe o desactivan la anterior, y desactivan al final los formatos ficticios que crean; (3) se quitó la etiqueta «(copia N)»: la lista va en orden alfabético con código y versión; (4) regla nueva: una empresa tiene un solo formato activo por cada formato base de CRC (no se copia otra vez ni se reactiva una segunda copia; copiar un formato propio para hacer una variante sigue permitido). En «Formatos», si ya lo tiene, el botón dice «Abrir el de mi empresa» | Sí: funciones `copiar_plantilla` y `cambiar_vigencia_plantilla` (migración 20261029143645). No toca personas, empresas, sedes, unidades, roles ni permisos |
+| — | Ajuste de paso | Al empezar una inspección se propone a quien registra en el rol del inspector o del responsable del registro (antes en el primero, que en LOTO es el observado) | No |
+
+Pruebas: 694 de 694 (nuevas: `pruebas/passt-area.mjs` 11 y 10 más en `excel-inspeccion.mjs`). Excel LOTO del dueño marcado y probado solo en este equipo (`Registros/`), abierto en Excel sin errores.

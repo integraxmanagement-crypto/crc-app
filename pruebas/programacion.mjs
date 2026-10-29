@@ -121,6 +121,8 @@ if (lotos?.length) {
   comprobar('Formato de área: devuelve las inspecciones del período (sin equipos)', !ar.error && ar.data.every((f) => f.activo_id === null && f.inspeccion_id), ar.error?.message)
 }
 
+// Al terminar, el formato ficticio de esta prueba se desactiva para que no se acumulen en la lista (revisión de diseño, obs. 12).
+await s.ADMIN_A.rpc('cambiar_vigencia_plantilla', { p_plantilla: nueva.data, p_vigente: false })
 const r = resumen()
 const lineas = ['# Pruebas de la programación (tarea 3.4-D, parte 1)', '', `Fecha: ${new Date().toISOString()} · Base: crc-dev · Datos FICTICIOS · **${r.ok} de ${r.total} correctas**`, '']
 for (const [k, g] of grupos.entries()) {

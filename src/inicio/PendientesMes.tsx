@@ -4,13 +4,13 @@ import { Aviso } from '../empresas/campos'
 import { hoyLocal } from '../inspecciones/ayudas'
 import { semanaIso, semanasConMes } from '../inspecciones/periodos'
 import { estadosPorActividad, mesDeHoy, semanaActual } from '../passt/calculo'
-import { leerPrograma, listarProgramas } from '../passt/datos'
+import { areasDeEmpresa, leerPrograma, listarProgramas } from '../passt/datos'
 import { numerar } from '../passt/numeracion'
 import { ir } from '../ruta'
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-type Pendiente = { id: string; programaId: string; programa: string; numero: string; texto: string; vinculada: boolean; semanas: { semana: number; lunes: string; mes: number; vencida: boolean; actual: boolean }[] }
+type Pendiente = { id: string; programaId: string; programa: string; numero: string; texto: string; vinculada: boolean; plantilla: string | null; unidad: string | null; area: string | null; semanas: { semana: number; lunes: string; mes: number; vencida: boolean; actual: boolean }[] }
 
 /**
  * Pendientes del mes en el inicio (revisión de diseño, obs. 6): las actividades del programa anual que tengo a mi cargo,
@@ -31,6 +31,7 @@ export function PendientesMes({ empresaId, cuenta, online }: { empresaId: string
       const actual = semanaActual(anio, hoy)
       const semanasAnio = semanasConMes(anio)
       const salida = { mes: [] as Pendiente[], atrasados: [] as Pendiente[] }
+      const areas = new Map((await areasDeEmpresa(empresaId)).map((a) => [a.id, a.nombre]))
       for (const p of (await listarProgramas(empresaId)).filter((x) => x.vigente && x.anio === anio)) {
         const d = await leerPrograma(p.id)
         const estados = estadosPorActividad(d.semanas, d.ejecucion, anio, hoy)
@@ -39,7 +40,8 @@ export function PendientesMes({ empresaId, cuenta, online }: { empresaId: string
           const sinHacer = semanasAnio
             .filter((w) => w.mes <= mes && e?.get(w.semana)?.programada && !e.get(w.semana)?.ejecutada)
             .map((w) => ({ semana: w.semana, lunes: w.lunes, mes: w.mes, vencida: w.semana < actual, actual: w.semana === actual }))
-          const base = { id: n.id, programaId: p.id, programa: p.nombre, numero: n.numero, texto: n.texto, vinculada: Boolean(n.plantilla_id) }
+          const base = { id: n.id, programaId: p.id, programa: p.nombre, numero: n.numero, texto: n.texto, vinculada: Boolean(n.plantilla_id),
+            plantilla: n.plantilla_id, unidad: n.unidad_id, area: n.unidad_id ? (areas.get(n.unidad_id) ?? null) : null }
           const delMes = sinHacer.filter((w) => w.mes === mes)
           const antes = sinHacer.filter((w) => w.mes < mes)
           if (delMes.length) salida.mes.push({ ...base, semanas: delMes })
@@ -91,12 +93,13 @@ function Lista({ items, conMes = false }: { items: Pendiente[]; conMes?: boolean
                 </span>
               ))}
             </small>
-            <small>{p.programa}</small>
+            <small>{p.area ? `Área: ${p.area} · ` : ''}{p.programa}</small>
           </div>
           <span className="lista-acciones">
             {p.vinculada ? (
-              <button className="btn-link" type="button" onClick={() => ir('/inspecciones')}>
-                <ClipboardList size={16} aria-hidden="true" /> Inspeccionar
+              // «Realizar» abre la inspección con el formato y el área de la actividad ya elegidos (revisión LOTO).
+              <button className="btn-link" type="button" onClick={() => ir(`/inspecciones/nueva/${p.plantilla}${p.unidad ? `/${p.unidad}` : ''}`)}>
+                <ClipboardList size={16} aria-hidden="true" /> Realizar
               </button>
             ) : (
               <button className="btn-link" type="button" onClick={() => ir(`/passt/${p.programaId}`)}>
