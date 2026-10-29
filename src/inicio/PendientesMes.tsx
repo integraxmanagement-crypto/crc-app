@@ -1,0 +1,111 @@
+import { AlertTriangle, CalendarClock, ClipboardList } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Aviso } from '../empresas/campos'
+import { hoyLocal } from '../inspecciones/ayudas'
+import { semanaIso, semanasConMes } from '../inspecciones/periodos'
+import { estadosPorActividad, mesDeHoy, semanaActual } from '../passt/calculo'
+import { leerPrograma, listarProgramas } from '../passt/datos'
+import { numerar } from '../passt/numeracion'
+import { ir } from '../ruta'
+
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+type Pendiente = { id: string; programaId: string; programa: string; numero: string; texto: string; vinculada: boolean; semanas: { semana: number; lunes: string; mes: number; vencida: boolean; actual: boolean }[] }
+
+/**
+ * Pendientes del mes en el inicio (revisión de diseño, obs. 6): las actividades del programa anual que tengo a mi cargo,
+ * programadas en una semana de este mes y todavía sin ejecutar. Misma regla del calendario: cada semana cuenta en el
+ * mes de su jueves. Las vinculadas a un formato se cierran con la inspección; las demás se marcan en el calendario.
+ * Debajo, los atrasados (obs. 7): lo programado en meses anteriores del año que sigue sin ejecutar.
+ */
+export function PendientesMes({ empresaId, cuenta, online }: { empresaId: string; cuenta: string; online: boolean }) {
+  const hoy = hoyLocal()
+  const anio = semanaIso(hoy).anio
+  const mes = mesDeHoy(anio, hoy)
+  const [listas, setListas] = useState<{ mes: Pendiente[]; atrasados: Pendiente[] } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!online) return
+    ;(async () => {
+      const actual = semanaActual(anio, hoy)
+      const semanasAnio = semanasConMes(anio)
+      const salida = { mes: [] as Pendiente[], atrasados: [] as Pendiente[] }
+      for (const p of (await listarProgramas(empresaId)).filter((x) => x.vigente && x.anio === anio)) {
+        const d = await leerPrograma(p.id)
+        const estados = estadosPorActividad(d.semanas, d.ejecucion, anio, hoy)
+        for (const n of numerar(d.nodos).filter((x) => x.tipo === 'actividad' && x.responsable_id === cuenta)) {
+          const e = estados.get(n.id)
+          const sinHacer = semanasAnio
+            .filter((w) => w.mes <= mes && e?.get(w.semana)?.programada && !e.get(w.semana)?.ejecutada)
+            .map((w) => ({ semana: w.semana, lunes: w.lunes, mes: w.mes, vencida: w.semana < actual, actual: w.semana === actual }))
+          const base = { id: n.id, programaId: p.id, programa: p.nombre, numero: n.numero, texto: n.texto, vinculada: Boolean(n.plantilla_id) }
+          const delMes = sinHacer.filter((w) => w.mes === mes)
+          const antes = sinHacer.filter((w) => w.mes < mes)
+          if (delMes.length) salida.mes.push({ ...base, semanas: delMes })
+          if (antes.length) salida.atrasados.push({ ...base, semanas: antes })
+        }
+      }
+      setListas(salida)
+    })().catch((e) => setError((e as Error).message))
+  }, [empresaId, cuenta, online, anio, mes, hoy])
+
+  const cargando = !online ? <p className="nota">Tus pendientes se ven con señal.</p> : !listas ? !error && <p className="nota">Cargando…</p> : null
+  return (
+    <>
+      <section className="pendientes" aria-label="Pendientes del mes">
+        <h2>
+          <CalendarClock size={18} aria-hidden="true" /> Mis pendientes de {MESES[mes - 1]}
+          {listas && listas.mes.length > 0 && <span className="chip chip-aviso">{listas.mes.length}</span>}
+        </h2>
+        <Aviso>{error}</Aviso>
+        {cargando ?? (listas && (listas.mes.length ? <Lista items={listas.mes} /> : <p className="nota">No tienes actividades pendientes este mes.</p>))}
+      </section>
+      <section className="pendientes" aria-label="Pendientes atrasados">
+        <h2>
+          <AlertTriangle size={18} aria-hidden="true" /> Atrasados de meses anteriores
+          {listas && listas.atrasados.length > 0 && <span className="chip chip-mal">{listas.atrasados.length}</span>}
+        </h2>
+        {cargando ?? (listas && (listas.atrasados.length ? <Lista items={listas.atrasados} conMes /> : <p className="nota">No tienes actividades atrasadas.</p>))}
+      </section>
+    </>
+  )
+}
+
+function Lista({ items, conMes = false }: { items: Pendiente[]; conMes?: boolean }) {
+  return (
+    <ul className="lista">
+      {items.map((p) => (
+        <li key={p.id}>
+          <CalendarClock aria-hidden="true" className={p.semanas.some((w) => w.vencida) ? 'icono-mal' : ''} />
+          <div>
+            <b>
+              {p.numero} {p.texto}
+            </b>
+            <small>
+              {p.semanas.map((w, k) => (
+                <span key={w.semana}>
+                  {k > 0 && ', '}
+                  semana {w.semana} (desde el {Number(w.lunes.slice(8, 10))}/{Number(w.lunes.slice(5, 7))}{conMes ? `, ${MESES[w.mes - 1]}` : ''})
+                  {!conMes && (w.actual ? ' · esta semana' : w.vencida ? ' · ya pasó' : '')}
+                </span>
+              ))}
+            </small>
+            <small>{p.programa}</small>
+          </div>
+          <span className="lista-acciones">
+            {p.vinculada ? (
+              <button className="btn-link" type="button" onClick={() => ir('/inspecciones')}>
+                <ClipboardList size={16} aria-hidden="true" /> Inspeccionar
+              </button>
+            ) : (
+              <button className="btn-link" type="button" onClick={() => ir(`/passt/${p.programaId}`)}>
+                Marcar en el calendario
+              </button>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}

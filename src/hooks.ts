@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { type RefObject, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 
 export type DbState = 'checking' | 'ok' | 'offline' | 'error' | 'unconfigured'
@@ -86,4 +86,24 @@ export function useInstall() {
   }
 
   return { state, install }
+}
+
+/** Menú desplegable de la barra (perfil, campana): se cierra al tocar fuera o con la tecla Escape. */
+export function useMenu<T extends HTMLElement>(): { abierto: boolean; setAbierto: (v: boolean | ((a: boolean) => boolean)) => void; caja: RefObject<T | null> } {
+  const [abierto, setAbierto] = useState(false)
+  const caja = useRef<T>(null)
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e: PointerEvent) => {
+      if (!caja.current?.contains(e.target as Node)) setAbierto(false)
+    }
+    const tecla = (e: KeyboardEvent) => e.key === 'Escape' && setAbierto(false)
+    document.addEventListener('pointerdown', fuera)
+    document.addEventListener('keydown', tecla)
+    return () => {
+      document.removeEventListener('pointerdown', fuera)
+      document.removeEventListener('keydown', tecla)
+    }
+  }, [abierto])
+  return { abierto, setAbierto, caja }
 }

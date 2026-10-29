@@ -40,6 +40,13 @@ export function estadosPorActividad(semanas: SemanaGuardada[], ejecucion: Ejecut
   return mapa
 }
 
+/** Mes en que cuenta la semana de hoy (el de su jueves); fuera del año del programa, enero o diciembre. */
+export function mesDeHoy(anio: number, hoy: string) {
+  const s = semanaIso(hoy)
+  if (s.anio !== anio) return s.anio > anio ? 12 : 1
+  return semanasConMes(anio).find((w) => w.semana === s.semana)?.mes ?? 1
+}
+
 export type Totales = { programadas: number; ejecutadas: number; fuera: number; pct: number | null }
 const sumar = (estados: EstadoSemana[]): Totales => {
   const programadas = estados.filter((e) => e.programada).length

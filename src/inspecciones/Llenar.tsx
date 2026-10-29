@@ -5,6 +5,7 @@ import { type Fila, type Respuesta, evaluar, repetibleActivo, seccionesVisibles 
 import type { Punto } from '../formatos/receta'
 import { ir } from '../ruta'
 import { type Borrador, type CopiaLocal, type Firmante, type FotoLocal, cerrar, guardarBorrador, guardarFoto, leerArchivo, leerBorrador, leerCopia, quitarArchivo } from './campo'
+import { BuscarFirmante } from './BuscarFirmante'
 import { PanelFirma } from './Firma'
 import { faltanFirmantes, hoyLocal } from './ayudas'
 import { prepararFoto } from './imagen'
@@ -233,7 +234,7 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
         <section className="prueba-seccion" aria-label="Firmas">
           <h3>Firmas</h3>
           <p className="nota">
-            Cada persona de CRC firma desde su propia cuenta (le aparecerá en «Mis firmas»). Los externos firman a mano en la hoja impresa.
+            Busca a cada firmante en la lista o, si el formato lo permite, escribe su nombre. Cada persona de CRC firma desde su propia cuenta (le aparecerá en «Mis firmas»); quien no está en la lista firma a mano en la hoja impresa.
           </p>
           {receta.firmas.map((rol) => {
             const deRol = b.firmantes.filter((f) => f.rol_clave === rol.clave)
@@ -249,27 +250,34 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
                   return (
                     <div key={k} className="firmante">
                       {externo ? (
-                        <div className="fila2">
-                          <input type="text" placeholder="Nombre del externo" aria-label="Nombre del externo" maxLength={200} value={f.externo_nombre ?? ''}
-                            onChange={(e) => cambiarF({ externo_nombre: e.target.value })} />
-                          <input type="text" placeholder="Documento (DNI, CE…)" aria-label="Documento del externo" maxLength={20} value={f.externo_documento ?? ''}
-                            onChange={(e) => cambiarF({ externo_documento: e.target.value || null })} />
+                        <div className="externo-escrito">
+                          <div className="fila2">
+                            <input type="text" placeholder="Nombre y apellido" aria-label={`Nombre escrito a mano: ${rol.titulo}`} maxLength={200} value={f.externo_nombre ?? ''}
+                              onChange={(e) => cambiarF({ externo_nombre: e.target.value })} />
+                            <input type="text" placeholder="Documento (DNI, CE…)" aria-label={`Documento: ${rol.titulo}`} maxLength={20} value={f.externo_documento ?? ''}
+                              onChange={(e) => cambiarF({ externo_documento: e.target.value || null })} />
+                          </div>
+                          <small className="nota">
+                            No está en la lista de CRC: firma a mano en la hoja impresa.{' '}
+                            <button className="btn-link" type="button" onClick={() => cambiarF({ externo_nombre: null, externo_documento: null })}>
+                              Buscar en la lista
+                            </button>
+                          </small>
                         </div>
                       ) : (
-                        <select aria-label={`Firmante: ${rol.titulo}`} value={f.persona_id ?? ''}
-                          onChange={(e) => {
+                        // Búsqueda rápida en la lista o nombre escrito a mano (revisión de diseño, obs. 9).
+                        <BuscarFirmante personas={personas} elegido={f.persona_id ?? null} cuenta={cuenta} rolTitulo={rol.titulo} permiteExterno={rol.externo}
+                          ocupados={new Set(b.firmantes.filter((y, j) => j !== k && y.rol_clave === rol.clave && y.persona_id).map((y) => y.persona_id!))}
+                          onPersona={(id) => {
+                            const quita = f.persona_id === cuenta && f.persona_id !== id && b.mi_firma?.rol_clave === rol.clave
+                            if (quita) void quitarArchivo(b.mi_firma!.archivo_id)
+                            cambiar((x) => ({ ...x, mi_firma: quita ? null : x.mi_firma, firmantes: x.firmantes.map((y, j) => (j === k ? { ...y, persona_id: id, externo_nombre: null, externo_documento: null } : y)) }))
+                          }}
+                          onExterno={(nombre) => {
                             const quita = f.persona_id === cuenta && b.mi_firma?.rol_clave === rol.clave
                             if (quita) void quitarArchivo(b.mi_firma!.archivo_id)
-                            cambiar((x) => ({ ...x, mi_firma: quita ? null : x.mi_firma, firmantes: x.firmantes.map((y, j) => (j === k ? { ...y, persona_id: e.target.value || null } : y)) }))
-                          }}>
-                          <option value="">— Elige a la persona —</option>
-                          {personas.map((p) => (
-                            <option key={p.persona_id} value={p.persona_id} disabled={b.firmantes.some((y, j) => j !== k && y.rol_clave === rol.clave && y.persona_id === p.persona_id)}>
-                              {p.apellidos_nombres}
-                              {p.persona_id === cuenta ? ' (yo)' : ''}
-                            </option>
-                          ))}
-                        </select>
+                            cambiar((x) => ({ ...x, mi_firma: quita ? null : x.mi_firma, firmantes: x.firmantes.map((y, j) => (j === k ? { ...y, persona_id: null, externo_nombre: nombre, externo_documento: null } : y)) }))
+                          }} />
                       )}
                       {f.persona_id === cuenta && (
                         b.mi_firma?.rol_clave === rol.clave ? (
@@ -297,14 +305,8 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
                 <div className="acciones">
                   <button className="btn-link" type="button"
                     onClick={() => cambiar((x) => ({ ...x, firmantes: [...x.firmantes, { rol_clave: rol.clave, rol_titulo: rol.titulo, orden: deRol.length + 1, persona_id: null }] }))}>
-                    <Plus size={16} aria-hidden="true" /> Persona de CRC
+                    <Plus size={16} aria-hidden="true" /> Agregar firmante
                   </button>
-                  {rol.externo && (
-                    <button className="btn-link" type="button"
-                      onClick={() => cambiar((x) => ({ ...x, firmantes: [...x.firmantes, { rol_clave: rol.clave, rol_titulo: rol.titulo, orden: deRol.length + 1, persona_id: null, externo_nombre: '', externo_documento: null }] }))}>
-                      <Plus size={16} aria-hidden="true" /> Externo (firma en papel)
-                    </button>
-                  )}
                 </div>
               </div>
             )

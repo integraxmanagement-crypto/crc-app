@@ -1,4 +1,4 @@
-import { Boxes, Building2, CircleCheck, ClipboardCheck, CalendarDays, ClipboardList, Database, ListChecks, Download, Home, LogOut, PenLine, ShieldCheck, Smartphone, Users, Wifi, WifiOff } from 'lucide-react'
+import { Boxes, Building2, CircleCheck, ClipboardCheck, CalendarDays, ClipboardList, ListChecks, Download, Home, PenLine, ShieldCheck, Smartphone, Users } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Activos } from './activos/Activos'
 import { CambioContrasena } from './CambioContrasena'
@@ -9,11 +9,14 @@ import { FormFicha } from './empresas/FormFicha'
 import { Editor } from './formatos/Editor'
 import { Formatos, type Rutas } from './formatos/Formatos'
 import { ListaEmpresas } from './empresas/ListaEmpresas'
-import { type DbState, useDatabase, useInstall, useOnline } from './hooks'
+import { useInstall, useOnline } from './hooks'
 import { Hallazgos } from './hallazgos/Hallazgos'
 import { MisActividades } from './passt/MisActividades'
 import { ProgramaAnual } from './passt/Programa'
 import { Programas } from './passt/Programas'
+import { AvancePasst } from './inicio/AvancePasst'
+import { Campana } from './inicio/Campana'
+import { PendientesMes } from './inicio/PendientesMes'
 import { Ingreso } from './Ingreso'
 import { pedirPersistencia } from './inspecciones/almacen'
 import { useSincronizacion } from './inspecciones/campo'
@@ -24,36 +27,12 @@ import { Inspecciones } from './inspecciones/Inspecciones'
 import { Llenar } from './inspecciones/Llenar'
 import { MisFirmas } from './inspecciones/MisFirmas'
 import { Logo } from './marca/Logo'
+import { InfoEmpresa, MenuPerfil, MiInformacion } from './perfil/Perfil'
 import { ir, useRuta } from './ruta'
-import { type Perfil, salir, useSesion } from './sesion'
+import { type Perfil, useSesion } from './sesion'
 import { Intentos } from './usuarios/Intentos'
 import { Listas } from './usuarios/Listas'
 import { Usuarios } from './usuarios/Usuarios'
-
-const dbText: Record<DbState, { value: string; note?: string; tone: Tone }> = {
-  checking: { value: 'Comprobando…', tone: 'idle' },
-  ok: { value: 'Conectada', tone: 'ok' },
-  offline: { value: 'En espera', note: 'Se conectará al volver la señal', tone: 'idle' },
-  error: { value: 'Sin respuesta', note: 'Se reintentará más tarde', tone: 'idle' },
-  unconfigured: { value: 'Por conectar', tone: 'idle' },
-}
-
-type Tone = 'ok' | 'idle'
-
-function Check({ icon, label, value, note, tone }: { icon: ReactNode; label: string; value: string; note?: string; tone: Tone }) {
-  return (
-    <li className="check" data-tone={tone}>
-      <span className="check-icon">{icon}</span>
-      <span className="check-label">
-        {label}
-        {note && <small>{note}</small>}
-      </span>
-      <span className="check-value" key={value}>
-        {value}
-      </span>
-    </li>
-  )
-}
 
 function Install() {
   const { state, install } = useInstall()
@@ -82,39 +61,23 @@ function Install() {
   )
 }
 
-function Inicio({ perfil, online, firmas }: { perfil: Perfil; online: boolean; firmas: number }) {
-  const db = dbText[useDatabase(online)]
-  const datos = [
-    ['Empresa', perfil.esDueno && !perfil.empresa ? 'Integrax · Dueño de la plataforma' : perfil.empresa],
-    ['Rol', perfil.rol ?? (perfil.esDueno ? 'Dueño de la plataforma' : null)],
-    ['Puesto', perfil.puesto],
-    ['Área', perfil.area],
-  ].filter((d): d is [string, string] => Boolean(d[1]))
+/**
+ * Nombre para el saludo (revisión de diseño, obs. 4): CRC guarda «APELLIDOS, Nombres»; se toma el primer nombre
+ * (lo que va después de la coma) y, si viene todo en mayúsculas, se escribe con mayúscula inicial.
+ */
+function nombreCorto(apellidosNombres: string) {
+  const [antes, despues] = apellidosNombres.split(',')
+  const primero = (despues ?? antes).trim().split(/\s+/)[0] ?? ''
+  return primero === primero.toLocaleUpperCase('es') ? primero.charAt(0) + primero.slice(1).toLocaleLowerCase('es') : primero
+}
 
+function Inicio({ perfil, firmas, online }: { perfil: Perfil; firmas: number; online: boolean }) {
   return (
     <>
-      <p className="lede">Hola, {perfil.apellidosNombres}.</p>
+      <h1 className="saludo">Hola, {nombreCorto(perfil.apellidosNombres)}</h1>
 
-      <dl className="ficha">
-        {datos.map(([etiqueta, valor]) => (
-          <div key={etiqueta}>
-            <dt>{etiqueta}</dt>
-            <dd>{valor}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <h2 id="estado">Estado del sistema</h2>
-      <ul className="checks">
-        <Check
-          icon={online ? <Wifi /> : <WifiOff />}
-          label="Internet"
-          value={online ? 'En línea' : 'Sin conexión'}
-          note={online ? undefined : 'La app sigue disponible'}
-          tone={online ? 'ok' : 'idle'}
-        />
-        <Check icon={<Database />} label="Base de datos" value={db.value} note={db.note} tone={db.tone} />
-      </ul>
+      {esEquipoSso(perfil) && perfil.empresaId && <AvancePasst empresaId={perfil.empresaId} online={online} />}
+      {esEquipoSso(perfil) && perfil.empresaId && <PendientesMes empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
 
       {(perfil.esDueno || perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'gestor') && (
         <div className="accesos">
@@ -169,73 +132,68 @@ function Inicio({ perfil, online, firmas }: { perfil: Perfil; online: boolean; f
       )}
 
       <Install />
-
-      <button className="btn-link" type="button" onClick={() => void salir()}>
-        <LogOut size={18} aria-hidden="true" /> Cerrar sesión
-      </button>
     </>
   )
 }
 
 /** Barra superior compacta de las pantallas de gestión. */
-function Barra({ perfil, firmas }: { perfil: Perfil; firmas: number }) {
+function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; online: boolean }) {
   return (
     <header className="barra">
       <button className="barra-marca" type="button" onClick={() => ir('/')} title="Ir al inicio">
         <Logo fondo="oscuro" />
       </button>
+      {/* Conexión junto al logo (revisión de diseño, obs. 2): luz verde con señal, roja sin señal. */}
+      <span className="conexion" data-online={online} role="status" title={online ? 'En línea' : 'Modo sin conexión'}>
+        <span className="conexion-luz" aria-hidden="true" />
+        <span className="conexion-texto">{online ? 'En línea' : 'Modo sin conexión'}</span>
+      </span>
       <nav aria-label="Secciones">
-        <button type="button" onClick={() => ir('/')}>
+        <button type="button" onClick={() => ir('/')} title="Inicio">
           <Home size={18} aria-hidden="true" /> <span>Inicio</span>
         </button>
         {perfil.esDueno && (
-          <button type="button" onClick={() => ir('/empresas')}>
+          <button type="button" onClick={() => ir('/empresas')} title="Empresas">
             <Building2 size={18} aria-hidden="true" /> <span>Empresas</span>
           </button>
         )}
         {perfil.esDueno && (
-          <button type="button" onClick={() => ir('/intentos')}>
+          <button type="button" onClick={() => ir('/intentos')} title="Intentos">
             <ShieldCheck size={18} aria-hidden="true" /> <span>Intentos</span>
           </button>
         )}
         {esEquipoSso(perfil) && (
-          <button type="button" onClick={() => ir('/inspecciones')}>
+          <button type="button" onClick={() => ir('/inspecciones')} title="Inspecciones">
             <ClipboardList size={18} aria-hidden="true" /> <span>Inspecciones</span>
           </button>
         )}
         {esEquipoSso(perfil) && (
-          <button type="button" onClick={() => ir('/passt')}>
+          <button type="button" onClick={() => ir('/passt')} title="PASST">
             <CalendarDays size={18} aria-hidden="true" /> <span>PASST</span>
           </button>
         )}
         {perfil.empresaId && (
-          <button type="button" onClick={() => ir('/hallazgos')}>
+          <button type="button" onClick={() => ir('/hallazgos')} title="Hallazgos">
             <ListChecks size={18} aria-hidden="true" /> <span>Hallazgos</span>
           </button>
         )}
-        {firmas > 0 && (
-          <button type="button" onClick={() => ir('/firmas')}>
-            <PenLine size={18} aria-hidden="true" /> <span>Firmas ({firmas})</span>
-          </button>
-        )}
         {esEquipoSso(perfil) && (
-          <button type="button" onClick={() => ir('/formatos')}>
+          <button type="button" onClick={() => ir('/formatos')} title="Formatos">
             <ClipboardCheck size={18} aria-hidden="true" /> <span>Formatos</span>
           </button>
         )}
         {perfil.rolCodigo === 'admin_empresa' && (
           <>
-            <button type="button" onClick={() => ir('/mi-empresa')}>
+            <button type="button" onClick={() => ir('/mi-empresa')} title="Mi empresa">
               <Building2 size={18} aria-hidden="true" /> <span>Mi empresa</span>
             </button>
-            <button type="button" onClick={() => ir('/mi-empresa/usuarios')}>
+            <button type="button" onClick={() => ir('/mi-empresa/usuarios')} title="Usuarios">
               <Users size={18} aria-hidden="true" /> <span>Usuarios</span>
             </button>
           </>
         )}
-        <button type="button" onClick={() => void salir()} aria-label="Cerrar sesión">
-          <LogOut size={18} aria-hidden="true" />
-        </button>
+        {perfil.empresaId && <Campana firmas={firmas} />}
+        <MenuPerfil perfil={perfil} />
       </nav>
     </header>
   )
@@ -287,6 +245,10 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
       return PantallasFormatos({ empresaId: ruta[1], partes: ruta.slice(2), rutas, perfil })
     }
     return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
+  }
+  if (ruta[0] === 'perfil') {
+    if (ruta[1] === 'empresa' && perfil.empresaId) return <InfoEmpresa empresaId={perfil.empresaId} online={online} />
+    return <MiInformacion perfil={perfil} online={online} />
   }
   if (ruta[0] === 'intentos' && perfil.esDueno) return <Intentos />
   if (ruta[0] === 'inspecciones' && perfil.empresaId) {
@@ -356,12 +318,12 @@ export default function App() {
     const gestion = Gestion({ perfil: sesion.perfil, ruta, online })
     return (
       <main className="screen gestion">
-        <Barra perfil={sesion.perfil} firmas={firmas} />
+        <Barra perfil={sesion.perfil} firmas={firmas} online={online} />
         {gestion ? (
           <section className="panel panel-ancho">{gestion}</section>
         ) : (
           <section className="panel panel-inicio">
-            <Inicio perfil={sesion.perfil} online={online} firmas={firmas} />
+            <Inicio perfil={sesion.perfil} firmas={firmas} online={online} />
             <footer className="foot">{VERSION}</footer>
           </section>
         )}
@@ -390,4 +352,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.8.0 · Programa anual de SST'
+const VERSION = 'Versión 0.8.1 · Inicio, perfil y avisos'
