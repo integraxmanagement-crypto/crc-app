@@ -2,7 +2,7 @@ import { Plus, RotateCcw, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { CampoFicha, Subtipo } from './base'
 import type { Lista } from './datos'
-import { type Fila, type Respuesta, type Valor, evaluar, repetibleActivo, seccionesVisibles } from './motor'
+import { type Fila, type Respuesta, type Valor, evaluar, puntoVisible, repetibleActivo, seccionesVisibles, sinOcultas } from './motor'
 import type { Punto, Receta } from './receta'
 
 const hoy = () => new Date().toISOString().slice(0, 10)
@@ -117,9 +117,9 @@ export function Prueba({ receta, subtipos, campos, listas }: { receta: Receta; s
               <p className="nota">Este bloque aparece cuando se contesta «Sí» en {s.repetible.activa_con}.</p>
             )
           ) : (
-            s.puntos.map((p) => (
+            s.puntos.filter((p) => puntoVisible(p, respuestas)).map((p) => (
               <PuntoPrueba key={p.clave} punto={p} listas={listas} respuesta={respuestas[p.clave]}
-                onCambio={(r) => setRespuestas((x) => ({ ...x, [p.clave]: r }))} />
+                onCambio={(r) => setRespuestas((x) => sinOcultas(receta, { ...x, [p.clave]: r }))} />
             ))
           )}
         </div>

@@ -3,11 +3,14 @@
 // (o de una subárea) en la semana programada. Uso: node pruebas/passt-area.mjs   (crea un programa y 2 inspecciones ficticias)
 import { randomInt, randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { semanaIso } from '../src/inspecciones/periodos.ts'
+import { lunesDeSemana, semanaIso } from '../src/inspecciones/periodos.ts'
 import { PNG_FICTICIO, comprobar, formatoDeEmpresa, ingresarComo, llamarFuncion, resultados, resumen } from './comun.mjs'
 
 const HOY = new Date().toISOString().slice(0, 10)
-const { anio: ANIO, semana: SEM } = semanaIso(HOY)
+const { anio: ANIO_HOY } = semanaIso(HOY)
+// Cada corrida usa una semana libre del año anterior (sin inspecciones LOTO de corridas pasadas), para que lo «pendiente»
+// no dependa de lo que dejaron otras pruebas. Las inspecciones llevan la fecha de esa semana.
+const ANIO = ANIO_HOY - 1
 const s = {}
 for (const n of ['ADMIN_A', 'GESTOR_A', 'GESTOR_B']) {
   const { c, error } = await ingresarComo(n)
@@ -31,6 +34,10 @@ const { id: loto, version: v } = await formatoDeEmpresa(s.ADMIN_A, A, 'loto', HO
 comprobar('El LOTO de la empresa trae los 12 puntos del formato', v.receta.secciones.flatMap((x) => x.puntos).filter((p) => p.tipo === 'cumple').length === 12)
 
 // Programa con la estrategia «Eficacia LOTO» y una actividad por área.
+const usadas = new Set(((await s.ADMIN_A.from('inspecciones').select('fecha').eq('empresa_id', A).gte('fecha', `${ANIO - 1}-12-25`).lte('fecha', `${ANIO + 1}-01-07`)).data ?? []).map((x) => semanaIso(x.fecha)).filter((x) => x.anio === ANIO).map((x) => x.semana))
+const SEM = Array.from({ length: 52 }, (_, k) => k + 1).find((w) => !usadas.has(w))
+if (!SEM) throw new Error('No queda una semana libre en el año de prueba: desactiva o limpia inspecciones ficticias.')
+const FECHA = lunesDeSemana(ANIO, SEM)
 const P = (await s.ADMIN_A.rpc('crear_programa', { p_empresa: A, p_datos: { anio: ANIO, nombre: `PASST áreas ficticio ${randomInt(10000, 99999)}` } })).data
 const og = (await s.ADMIN_A.from('passt_nodos').select('id').eq('programa_id', P).eq('tipo', 'objetivo_general').single()).data.id
 const nodo = (datos, cl = s.ADMIN_A, id = null) => cl.rpc('guardar_nodo', { p_programa: P, p_id: id, p_datos: datos })
@@ -61,7 +68,7 @@ async function inspeccionar(unidad) {
   await s.GESTOR_A.storage.from('evidencias').upload(firma, new Blob([PNG_FICTICIO], { type: 'image/png' }), { contentType: 'image/png' })
   const resp = Object.fromEntries(v.receta.secciones.flatMap((x) => x.puntos).map((p) => [p.clave, { valor: p.tipo === 'cumple' ? 'si' : p.tipo === 'numero' ? 25 : 'Individual' }]))
   return llamarFuncion(s.GESTOR_A, 'registrar-inspeccion', {
-    modo: 'registrar', id, version_id: v.id, sede_id: SEDE, unidad_id: unidad, respuestas: resp, fecha: HOY, cerrada_en_equipo: new Date().toISOString(), archivos: [],
+    modo: 'registrar', id, version_id: v.id, sede_id: SEDE, unidad_id: unidad, respuestas: resp, fecha: FECHA, cerrada_en_equipo: new Date().toISOString(), archivos: [],
     firmantes: [
       { rol_clave: 'observado', rol_titulo: 'Observado', externo_nombre: 'Trabajador Externo Ficticio', externo_documento: '00000000' },
       { rol_clave: 'responsable_area', rol_titulo: 'Responsable del área inspeccionada', persona_id: GA },
@@ -86,8 +93,10 @@ const dup = await s.ADMIN_A.rpc('duplicar_programa', { p_id: P, p_datos: { anio:
 const copia = (await s.ADMIN_A.from('passt_nodos').select('unidad_id').eq('programa_id', dup.data).eq('tipo', 'actividad')).data ?? []
 comprobar('Al duplicar el programa se copian las áreas', !dup.error && copia.filter((x) => x.unidad_id).length === 2, dup.error?.message)
 
+// Al terminar se desactivan los programas ficticios (revisión de diseño, 29/10/2026).
+for (const x of [P, dup.data]) if (x) await s.ADMIN_A.rpc('cambiar_vigencia_programa', { p_id: x, p_vigente: false })
 const fallas = resumen()
-const lineas = ['# Pruebas del área en las actividades del PASST (revisión LOTO)', '', `Fecha: ${new Date().toISOString()} · Base: crc-dev · Datos FICTICIOS · Semana ${SEM} de ${ANIO} · **${resultados.length - fallas} de ${resultados.length} correctas**`, '']
+const lineas = ['# Pruebas del área en las actividades del PASST (revisión LOTO)', '', `Fecha: ${new Date().toISOString()} · Base: crc-dev · Datos FICTICIOS · Semana ${SEM} de ${ANIO} (año de prueba) · **${resultados.length - fallas} de ${resultados.length} correctas**`, '']
 for (const x of resultados) lineas.push(`- ${x.paso ? '✅' : '❌'} ${x.nombre}${x.detalle && !x.paso ? ` — ${x.detalle}` : ''}`)
 mkdirSync('pruebas/resultados', { recursive: true })
 writeFileSync('pruebas/resultados/passt-area.md', lineas.join('\n') + '\n')

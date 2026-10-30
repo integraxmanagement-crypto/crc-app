@@ -2,9 +2,9 @@ import { ArrowLeft, CalendarCheck2, ClipboardList } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Aviso } from '../empresas/campos'
 import { hoyLocal } from '../inspecciones/ayudas'
-import { semanaIso } from '../inspecciones/periodos'
+import { semanaIso, semanasConMes } from '../inspecciones/periodos'
 import { ir } from '../ruta'
-import { estadosPorActividad, semanaActual, textoPct, totalesActividad } from './calculo'
+import { estadosPorActividad, mesDeHoy, semanaActual, textoPct, totalesActividad } from './calculo'
 import { type DatosPrograma, leerPrograma, listarProgramas } from './datos'
 import { numerar } from './numeracion'
 
@@ -27,14 +27,18 @@ export function MisActividades({ empresaId, cuenta, online }: { empresaId: strin
       const salida: Fila[] = []
       for (const p of programas) {
         const d = await leerPrograma(p.id)
-        const estados = estadosPorActividad(d.semanas, d.ejecucion, p.anio, hoy)
+        const estados = estadosPorActividad(d.semanas, d.ejecucion, p.anio, hoy, p.seguimiento)
         const actual = semanaActual(p.anio, hoy)
+        // Por mes, la casilla de «ahora» es la de la primera semana del mes en curso.
+        const mesActual = mesDeHoy(p.anio, hoy)
+        const claveAhora = p.seguimiento === 'mes' ? (semanasConMes(p.anio).find((x) => x.mes === mesActual)?.semana ?? actual) : actual
+        const esteTexto = p.seguimiento === 'mes' ? 'este mes' : 'esta semana'
         for (const n of numerar(d.nodos).filter((x) => x.tipo === 'actividad' && x.responsable_id === cuenta)) {
           const e = estados.get(n.id)
-          const ahora = e?.get(actual)
+          const ahora = e?.get(claveAhora)
           salida.push({
             programa: d.programa, id: n.id, numero: n.numero, texto: n.texto, vinculada: Boolean(n.plantilla_id), plantilla: n.plantilla_id, unidad: n.unidad_id,
-            estaSemana: ahora?.programada ? (ahora.ejecutada ? 'Ejecutada' : 'Programada esta semana') : ahora?.ejecutada ? 'Ejecutada (sin programar)' : '—',
+            estaSemana: ahora?.programada ? (ahora.ejecutada ? 'Ejecutada' : `Programada ${esteTexto}`) : ahora?.ejecutada ? 'Ejecutada (sin programar)' : '—',
             vencidas: [...(e?.entries() ?? [])].filter(([, x]) => x.vencida).map(([w]) => w).sort((a, b) => a - b),
             proxima: [...(e?.entries() ?? [])].filter(([w, x]) => x.programada && !x.ejecutada && w > actual).map(([w]) => w).sort((a, b) => a - b)[0] ?? null,
             pct: textoPct(totalesActividad(e, actual)),

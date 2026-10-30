@@ -1,17 +1,23 @@
-import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Pencil, Plus, Printer, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileSpreadsheet, FileText, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
 import { hoyLocal, ordenarUnidades } from '../inspecciones/ayudas'
-import { leerCopia } from '../inspecciones/campo'
+import { type CopiaLocal, leerCopia } from '../inspecciones/campo'
+import { llenarExcel, partes } from '../inspecciones/excel'
+import { vistaDeExcel } from '../inspecciones/excelVista'
+import { guardarExcel, logoPng } from '../inspecciones/hoja'
+import { VistaExcel } from '../inspecciones/VistaExcel'
 import { prepararFoto } from '../inspecciones/imagen'
 import { semanasConMes } from '../inspecciones/periodos'
 import { ir } from '../ruta'
-import { type EstadoSemana, estadosPorActividad, textoPct, totalesActividad, totalesPorMes } from './calculo'
+import { type EstadoSemana, estadosPorActividad, mesDeHoy, promedioDe, semanaActual, textoPct, totalGeneral, totalesActividad, totalesPorMes } from './calculo'
 import {
   type DatosPrograma, HIJO_DE, NOMBRE_TIPO, type Nodo, type Responsable, aprobarPrograma, bajaNodo, formatosDeEmpresa, guardarMetas, guardarNodo,
-  areasDeEmpresa, guardarPrograma, leerPrograma, marcarSemana, moverNodo, programarSemana, responsables, trabajadores,
+  areasDeEmpresa, guardarPrograma, leerPrograma, marcarSemana, moverNodo, programarSemana, responsables, trabajadores, NOMBRE_FRECUENCIA_ACTIVIDAD,
 } from './datos'
+import { Ventana } from '../inspecciones/Ventana'
+import { excelPasst } from './excelPasst'
 import { type NodoNumerado, numerar } from './numeracion'
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -35,9 +41,14 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
   const [personas, setPersonas] = useState<Responsable[]>([])
   const [formatos, setFormatos] = useState<{ id: string; nombre: string; vigente: boolean }[]>([])
   const [areas, setAreas] = useState<Area[]>([])
-  const [motivo, setMotivo] = useState('')
+  const [pideMotivo, setPideMotivo] = useState<((m: string | null) => void) | null>(null)
+  const [borradorMotivo, setBorradorMotivo] = useState('')
+  const [toast, setToast] = useState<{ texto: string; mal: boolean } | null>(null)
   const [empresa, setEmpresa] = useState<{ razon_social: string; ruc: string; domicilio: string; actividad: string } | null>(null)
   const [nTrabajadores, setNTrabajadores] = useState<number | null>(null)
+  const [copiaEmpresa, setCopiaEmpresa] = useState<CopiaLocal | null>(null)
+  const [vistaPdf, setVistaPdf] = useState<ReturnType<typeof vistaDeExcel> | null>(null)
+  const [verEncabezado, setVerEncabezado] = useState(false)
 
   const cargar = useCallback(() => {
     leerPrograma(id).then(setD, (e) => setError((e as Error).message))
@@ -49,7 +60,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
     formatosDeEmpresa(empresaId).then(setFormatos, () => {})
     areasDeEmpresa(empresaId).then((a) => setAreas(ordenarUnidades(a)), () => {})
     trabajadores(empresaId).then(setNTrabajadores, () => {})
-    void leerCopia(permisos.cuenta, empresaId).then((c) => c && setEmpresa(c.empresa))
+    void leerCopia(permisos.cuenta, empresaId).then((c) => c && (setEmpresa(c.empresa), setCopiaEmpresa(c)))
   }, [online, cargar, empresaId, permisos.cuenta])
 
   const nombre = useMemo(() => {
@@ -57,28 +68,64 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
     return (pid: string | null) => (!pid ? 'Sin responsable' : (m.get(pid) ?? 'Persona de la empresa'))
   }, [personas])
 
+  // PDF: cuando la hoja ya está dibujada, se abre «Imprimir» (ahí se elige «Guardar como PDF»).
+  useEffect(() => {
+    if (!vistaPdf) return
+    const listo = () => setVistaPdf(null)
+    window.addEventListener('afterprint', listo)
+    const t = setTimeout(() => window.print(), 300)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('afterprint', listo)
+    }
+  }, [vistaPdf])
+
   if (!online && !d) return <p className="nota">El programa anual se ve con señal.</p>
   if (!d) return error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>
 
   const p = d.programa
+  const faltan = [!p.codigo_formato?.trim() && 'el código', !p.version_formato?.trim() && 'la versión', !p.fecha_aprobacion && 'la fecha de aprobación'].filter((x): x is string => Boolean(x))
+  /** Excel o PDF con el diseño del modelo del dueño (src/passt/excelPasst.ts); el logo de la empresa va arriba a la izquierda. */
+  async function descargar(como: 'excel' | 'pdf') {
+    setError(null)
+    try {
+      const base = excelPasst(d!, empresa, nTrabajadores, nombre, hoyLocal())
+      const logo = await logoPng(copiaEmpresa, 'positivo').catch(() => null)
+      const lleno = await llenarExcel(base, () => '', logo ? new Map([['logo', logo]]) : undefined)
+      if (como === 'excel') guardarExcel(lleno, `PASST-${p.anio}-${p.nombre}`)
+      else setVistaPdf(vistaDeExcel(await partes(lleno)))
+    } catch (e) {
+      setError(`No se pudo armar el ${como === 'excel' ? 'Excel' : 'PDF'}: ${(e as Error).message}`)
+    }
+  }
   const aprobado = p.estado === 'aprobado'
   const puedeCambiar = permisos.editar && (!aprobado || permisos.admin)
-  const motivoListo = !aprobado || motivo.trim().length >= 3
   const arbol = numerar(d.nodos)
 
-  // Hace una acción y vuelve a leer. Si el programa está aprobado, exige el motivo.
+  // Hace una acción y vuelve a leer. Si el programa está aprobado y falta el motivo, lo pide en una ventana (antes salía un aviso
+  // arriba de la pantalla que no se veía al estar abajo). Al terminar, avisa con un mensaje visible.
+  const avisar = (texto: string, mal = false) => {
+    setToast({ texto, mal })
+    setTimeout(() => setToast(null), mal ? 6000 : 3000)
+  }
   async function hacer(fn: (motivo: string | null) => Promise<unknown>, sinMotivo = false): Promise<boolean> {
     setError(null)
-    if (!motivoListo && !sinMotivo) {
-      setError('El programa está aprobado: escribe arriba el motivo del cambio.')
-      return false
+    // Cada cambio de un programa aprobado pide su motivo justo al guardar (no hay un campo fijo arriba).
+    let m = ''
+    if (aprobado && !sinMotivo) {
+      const dado = await new Promise<string | null>((res) => (setBorradorMotivo(''), setPideMotivo(() => res)))
+      setPideMotivo(null)
+      if (!dado || dado.trim().length < 3) return false
+      m = dado.trim()
     }
     try {
-      await fn(aprobado ? motivo.trim() : null)
+      await fn(aprobado ? m : null)
       cargar()
+      avisar('Cambio guardado')
       return true
     } catch (e) {
       setError((e as Error).message)
+      avisar((e as Error).message, true)
       return false
     }
   }
@@ -102,21 +149,46 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
               <CheckCircle2 size={18} aria-hidden="true" /> Aprobar
             </button>
           )}
-          <button className="btn-link" type="button" onClick={() => window.print()}>
-            <Printer size={18} aria-hidden="true" /> Imprimir
+          <button className="btn-sec" type="button" onClick={() => void descargar('excel')}>
+            <FileSpreadsheet size={18} aria-hidden="true" /> Excel
           </button>
+          <button className="btn-sec" type="button" onClick={() => void descargar('pdf')}>
+            <FileText size={18} aria-hidden="true" /> PDF
+          </button>
+          {puedeCambiar && !faltan.length && (
+            <button className="btn-link" type="button" onClick={() => setVerEncabezado((v) => !v)}>
+              <Pencil size={16} aria-hidden="true" /> Encabezado
+            </button>
+          )}
         </span>
       </header>
       <Aviso>{error}</Aviso>
-      {aprobado && permisos.admin && (
-        <label className="field aviso-suave motivo-cambio">
-          <span>Programa aprobado: para cambiar semanas o la estructura, escribe el motivo (queda en el historial)</span>
-          <input type="text" maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo del cambio" />
-        </label>
+      {toast && <p className={`toast-aviso ${toast.mal ? 'mal' : ''}`} role="status">{toast.texto}</p>}
+      {pideMotivo && (
+        <Ventana titulo="Motivo del cambio" onCerrar={() => pideMotivo(null)}>
+          <p className="nota">El programa está aprobado: el cambio queda en el historial con su motivo (mínimo 3 letras).</p>
+          <label className="field">
+            <span>Motivo del cambio</span>
+            <input type="text" autoFocus maxLength={500} value={borradorMotivo} onChange={(e) => setBorradorMotivo(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && borradorMotivo.trim().length >= 3 && pideMotivo(borradorMotivo)} placeholder="Ej.: Se movió la inspección por el feriado" />
+          </label>
+          <div className="acciones">
+            <button className="btn" type="button" disabled={borradorMotivo.trim().length < 3} onClick={() => pideMotivo(borradorMotivo)}>Guardar el cambio</button>
+            <button className="btn-link" type="button" onClick={() => pideMotivo(null)}>Cancelar</button>
+          </div>
+        </Ventana>
       )}
       {aprobado && !permisos.admin && <p className="nota">El programa está aprobado: solo el administrador lo cambia. Puedes marcar tus actividades sin formato vinculado.</p>}
 
-      <Encabezado d={d} empresa={empresa} nTrabajadores={nTrabajadores} puedeCambiar={puedeCambiar} hacer={hacer} />
+      {/* El encabezado queda oculto; solo sale, con una alerta, si falta el código, la versión o la fecha de aprobación. */}
+      {faltan.length > 0 && (
+        <div className="alerta-formatos" role="alert">
+          <p>
+            <TriangleAlert size={18} aria-hidden="true" /> <b>Falta {faltan.join(', ')} del programa.</b> Van en el encabezado del Excel y del PDF.
+          </p>
+        </div>
+      )}
+      {(faltan.length > 0 || verEncabezado) && <Encabezado d={d} empresa={empresa} nTrabajadores={nTrabajadores} puedeCambiar={puedeCambiar} hacer={hacer} />}
 
       <div className="filtros no-imprimir" role="tablist">
         {(['calendario', 'estructura', 'historial'] as Pestana[]).map((t) => (
@@ -126,7 +198,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
         ))}
       </div>
 
-      {pestana === 'estructura' && <Estructura d={d} arbol={arbol} puedeCambiar={puedeCambiar} personas={personas} formatos={formatos} areas={areas} nombre={nombre} hacer={hacer} />}
+      {pestana === 'estructura' && <Estructura d={d} arbol={arbol} puedeCambiar={puedeCambiar} esAdmin={permisos.admin} personas={personas} formatos={formatos} areas={areas} nombre={nombre} hacer={hacer} />}
       {pestana === 'calendario' && <Calendario d={d} arbol={arbol} puedeCambiar={puedeCambiar} permisos={permisos} nombre={nombre} formatos={formatos} areas={areas} hacer={hacer} />}
       {pestana === 'historial' && (
         <Seccion titulo="Historial">
@@ -141,7 +213,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
           </ul>
         </Seccion>
       )}
-      {createPortal(<HojaPasst d={d} arbol={arbol} empresa={empresa} nTrabajadores={nTrabajadores} nombre={nombre} />, document.body)}
+      {vistaPdf && createPortal(<VistaExcel vista={vistaPdf.vista} medias={vistaPdf.medias} />, document.body)}
     </div>
   )
 }
@@ -189,7 +261,8 @@ function Encabezado({ d, empresa, nTrabajadores, puedeCambiar, hacer }: { d: Dat
 
 // ───────────────────────── Estructura ─────────────────────────
 
-function Estructura({ d, arbol, puedeCambiar, personas, formatos, areas, nombre, hacer }: {
+function Estructura({ d, arbol, puedeCambiar, esAdmin, personas, formatos, areas, nombre, hacer }: {
+  esAdmin: boolean
   d: DatosPrograma; arbol: NodoNumerado<Nodo>[]; puedeCambiar: boolean; personas: Responsable[]; formatos: { id: string; nombre: string; vigente: boolean }[]
   areas: Area[]; nombre: (id: string | null) => string; hacer: Hacer
 }) {
@@ -220,6 +293,7 @@ function Estructura({ d, arbol, puedeCambiar, personas, formatos, areas, nombre,
                       Responsable: {nombre(n.responsable_id)} · Meta {Number(n.meta_pct ?? 100)} %
                       {n.unidad_id ? ` · Área: ${areas.find((a) => a.id === n.unidad_id)?.nombre ?? 'área'}` : ''}
                       {n.plantilla_id ? ` · Se ejecuta con: ${formato(n.plantilla_id) ?? 'formato'}` : ' · Se marca a mano'}
+                      {` · Frecuencia: ${n.frecuencia ? NOMBRE_FRECUENCIA_ACTIVIDAD[n.frecuencia] : 'manual'}`}
                       {n.observaciones ? ` · ${n.observaciones}` : ''}
                     </small>
                   )}
@@ -240,10 +314,10 @@ function Estructura({ d, arbol, puedeCambiar, personas, formatos, areas, nombre,
                 )}
               </div>
               {editando === n.id && (
-                <FormNodo d={d} nodo={n} tipo={n.tipo} padreId={n.padre_id} arbol={arbol} personas={personas} formatos={formatos} areas={areas} hacer={hacer} onListo={() => setEditando(null)} />
+                <FormNodo esAdmin={esAdmin} d={d} nodo={n} tipo={n.tipo} padreId={n.padre_id} arbol={arbol} personas={personas} formatos={formatos} areas={areas} hacer={hacer} onListo={() => setEditando(null)} />
               )}
               {agregando === n.id && hijo && (
-                <FormNodo d={d} nodo={null} tipo={hijo} padreId={n.id} arbol={arbol} personas={personas} formatos={formatos} areas={areas} hacer={hacer} onListo={() => setAgregando(null)} />
+                <FormNodo esAdmin={esAdmin} d={d} nodo={null} tipo={hijo} padreId={n.id} arbol={arbol} personas={personas} formatos={formatos} areas={areas} hacer={hacer} onListo={() => setAgregando(null)} />
               )}
             </li>
           )
@@ -253,8 +327,8 @@ function Estructura({ d, arbol, puedeCambiar, personas, formatos, areas, nombre,
   )
 }
 
-function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, areas, hacer, onListo }: {
-  d: DatosPrograma; nodo: Nodo | null; tipo: Nodo['tipo']; padreId: string | null; arbol: NodoNumerado<Nodo>[]; personas: Responsable[]
+function FormNodo({ esAdmin, d, nodo, tipo, padreId, arbol, personas, formatos, areas, hacer, onListo }: {
+  esAdmin: boolean; d: DatosPrograma; nodo: Nodo | null; tipo: Nodo['tipo']; padreId: string | null; arbol: NodoNumerado<Nodo>[]; personas: Responsable[]
   formatos: { id: string; nombre: string; vigente: boolean }[]; areas: Area[]; hacer: Hacer; onListo: () => void
 }) {
   const [texto, setTexto] = useState(nodo?.texto ?? '')
@@ -264,6 +338,7 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, areas, ha
   const [obs, setObs] = useState(nodo?.observaciones ?? '')
   const [plantilla, setPlantilla] = useState(nodo?.plantilla_id ?? '')
   const [unidad, setUnidad] = useState(nodo?.unidad_id ?? '')
+  const [frecuencia, setFrecuencia] = useState<string>(nodo?.frecuencia ?? '')
   const [mover, setMover] = useState('')
   const metasIniciales = nodo ? d.metas.filter((m) => m.nodo_id === nodo.id).map((m) => ({ texto: m.texto, indicador: m.indicador ?? '' })) : []
   const [metas, setMetas] = useState(metasIniciales.length ? metasIniciales : [{ texto: '', indicador: '' }])
@@ -271,7 +346,7 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, areas, ha
   const otrosPadres = nodo && tipoPadre ? arbol.filter((x) => x.tipo === tipoPadre && x.id !== padreId) : []
 
   async function guardar() {
-    const datos = { tipo, padre_id: padreId, texto, recursos, responsable_id: resp || null, meta_pct: meta, observaciones: obs, plantilla_id: plantilla || null, unidad_id: unidad || null }
+    const datos = { tipo, padre_id: padreId, texto, recursos, responsable_id: resp || null, meta_pct: meta, observaciones: obs, plantilla_id: plantilla || null, unidad_id: unidad || null, frecuencia: frecuencia || null }
     const ok = await hacer(async (motivo) => {
       const id = await guardarNodo(d.programa.id, nodo?.id ?? null, { ...datos, motivo })
       if (tipo === 'objetivo_especifico') await guardarMetas(id, metas, motivo)
@@ -322,7 +397,7 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, areas, ha
             <input type="number" min={0} max={100} value={meta} onChange={(e) => setMeta(e.target.value)} />
           </label>
           <label className="field">
-            <span>Se ejecuta con el formato</span>
+            <span>Formato vinculado (referencia, opcional)</span>
             <select value={plantilla} onChange={(e) => setPlantilla(e.target.value)}>
               <option value="">— Ninguno (se marca a mano) —</option>
               {formatos.filter((f) => f.vigente || f.id === plantilla).map((f) => (
@@ -343,6 +418,19 @@ function FormNodo({ d, nodo, tipo, padreId, arbol, personas, formatos, areas, ha
                 </option>
               ))}
             </select>
+          </label>
+          {/* Frecuencia de la actividad (pedido del dueño, 29/10/2026): periódica o manual. Solo el administrador la cambia. */}
+          <label className="field">
+            <span>Frecuencia de la actividad</span>
+            <select value={frecuencia} disabled={!esAdmin} onChange={(e) => setFrecuencia(e.target.value)}>
+              <option value="">Manual: elijo las semanas o meses en el calendario</option>
+              {Object.entries(NOMBRE_FRECUENCIA_ACTIVIDAD).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v} (se programa solo)
+                </option>
+              ))}
+            </select>
+            {!esAdmin && <small className="ayuda">Solo el administrador de la empresa cambia la frecuencia.</small>}
           </label>
           <label className="field">
             <span>Observaciones</span>
@@ -379,22 +467,32 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
   formatos: { id: string; nombre: string; vigente: boolean }[]; areas: Area[]; hacer: Hacer
 }) {
   const p = d.programa
-  const [mes, setMes] = useState(0) // 0 = todo el año
+  // Por defecto se ve el mes en que estamos (0 = todo el año); el mes y la semana de hoy se resaltan en pastel.
+  const [mes, setMes] = useState(() => mesDeHoy(d.programa.anio, hoyLocal()))
   const [marcando, setMarcando] = useState<{ actividad: Nodo; semana: number } | null>(null)
   const semanas = useMemo(() => semanasConMes(p.anio), [p.anio])
-  const visibles = mes ? semanas.filter((s) => s.mes === mes) : semanas
-  const estados = useMemo(() => estadosPorActividad(d.semanas, d.ejecucion, p.anio, hoyLocal()), [d, p.anio])
+  // Por mes: una casilla por mes (en su primera semana); por semana: todas las semanas, o las de un mes.
+  const porMesSeg = p.seguimiento === 'mes'
+  const visibles = porMesSeg ? MESES.map((_, k) => semanas.find((s) => s.mes === k + 1)).filter((s): s is NonNullable<typeof s> => Boolean(s))
+    : mes ? semanas.filter((s) => s.mes === mes) : semanas
+  const estados = useMemo(() => estadosPorActividad(d.semanas, d.ejecucion, p.anio, hoyLocal(), p.seguimiento), [d, p.anio, p.seguimiento])
   const actividades = arbol.filter((n) => n.tipo === 'actividad')
   const porMes = totalesPorMes(estados, actividades.map((a) => a.id), p.anio)
+  const general = totalGeneral(porMes)
   const meta = Number(p.meta_cumplimiento)
-  const hallazgos = new Map(d.hallazgos.map((h) => [h.actividad_id, h]))
+  const puedeProgramar = puedeCambiar && permisos.admin // programar semanas o meses a mano: solo el administrador
   const puedeMarcar = (a: Nodo) => permisos.admin || (!a.plantilla_id && a.responsable_id === permisos.cuenta)
   const estado = (a: string, w: number): EstadoSemana | undefined => estados.get(a)?.get(w)
+  const hoy = hoyLocal()
+  const semHoy = semanaActual(p.anio, hoy)
+  const mesHoy = mesDeHoy(p.anio, hoy)
+  // Columna de hoy: la semana actual (por semana) o el mes actual (por mes).
+  const esHoy = (s: { semana: number; mes: number }) => (porMesSeg ? s.mes === mesHoy && semHoy > 0 && semHoy < 99 : s.semana === semHoy)
 
   return (
     <Seccion titulo="Calendario: programado (P) y ejecutado (E)">
       <div className="fila-entre no-imprimir">
-        <label className="field campo-fecha">
+        {!porMesSeg && <label className="field campo-fecha">
           <span>Ver</span>
           <select value={mes} onChange={(e) => setMes(Number(e.target.value))}>
             <option value={0}>Todo el año ({semanas.length} semanas)</option>
@@ -402,10 +500,10 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
               <option key={m} value={k + 1}>{m}</option>
             ))}
           </select>
-        </label>
+        </label>}
         <p className="nota leyenda">
           <span className="c-p">P</span> programada · <span className="c-e">✓</span> ejecutada · <span className="c-v">!</span> vencida · <span className="c-x">✓</span> ejecutada sin programar
-          {puedeCambiar ? ' · Toca una casilla P para programar o quitar.' : ''}
+          {puedeProgramar ? ' · Toca una casilla P para programar o quitar (solo el administrador; la actividad pasa a manual).' : ''}
         </p>
       </div>
       {!actividades.length ? (
@@ -416,28 +514,41 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
             <thead>
               <tr>
                 <th rowSpan={2} className="col-act">Actividad</th>
-                <th rowSpan={2}>P/E</th>
+                <th rowSpan={2} className="col-pe">P/E</th>
                 {MESES.map((m, k) => {
                   const n = visibles.filter((s) => s.mes === k + 1).length
-                  return n ? <th key={m} colSpan={n}>{m}</th> : null
+                  return n ? <th key={m} colSpan={n} rowSpan={porMesSeg ? 2 : 1} className={k + 1 === mesHoy && semHoy > 0 && semHoy < 99 ? 'mes-hoy' : ''}>{m}</th> : null
                 })}
-                <th rowSpan={2}>#</th>
-                <th rowSpan={2}>%</th>
-                <th rowSpan={2}>Meta</th>
+                <th rowSpan={2} className="col-av">#</th>
+                <th rowSpan={2} className="col-pct">%</th>
+                <th rowSpan={2} className="col-meta">Meta</th>
               </tr>
-              <tr>
-                {visibles.map((s) => <th key={s.semana} className="col-sem">{s.semana}</th>)}
-              </tr>
+              {!porMesSeg && (
+                <tr>
+                  {visibles.map((s) => <th key={s.semana} className={`col-sem ${esHoy(s) ? 'col-hoy' : ''}`}>{s.semana}</th>)}
+                </tr>
+              )}
             </thead>
             <tbody>
               {arbol.filter((n) => n.tipo !== 'objetivo_general').map((n) => {
                 if (n.tipo !== 'actividad') return (
                   <tr key={n.id} className={`fila-${n.tipo}`}>
-                    <td colSpan={visibles.length + 5}>{n.numero} {n.texto}</td>
+                    {/* El texto queda fijo a la izquierda (junto a Actividad y P/E) y solo se mueven los meses. */}
+                    <td colSpan={2} className="col-fijo-texto">{n.numero} {n.texto}</td>
+                    <td colSpan={visibles.length + 1} className="relleno-fila" />
+                    {/* % y meta del objetivo o la estrategia: el promedio de sus actividades. */}
+                    {(() => {
+                      const pr = promedioDe(arbol, arbol.indexOf(n), estados)
+                      return (
+                        <>
+                          <td className={`col-pct ${pr.pct == null || pr.meta == null ? '' : pr.pct >= pr.meta ? 'pct-ok' : 'pct-bajo'}`}>{pr.pct == null ? '—' : `${pr.pct} %`}</td>
+                          <td className="col-meta">{pr.meta == null ? '—' : `${pr.meta} %`}</td>
+                        </>
+                      )
+                    })()}
                   </tr>
                 )
                 const t = totalesActividad(estados.get(n.id))
-                const h = hallazgos.get(n.id)
                 const alcanza = t.pct != null && t.pct >= Number(n.meta_pct ?? 100)
                 return (
                   <Fragment key={n.id}>
@@ -448,19 +559,14 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
                           {nombre(n.responsable_id)}{n.plantilla_id ? ` · ${formatos.find((f) => f.id === n.plantilla_id)?.nombre ?? 'formato'}` : ''}
                           {n.unidad_id ? ` · Área: ${areas.find((a) => a.id === n.unidad_id)?.nombre ?? 'área'}` : ''}
                         </small>
-                        {h && h.abiertos > 0 && (
-                          <button className="btn-link mini" type="button" onClick={() => ir('/hallazgos')}>
-                            {h.abiertos} hallazgo(s) abierto(s){h.vencidos ? `, ${h.vencidos} vencido(s)` : ''}
-                          </button>
-                        )}
                       </td>
-                      <td>P</td>
+                      <td className="col-pe">P</td>
                       {visibles.map((s) => {
                         const e = estado(n.id, s.semana)
                         return (
-                          <td key={s.semana} className={`celda ${e?.programada ? 'c-p' : ''}`}>
-                            {puedeCambiar ? (
-                              <button type="button" aria-label={`Semana ${s.semana}: ${e?.programada ? 'quitar' : 'programar'}`} aria-pressed={Boolean(e?.programada)}
+                          <td key={s.semana} className={`celda ${e?.programada ? 'c-p' : ''} ${esHoy(s) ? 'col-hoy' : ''}`}>
+                            {puedeProgramar ? (
+                              <button type="button" aria-label={`${porMesSeg ? MESES_LARGOS[s.mes - 1] : `Semana ${s.semana}`}: ${e?.programada ? 'quitar' : 'programar'}`} aria-pressed={Boolean(e?.programada)}
                                 onClick={() => void hacer((motivo) => programarSemana(n.id, s.semana, !e?.programada, motivo))}>
                                 {e?.programada ? 'P' : ''}
                               </button>
@@ -468,27 +574,27 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
                           </td>
                         )
                       })}
-                      <td>{t.programadas}</td>
-                      <td rowSpan={2} className={t.pct == null ? '' : alcanza ? 'pct-ok' : 'pct-bajo'}>{textoPct(t)}</td>
-                      <td rowSpan={2}>{Number(n.meta_pct ?? 100)} %</td>
+                      <td className="col-av">{t.programadas}</td>
+                      <td rowSpan={2} className={`col-pct ${t.pct == null ? '' : alcanza ? 'pct-ok' : 'pct-bajo'}`}>{textoPct(t)}</td>
+                      <td rowSpan={2} className="col-meta">{Number(n.meta_pct ?? 100)} %</td>
                     </tr>
                     <tr>
-                      <td>E</td>
+                      <td className="col-pe">E</td>
                       {visibles.map((s) => {
                         const e = estado(n.id, s.semana)
                         const clase = e?.ejecutada ? (e.programada ? 'c-e' : 'c-x') : e?.vencida ? 'c-v' : ''
                         const titulo = e?.inspecciones ? `${e.inspecciones} inspección(es)` : e?.manual ? 'Marcada a mano' : e?.vencida ? 'Vencida' : ''
                         return (
-                          <td key={s.semana} className={`celda ${clase}`} title={titulo}>
+                          <td key={s.semana} className={`celda ${clase} ${esHoy(s) ? 'col-hoy' : ''}`} title={titulo}>
                             {puedeMarcar(n) && !e?.inspecciones ? (
-                              <button type="button" aria-label={`Semana ${s.semana}: ejecutado`} onClick={() => setMarcando({ actividad: n, semana: s.semana })}>
+                              <button type="button" aria-label={`${porMesSeg ? MESES_LARGOS[s.mes - 1] : `Semana ${s.semana}`}: ejecutado`} onClick={() => setMarcando({ actividad: n, semana: s.semana })}>
                                 {e?.ejecutada ? '✓' : e?.vencida ? '!' : ''}
                               </button>
                             ) : e?.ejecutada ? '✓' : e?.vencida ? '!' : ''}
                           </td>
                         )
                       })}
-                      <td>{t.ejecutadas}{t.fuera ? `+${t.fuera}` : ''}</td>
+                      <td className="col-av">{t.ejecutadas}{t.fuera ? `+${t.fuera}` : ''}</td>
                     </tr>
                   </Fragment>
                 )
@@ -496,29 +602,29 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={2}>Programadas</td>
+                <td colSpan={2} className="col-fijo-texto">Programadas</td>
                 {MESES.map((m, k) => {
                   const n = visibles.filter((s) => s.mes === k + 1).length
                   return n ? <td key={m} colSpan={n}>{porMes[k].programadas}</td> : null
                 })}
-                <td colSpan={3} />
+                <td colSpan={3} className="col-total">{general.programadas}</td>
               </tr>
               <tr>
-                <td colSpan={2}>Ejecutadas</td>
+                <td colSpan={2} className="col-fijo-texto">Ejecutadas</td>
                 {MESES.map((m, k) => {
                   const n = visibles.filter((s) => s.mes === k + 1).length
                   return n ? <td key={m} colSpan={n}>{porMes[k].ejecutadas}</td> : null
                 })}
-                <td colSpan={3} />
+                <td colSpan={3} className="col-total">{general.ejecutadas}{general.fuera ? `+${general.fuera}` : ''}</td>
               </tr>
               <tr>
-                <td colSpan={2}>% de cumplimiento (meta {meta} %)</td>
+                <td colSpan={2} className="col-fijo-texto">% de cumplimiento (meta {meta} %)</td>
                 {MESES.map((m, k) => {
                   const n = visibles.filter((s) => s.mes === k + 1).length
                   const t = porMes[k]
                   return n ? <td key={m} colSpan={n} className={t.pct == null ? '' : t.pct >= meta ? 'pct-ok' : 'pct-bajo'}>{textoPct(t)}</td> : null
                 })}
-                <td colSpan={3} />
+                <td colSpan={3} className={`col-total ${general.pct == null ? '' : general.pct >= meta ? 'pct-ok' : 'pct-bajo'}`}>{textoPct(general)} · meta {meta} %</td>
               </tr>
             </tfoot>
           </table>
@@ -582,80 +688,3 @@ function MarcaManual({ programa, actividad, semana, estado, onListo, hacer }: {
 
 // ───────────────────────── Hoja para imprimir ─────────────────────────
 
-function HojaPasst({ d, arbol, empresa, nTrabajadores, nombre }: { d: DatosPrograma; arbol: NodoNumerado<Nodo>[]; empresa: { razon_social: string; ruc: string; domicilio: string; actividad: string } | null; nTrabajadores: number | null; nombre: (id: string | null) => string }) {
-  const p = d.programa
-  const semanas = semanasConMes(p.anio)
-  const estados = estadosPorActividad(d.semanas, d.ejecucion, p.anio, hoyLocal())
-  const actividades = arbol.filter((n) => n.tipo === 'actividad')
-  const porMes = totalesPorMes(estados, actividades.map((a) => a.id), p.anio)
-  return (
-    <div className="hoja-entrega hoja-passt">
-      <h1>{p.nombre}</h1>
-      <p>
-        {empresa?.razon_social} · RUC {empresa?.ruc} · {empresa?.domicilio} · {empresa?.actividad} · N.° de trabajadores: {nTrabajadores ?? '—'}
-        {p.codigo_formato ? ` · Código ${p.codigo_formato}` : ''}{p.version_formato ? ` · Versión ${p.version_formato}` : ''}
-        {p.fecha_aprobacion ? ` · Aprobado ${p.fecha_aprobacion.split('-').reverse().join('/')}` : ''}
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Actividad</th><th>Responsable</th><th>P/E</th>
-            {semanas.map((s) => <th key={s.semana}>{s.semana}</th>)}
-            <th>#</th><th>%</th><th>Meta</th>
-          </tr>
-        </thead>
-        <tbody>
-          {arbol.map((n) => {
-            if (n.tipo !== 'actividad') {
-              const metas = d.metas.filter((m) => m.nodo_id === n.id)
-              return (
-                <tr key={n.id}>
-                  <td colSpan={semanas.length + 6}>
-                    <b>{n.tipo === 'objetivo_general' ? 'OBJETIVO GENERAL' : `${NOMBRE_TIPO[n.tipo]} ${n.numero}`}:</b> {n.texto}
-                    {n.recursos ? ` · Recursos: ${n.recursos}` : ''}
-                    {metas.map((m) => ` · Meta ${m.orden}: ${m.texto}${m.indicador ? ` (indicador: ${m.indicador})` : ''}`).join('')}
-                  </td>
-                </tr>
-              )
-            }
-            const t = totalesActividad(estados.get(n.id))
-            return (
-              <Fragment key={n.id}>
-                <tr>
-                  <td rowSpan={2}>{n.numero} {n.texto}</td>
-                  <td rowSpan={2}>{nombre(n.responsable_id)}</td>
-                  <td>P</td>
-                  {semanas.map((s) => <td key={s.semana}>{estados.get(n.id)?.get(s.semana)?.programada ? 'P' : ''}</td>)}
-                  <td>{t.programadas}</td>
-                  <td rowSpan={2}>{textoPct(t)}</td>
-                  <td rowSpan={2}>{Number(n.meta_pct ?? 100)} %</td>
-                </tr>
-                <tr>
-                  <td>E</td>
-                  {semanas.map((s) => <td key={s.semana}>{estados.get(n.id)?.get(s.semana)?.ejecutada ? 'E' : ''}</td>)}
-                  <td>{t.ejecutadas}</td>
-                </tr>
-              </Fragment>
-            )
-          })}
-        </tbody>
-      </table>
-      <table>
-        <thead><tr><th>Mes</th>{MESES.map((m) => <th key={m}>{m}</th>)}</tr></thead>
-        <tbody>
-          <tr><td>Programadas</td>{porMes.map((t, k) => <td key={k}>{t.programadas}</td>)}</tr>
-          <tr><td>Ejecutadas</td>{porMes.map((t, k) => <td key={k}>{t.ejecutadas}</td>)}</tr>
-          <tr><td>% de cumplimiento (meta {Number(p.meta_cumplimiento)} %)</td>{porMes.map((t, k) => <td key={k}>{textoPct(t)}</td>)}</tr>
-        </tbody>
-      </table>
-      <table className="firmas-papel">
-        <thead><tr><th>Cargo</th><th>Nombre y apellidos</th><th>Firma</th></tr></thead>
-        <tbody>
-          {['Jefe de Seguridad y Salud Ocupacional', 'Gerente de planta', 'Gerente general', 'Miembro del Comité SST', 'Presidente del Comité SST'].map((c) => (
-            <tr key={c}><td>{c}</td><td /><td /></tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}

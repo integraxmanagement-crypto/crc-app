@@ -1,6 +1,6 @@
 # Formatos de inspección, activos y listas (tarea 3.4-B)
 
-Fecha: 2026-10-29 · Resultado: **103 de 103** · Cuentas y datos ficticios de crc-dev.
+Fecha: 2026-10-30 · Resultado: **103 de 103** · Cuentas y datos ficticios de crc-dev.
 
 ## 1. Sin sesión no se ve nada
 
@@ -20,9 +20,9 @@ Fecha: 2026-10-29 · Resultado: **103 de 103** · Cuentas y datos ficticios de c
 
 | Prueba | Resultado |
 |---|---|
-| Usuario A2 ve las 6 plantillas base | ✅ |
+| Usuario A2 ve las 8 plantillas base | ✅ |
 | Las 6 recetas guardadas son idénticas al anexo (src/formatos/base.ts) y están publicadas con huella | ✅ |
-| Hay 4 tipos de activo base | ✅ |
+| Hay 6 tipos de activo base | ✅ |
 | Admin A no puede editar una versión base | ✅ |
 | Admin A no puede abrir un borrador de una plantilla base | ✅ |
 | Admin A no puede publicar una versión base | ✅ |

@@ -62,7 +62,7 @@ seccion('2. Contenido base de CRC: lo ven todos, nadie de una empresa lo cambia'
 {
   const u = s.USUARIO_A2
   const pl = await u.from('plantillas').select('codigo').is('empresa_id', null)
-  comprobar('Usuario A2 ve las 6 plantillas base', pl.data?.length === 6, `${pl.data?.length}`)
+  comprobar('Usuario A2 ve las 8 plantillas base', pl.data?.length === 8, `${pl.data?.length}`)
   const vs = await s.ADMIN_B.from('plantillas_versiones').select('receta, huella, estado, plantillas(codigo)').is('empresa_id', null)
   const iguales = PLANTILLAS_BASE.every((p) => {
     const v = vs.data.find((x) => x.plantillas.codigo === p.codigo && x.estado === 'vigente')
@@ -70,7 +70,7 @@ seccion('2. Contenido base de CRC: lo ven todos, nadie de una empresa lo cambia'
   })
   comprobar('Las 6 recetas guardadas son idénticas al anexo (src/formatos/base.ts) y están publicadas con huella', iguales)
   const tipos = await u.from('tipos_activo').select('codigo').is('empresa_id', null)
-  comprobar('Hay 4 tipos de activo base', tipos.data?.length === 4)
+  comprobar('Hay 6 tipos de activo base', tipos.data?.length === 6)
   const vbase = (await s.ADMIN_A.from('plantillas_versiones').select('id').is('empresa_id', null).limit(1).single()).data.id
   const r1 = await s.ADMIN_A.rpc('guardar_borrador', { p_version: vbase, p_datos: { receta: PLANTILLAS_BASE[0].receta } })
   comprobar('Admin A no puede editar una versión base', NO_AUTORIZADO(r1), r1.error?.message)
@@ -95,7 +95,7 @@ for (const t of TABLAS) {
 seccion('4. Copiar una plantilla base y editarla (constructor)')
 let plantillaA, versionA
 {
-  const huellaAntes = (await s.ADMIN_A.from('plantillas_versiones').select('huella').eq('plantilla_id', baseId('extintores')).single()).data.huella
+  const huellaAntes = (await s.ADMIN_A.from('plantillas_versiones').select('huella').eq('plantilla_id', baseId('extintores')).eq('estado', 'vigente').single()).data.huella
   // Una sola copia activa por formato base (revisión de diseño, obs. 12): se desactiva la de la corrida anterior.
   const previas = (await s.ADMIN_A.from('plantillas').select('id').eq('empresa_id', A).eq('base_id', baseId('extintores')).eq('vigente', true)).data ?? []
   if (previas.length) {
@@ -121,12 +121,12 @@ let plantillaA, versionA
 
   const receta = structuredClone(v.receta)
   receta.secciones[0].puntos[0].texto = 'Está en su lugar asignado (texto adaptado por la empresa ficticia A)'
-  receta.secciones[0].puntos.push({ ...receta.secciones[0].puntos[0], clave: 'EXT-14', texto: 'Punto propio de la empresa ficticia A' })
+  receta.secciones[0].puntos.push({ ...receta.secciones[0].puntos[0], clave: 'EXT-90', texto: 'Punto propio de la empresa ficticia A' })
   receta.reglas[0].controles[1].anios = 5 // la empresa pone su plazo de prueba hidrostática
   const g = await s.GESTOR_A.rpc('guardar_borrador', { p_version: versionA, p_datos: { receta, logo: 'negativo', codigo_formato: `FIC-EXT-${SUFIJO}`, version_formato: '01', fecha_aprobacion: '2026-10-26' } })
   comprobar('Gestor A puede editar el borrador (texto, punto nuevo, plazo, código, versión, fecha y logo)', !g.error, g.error?.message)
-  const huellaDespues = (await s.ADMIN_A.from('plantillas_versiones').select('huella, receta').eq('plantilla_id', baseId('extintores')).single()).data
-  comprobar('La plantilla base no cambió (misma huella y mismo texto)', huellaDespues.huella === huellaAntes && huellaDespues.receta.secciones[0].puntos.length === 13)
+  const huellaDespues = (await s.ADMIN_A.from('plantillas_versiones').select('huella, receta').eq('plantilla_id', baseId('extintores')).eq('estado', 'vigente').single()).data
+  comprobar('La plantilla base no cambió (misma huella y mismo texto)', huellaDespues.huella === huellaAntes && huellaDespues.receta.secciones[0].puntos.length === 16)
 
   const dup = structuredClone(receta)
   dup.secciones[0].puntos.push({ ...dup.secciones[0].puntos[1] })
@@ -174,6 +174,9 @@ seccion('5. Publicar y versiones (lo publicado no cambia)')
   const ambas = (await s.ADMIN_A.from('plantillas_versiones').select('numero, estado, huella, receta').eq('plantilla_id', plantillaA).order('numero')).data
   comprobar('La v1 queda retirada sin ningún cambio (misma huella y receta) y la v2 vigente',
     ambas[0].estado === 'retirada' && ambas[0].huella === v1.huella && ambas[0].receta.secciones[0].titulo !== 'Verificación (v2 ficticia)' && ambas[1].estado === 'vigente')
+  // Una sola copia por formato base: si la empresa ya tiene la caseta (por ejemplo, de la revisión), se desactiva antes.
+  for (const x of (await s.ADMIN_A.from('plantillas').select('id').eq('empresa_id', A).eq('base_id', baseId('car')).eq('vigente', true)).data ?? [])
+    await s.ADMIN_A.rpc('cambiar_vigencia_plantilla', { p_plantilla: x.id, p_vigente: false })
   const sinCodigo = await s.ADMIN_A.rpc('copiar_plantilla', { p_empresa: A, p_origen: baseId('car') })
   const vCar = (await s.ADMIN_A.from('plantillas_versiones').select('id').eq('plantilla_id', sinCodigo.data).single()).data.id
   const r7 = await s.ADMIN_A.rpc('publicar_version', { p_version: vCar })

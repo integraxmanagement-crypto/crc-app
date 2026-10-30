@@ -51,6 +51,17 @@ export function seccionesVisibles(r: Receta, subtipo: string | null | undefined)
     .map((s) => ({ ...s, puntos: s.puntos.filter((p) => aplicaSubtipo(p.solo_subtipos, subtipo)) }))
 }
 
+/** ¿El punto se muestra? Los que dependen de otra respuesta (`mostrar_si`) aparecen solo cuando esa respuesta coincide. */
+export const puntoVisible = (p: Punto, respuestas: Record<string, Respuesta>) =>
+  !p.mostrar_si || respuestas[p.mostrar_si.clave]?.valor === p.mostrar_si.valor
+
+/** Quita las respuestas de los puntos que quedaron ocultos (se cambió la respuesta de la que dependían). */
+export function sinOcultas(r: Receta, respuestas: Record<string, Respuesta>) {
+  const salida = { ...respuestas }
+  for (const s of r.secciones) for (const p of s.puntos) if (!s.repetible && !puntoVisible(p, respuestas)) delete salida[p.clave]
+  return salida
+}
+
 /** ¿El bloque repetible está activo? (IPF: solo si «¿Se identificaron condiciones inseguras?» = Sí). */
 export function repetibleActivo(s: Seccion, respuestas: Record<string, Respuesta>) {
   if (!s.repetible) return false
@@ -77,13 +88,23 @@ export function datosVencidos(controles: Extract<Receta['reglas'][number], { tip
   return vencidos
 }
 
+/** Texto claro de un dato vencido del activo (sin guiones bajos): «prueba hidrostática vencida (más de 5 años)». */
+export function textoVencido(campo: string, r: Receta): string {
+  const anios = r.reglas.flatMap((g) => (g.tipo === 'vencido' ? g.controles : [])).find((c) => c.campo === campo && c.tipo === 'anios')
+  const n = anios && anios.tipo === 'anios' && anios.anios != null ? ` (más de ${anios.anios} años)` : ''
+  if (campo === 'proximo_mantenimiento') return 'mantenimiento vencido'
+  if (campo === 'anio_prueba_hidrostatica') return `prueba hidrostática vencida${n}`
+  if (campo === 'anio_fabricacion') return `fabricación${n || ' vencida'}`
+  return `${campo.replace(/_/g, ' ')} vencido`
+}
+
 /** Calcula todo lo de una inspección. Misma entrada → mismo resultado, en el celular y en el servidor. */
 export function evaluar(r: Receta, e: Entrada): Evaluacion {
   const subtipo = e.activo?.subtipo ?? null
   const datos = e.activo?.datos ?? {}
   const secciones = seccionesVisibles(r, subtipo)
   const fijas = secciones.filter((s) => !s.repetible)
-  const puntos = fijas.flatMap((s) => s.puntos)
+  const puntos = fijas.flatMap((s) => s.puntos).filter((p) => puntoVisible(p, e.respuestas))
   const hallazgos: Hallazgo[] = []
   const faltan: string[] = []
 
@@ -156,7 +177,7 @@ export function evaluar(r: Receta, e: Entrada): Evaluacion {
     ...new Set(r.reglas.flatMap((g) => (g.tipo === 'vencido' ? datosVencidos(g.controles, datos, e.fecha) : []))),
   ]
   if (r.hallazgo_vencimiento)
-    for (const campo of vencidos) hallazgos.push({ origen: 'vencido', clave: campo, fila: null, texto: `Vencido: ${campo}` })
+    for (const campo of vencidos) hallazgos.push({ origen: 'vencido', clave: campo, fila: null, texto: `Inoperativo por ${textoVencido(campo, r)}` })
 
   // 5. Resultado: la primera regla que se cumple
   let regla: number | null = null

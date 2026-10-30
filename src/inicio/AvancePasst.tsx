@@ -81,7 +81,7 @@ export function AvancePasst({ empresaId, online }: { empresaId: string; online: 
 
 function calcularMeses(d: DatosPrograma, hoy: string): Mes[] {
   const anio = d.programa.anio
-  const estados = estadosPorActividad(d.semanas, d.ejecucion, anio, hoy)
+  const estados = estadosPorActividad(d.semanas, d.ejecucion, anio, hoy, d.programa.seguimiento)
   const nodos = numerar(d.nodos)
   const porId = new Map(nodos.map((n) => [n.id, n]))
   const objetivoDe = (padre: string | null): string | null => {
@@ -144,7 +144,7 @@ function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; 
                   m.total.programadas ? `${m.total.programadas} programadas · mes por venir` : 'Sin actividades programadas este mes'
                 ) : m.total.programadas ? (
                   <>
-                    {m.total.ejecutadas} de {m.total.programadas} programadas ejecutadas
+                    {m.total.ejecutadas} de {m.total.programadas} ejecutadas
                   </>
                 ) : (
                   'Sin actividades programadas este mes'

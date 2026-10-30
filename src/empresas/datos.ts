@@ -19,6 +19,8 @@ export type Empresa = {
   logo_positivo: string | null
   logo_negativo: string | null
   es_prueba: boolean
+  trabajadores_modo: 'automatico' | 'manual'
+  trabajadores_manual: number | null
   actualizado_en: string
   catalogo_ciiu: { descripcion: string } | null
 }

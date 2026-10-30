@@ -136,7 +136,9 @@ export function vistaDeExcel(lista: Parte[]): { vista: VistaHoja; medias: Map<st
     const a = ref(x)!, b = ref(y ?? x)!
     ;[c0, r0, c1, r1] = [a.c, a.r, b.c, b.r]
   } else {
-    const usadas = celdas.filter((x) => x.texto !== '' || x.s > 0)
+    // Solo cuentan las celdas con texto y las combinadas: un Excel puede traer celdas vacías con formato hasta la columna XDT (motobomba),
+    // y dibujarlas daba un PDF de 16 000 columnas que no se podía abrir.
+    const usadas = celdas.filter((x) => x.texto !== '')
     c1 = Math.max(0, ...usadas.map((x) => x.c), ...combinadas.map((m) => m.b.c))
     r1 = Math.max(0, ...usadas.map((x) => x.r), ...combinadas.map((m) => m.b.r))
   }

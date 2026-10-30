@@ -6,7 +6,7 @@
 // así también se prueba en la computadora (pruebas/excel.mjs).
 //
 // Marcas disponibles (la lista completa está en 05_Formatos_Inspeccion):
-//   Empresa:    {{razon_social}} {{ruc}} {{domicilio}} {{actividad}}
+//   Empresa:    {{razon_social}} {{ruc}} {{domicilio}} {{actividad}} {{trabajadores}} (N.º de trabajadores de la empresa)
 //   Formato:    {{nombre_formato}} {{codigo_formato}} {{version_formato}} {{fecha_aprobacion}}
 //   Inspección: {{numero_inspeccion}} {{fecha}} {{hora}} {{sede}} {{area}} {{ubicacion}} {{inspector}}
 //               {{resultado}} {{puntaje}} {{observacion}}
@@ -16,10 +16,14 @@
 //               {{CLAVE=opción}} una «X» si la respuesta es esa opción (p. ej. {{LOTO-D02=Individual}} y {{LOTO-D02=Grupal}})
 //   Filas:      {{CLAVE#1}}, {{CLAVE#2}}… el punto CLAVE de la fila 1, 2… de un bloque repetible
 //   Firmas:     {{firma.<rol>.nombre}} {{firma.<rol>.cargo}} {{firma.<rol>.fecha}} (con dos firmantes: {{firma.<rol>#2.nombre}})
+//   Fotos:      {{foto.CLAVE#1}} la primera foto del punto CLAVE en la fila 1 de un bloque repetible (como imagen, igual que las firmas)
 //               {{firma.<rol>.imagen}} la imagen de la firma en esa celda o en su bloque combinado (ver excelImagenes.ts)
+//   Logo:       {{logo}} el logo de la empresa (sin la marca, va en el bloque de A1 si está vacío)
 import { ErrorExcel, crearZip, descomprimir, entradasZip, escaparXml, textoDe } from '../carga/xlsx.ts'
-import type { Fila, Respuesta, Valor } from '../formatos/motor.ts'
+import { type Fila, type Respuesta, type Valor, repetibleActivo } from '../formatos/motor.ts'
 import { type Punto, type Receta, todosLosPuntos } from '../formatos/receta.ts'
+import { ajustarCeldas, celdasConMarcas } from './excelAjuste.ts'
+import { type Grupos, repetirFilas } from './excelFilas.ts'
 import { anclasDeFirmas, insertarImagenes } from './excelImagenes.ts'
 
 export const EXCEL_MAX_BYTES = 1024 * 1024
@@ -70,10 +74,12 @@ export async function marcasDeExcel(archivo: Uint8Array): Promise<string[]> {
  * Copia del Excel con cada marca cambiada por su valor (las marcas sin valor quedan en blanco). Con imagenes
  * (marca {{firma.<rol>.imagen}} → PNG), las firmas van como imágenes en su celda.
  */
-export async function llenarExcel(archivo: Uint8Array, valor: (marca: string) => string | null, imagenes?: Map<string, Uint8Array>): Promise<Uint8Array> {
-  const lista = await partes(archivo)
-  const anclas = imagenes?.size ? anclasDeFirmas(lista) : []
-  const llenas = reemplazarMarcas(lista, valor)
+export async function llenarExcel(archivo: Uint8Array, valor: (marca: string) => string | null, imagenes?: Map<string, Uint8Array>, grupos?: Grupos): Promise<Uint8Array> {
+  // 1. Las filas modelo se repiten las veces que haga falta; 2. se anotan las celdas con marcas; 3. se llenan; 4. se ajusta lo que no cabe.
+  const lista = grupos ? repetirFilas(await partes(archivo), grupos) : await partes(archivo)
+  const marcadas = celdasConMarcas(lista)
+  const anclas = imagenes?.size ? anclasDeFirmas(lista, imagenes.has('logo')) : []
+  const llenas = ajustarCeldas(reemplazarMarcas(lista, valor), marcadas)
   return crearZip(anclas.length ? insertarImagenes(llenas, anclas, imagenes!) : llenas)
 }
 
@@ -98,7 +104,7 @@ export function reemplazarMarcas(lista: Parte[], valor: (marca: string) => strin
 const normalizar = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 
 export type DatosHoja = {
-  empresa: { razon_social: string; ruc: string; domicilio: string; actividad: string }
+  empresa: { razon_social: string; ruc: string; domicilio: string; actividad: string; trabajadores?: number | null }
   formato: { nombre: string; codigo_formato: string | null; version_formato: string | null; fecha_aprobacion: string | null }
   receta: Receta
   numero: number | null
@@ -142,6 +148,20 @@ function parte(p: Punto | undefined, r: Respuesta | undefined, sub: string | und
   return ''
 }
 
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+/**
+ * Un dato de la ficha del activo: {{activo.<dato>}} (los meses AAAA-MM salen MM/AAAA) o {{activo.<dato>.mes_texto}} («Marzo 2027»).
+ */
+export function datoDeActivo(datos: Record<string, Valor>, marca: string): string {
+  const [dato, formato] = marca.slice(7).split('.')
+  const v = datos[dato]
+  if (v == null) return ''
+  const mes = String(v).match(/^(\d{4})-(\d{2})$/)
+  if (mes && formato === 'mes_texto') return `${MESES[Number(mes[2]) - 1] ?? ''} ${mes[1]}`.trim()
+  return mes ? `${mes[2]}/${mes[1]}` : String(v)
+}
+
 /** Valor de cada marca para una inspección. */
 export function valoresDe(d: DatosHoja): (marca: string) => string | null {
   const puntos = new Map(todosLosPuntos(d.receta).map((x) => [x.punto.clave, x]))
@@ -150,6 +170,7 @@ export function valoresDe(d: DatosHoja): (marca: string) => string | null {
     ruc: d.empresa.ruc,
     domicilio: d.empresa.domicilio,
     actividad: d.empresa.actividad,
+    trabajadores: d.empresa.trabajadores == null ? '' : String(d.empresa.trabajadores),
     nombre_formato: d.formato.nombre,
     codigo_formato: d.formato.codigo_formato,
     version_formato: d.formato.version_formato,
@@ -162,17 +183,17 @@ export function valoresDe(d: DatosHoja): (marca: string) => string | null {
     ubicacion: d.ubicacion,
     inspector: d.inspector,
     resultado: d.resultado ?? 'Realizado',
+    estado_final: !d.resultado ? '' : /^no conforme/i.test(d.resultado) ? 'No conforme' : d.resultado, // «Conforme» o «No conforme», sin el motivo
     puntaje: d.puntaje != null ? `${d.puntaje} %` : '',
     observacion: d.observacion,
     activo_codigo: d.activo?.codigo ?? '',
+    logo: '', // la imagen del logo se agrega aparte (excelImagenes.ts)
+    '#': '', // el número de orden de una fila repetida lo pone excelFilas.ts
   }
   return (marca) => {
     if (marca in fijos) return fijos[marca] ?? ''
-    if (marca.startsWith('activo.')) {
-      const v = d.activo?.datos[marca.slice(7)]
-      return v == null ? '' : /^\d{4}-\d{2}$/.test(String(v)) ? `${String(v).slice(5)}/${String(v).slice(0, 4)}` : String(v)
-    }
-    if (/^firma\.[^.#]+(?:#\d+)?\.imagen$/.test(marca)) return '' // la imagen se agrega aparte (excelImagenes.ts)
+    if (marca.startsWith('activo.')) return datoDeActivo(d.activo?.datos ?? {}, marca)
+    if (/^firma\.[^.#]+(?:#\d+)?\.imagen$/.test(marca) || /^foto\.[^.#]+#\d+$/.test(marca)) return '' // la imagen se agrega aparte (excelImagenes.ts)
     const firma = marca.match(/^firma\.([^.#]+)(?:#(\d+))?\.(nombre|cargo|fecha)$/)
     if (firma) {
       const f = d.firmantes.filter((x) => x.rol_clave === firma[1])[Number(firma[2] ?? 1) - 1]
@@ -187,6 +208,12 @@ export function valoresDe(d: DatosHoja): (marca: string) => string | null {
       const r = op[2] ? (x.seccion.repetible ? d.filas[x.seccion.clave]?.[Number(op[2]) - 1]?.[op[1]] : undefined) : d.respuestas[op[1]]
       return r?.valor != null && normalizar(String(r.valor)) === normalizar(op[3]) ? 'X' : ''
     }
+    // {{resumen.<sección>}}: todos los criterios de una sección en una celda, uno por línea («1: √», «2: X»); vacío si la inspección no tiene esa sección.
+    const resumen = marca.match(/^resumen\.(\w+)$/)
+    if (resumen) {
+      const sec = d.receta.secciones.find((x) => x.clave === resumen[1])
+      return (sec?.puntos ?? []).flatMap((p, i) => { const v = textoRespuesta(p, d.respuestas[p.clave], d); return v ? [`${i + 1}: ${v}`] : [] }).join('\n')
+    }
     const m = marca.match(/^([^.#]+)(?:#(\d+))?(?:\.(\w+))?$/)
     if (!m) return null
     const [, clave, n, sub] = m
@@ -194,10 +221,44 @@ export function valoresDe(d: DatosHoja): (marca: string) => string | null {
     if (n) {
       if (!x?.seccion.repetible) return ''
       const fila = d.filas[x.seccion.clave]?.[Number(n) - 1]
-      return fila ? parte(x.punto, fila[clave], sub, d) : ''
+      if (fila) return parte(x.punto, fila[clave], sub, d)
+      // Sin ninguna condición encontrada, la primera fila dice «Sin observaciones» (pedido del dueño, 29/10/2026).
+      const hay = repetibleActivo(x.seccion, d.respuestas) ? (d.filas[x.seccion.clave]?.length ?? 0) : 0
+      return n === '1' && !sub && !hay && clave === x.seccion.puntos[0]?.clave ? 'Sin observaciones' : ''
     }
     if (!x) return null
     return parte(x.punto, d.respuestas[clave], sub, d)
+  }
+}
+
+/**
+ * Filas que se repiten según la inspección: una por cada condición encontrada (bloque repetible) y una por cada firmante
+ * del mismo rol. Siempre hay al menos una. Ver excelFilas.ts.
+ */
+export function gruposDe(d: DatosHoja): Grupos {
+  const puntos = new Map(todosLosPuntos(d.receta).map((x) => [x.punto.clave, x]))
+  const grupoDe = (marca: string) => {
+    const f = marca.match(/^firma\.([^.#]+)(?:#(\d+))?\.(?:nombre|cargo|fecha|imagen)$/)
+    if (f) return { grupo: `firma:${f[1]}`, n: Number(f[2] ?? 1) }
+    const clave = marca.match(/^foto\.([^.#]+)#(\d+)$/) ?? marca.match(/^([^.#=]+)#(\d+)/)
+    const x = clave && puntos.get(clave[1])
+    return x && x.seccion.repetible ? { grupo: `fila:${x.seccion.clave}`, n: Number(clave[2]) } : null
+  }
+  return {
+    grupoDe,
+    cuantas: (grupo) => {
+      const [tipo, clave] = [grupo.slice(0, grupo.indexOf(':')), grupo.slice(grupo.indexOf(':') + 1)]
+      if (tipo === 'firma') return d.firmantes.filter((x) => x.rol_clave === clave).length
+      const seccion = d.receta.secciones.find((s) => s.clave === clave)
+      return seccion && repetibleActivo(seccion, d.respuestas) ? (d.filas[clave]?.length ?? 0) : 0
+    },
+    // La marca de la fila k: la primera firma va sin número ({{firma.rol.nombre}}), las demás con #k; los puntos, con #k.
+    reescribir: (marca, k) => {
+      const g = grupoDe(marca)
+      if (!g) return marca
+      if (g.grupo.startsWith('firma:')) return marca.replace(/^(firma\.[^.#]+)(?:#\d+)?/, (_, a: string) => (k === 1 ? a : `${a}#${k}`))
+      return marca.replace(/^(foto\.[^.#]+|[^.#=]+)#\d+/, (_, a: string) => `${a}#${k}`)
+    },
   }
 }
 
@@ -205,12 +266,14 @@ export function valoresDe(d: DatosHoja): (marca: string) => string | null {
 export function marcasDesconocidas(marcas: string[], receta: Receta): string[] {
   const claves = new Set(todosLosPuntos(receta).map((x) => x.punto.clave))
   const roles = new Set(receta.firmas.map((f) => f.clave))
-  const FIJAS = new Set(['razon_social', 'ruc', 'domicilio', 'actividad', 'nombre_formato', 'codigo_formato', 'version_formato', 'fecha_aprobacion',
-    'numero_inspeccion', 'fecha', 'hora', 'sede', 'area', 'ubicacion', 'inspector', 'resultado', 'puntaje', 'observacion', 'activo_codigo'])
+  const FIJAS = new Set(['razon_social', 'ruc', 'domicilio', 'actividad', 'trabajadores', 'nombre_formato', 'codigo_formato', 'version_formato', 'fecha_aprobacion',
+    'numero_inspeccion', 'fecha', 'hora', 'sede', 'area', 'ubicacion', 'inspector', 'resultado', 'puntaje', 'observacion', 'activo_codigo', 'logo', '#', 'estado_final', 'tipo_dispositivo', 'fecha_inspeccion', 'periodo', 'desde', 'hasta', 'inspeccionados', 'total', 'avance'])
   return marcas.filter((m) => {
-    if (FIJAS.has(m) || /^activo\.\w+$/.test(m)) return false
+    if (FIJAS.has(m) || /^activo\.\w+(?:\.mes_texto)?$/.test(m) || m.startsWith('fila.') || /^resumen\.\w+$/.test(m) || /^firma\.registro\.(?:nombre|cargo|fecha|imagen)$/.test(m)) return false
     const f = m.match(/^firma\.([^.#]+)(?:#\d+)?\.(nombre|cargo|fecha|imagen)$/)
     if (f) return !roles.has(f[1])
+    const ft = m.match(/^foto\.([^.#]+)#\d+$/)
+    if (ft) return !claves.has(ft[1])
     const op = m.match(/^([^.#=]+)(?:#\d+)?=.+$/)
     if (op) return !claves.has(op[1])
     const p = m.match(/^([^.#]+)(?:#\d+)?(?:\.(si|no|na|obs|accion|responsable|plazo))?$/)

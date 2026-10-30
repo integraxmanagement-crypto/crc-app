@@ -1,19 +1,20 @@
 import { ArrowLeft, Ban, FileSpreadsheet, FileText, Pencil, Printer } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
 import { db } from '../empresas/datos'
-import { type Fila, type Respuesta, seccionesVisibles } from '../formatos/motor'
+import { type Fila, type Respuesta, puntoVisible, seccionesVisibles, sinOcultas } from '../formatos/motor'
 import type { Punto } from '../formatos/receta'
 import { ir } from '../ruta'
 import { type CopiaLocal, bajarCopia, leerCopia } from './campo'
 import {
   type ArchivoServidor, type FirmaServidor, NOMBRE_AVISO, anularInspeccion, corregirInspeccion, detalleInspeccion, enlaceEvidencia, marcarEnPapel,
 } from './datos'
-import { llenarExcel, partes, valoresDe } from './excel'
+import { gruposDe, llenarExcel, marcasDeExcel, partes, valoresDe } from './excel'
+import { llenarExcelPeriodo, valoresFilas, valoresGenerales } from './excelPeriodo'
 import { vistaDeExcel } from './excelVista'
 import { VistaExcel } from './VistaExcel'
-import { datosHoja, excelDeFormato, guardarExcel } from './hoja'
+import { datosHoja, excelDeFormato, fotoPng, guardarExcel, logoPng } from './hoja'
 import { hoyLocal } from './ayudas'
 import { PuntoCampo } from './Llenar'
 
@@ -32,7 +33,7 @@ const ESTADO_FIRMA: Record<FirmaServidor['estado'], [string, string]> = {
  * la organización se descarga llena, con las firmas hechas en CRC como imágenes (las de papel se firman a mano). Corregir (con motivo, deja historial) y
  * anular las puede el administrador.
  */
-export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { id: string; cuenta: string; empresaId: string; online: boolean; esAdmin: boolean }) {
+export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto }: { id: string; cuenta: string; empresaId: string; online: boolean; esAdmin: boolean; auto?: 'excel' | 'pdf' }) {
   const [d, setD] = useState<Detalle | null>(null)
   const [copia, setCopia] = useState<CopiaLocal | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -74,6 +75,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
   const receta = v?.receta
   const secciones = receta ? seccionesVisibles(receta, i.activo_foto?.subtipo ?? null) : []
   const fotosDe = (punto: string, fila: number | null) => d.archivos.filter((a) => a.punto_clave === punto && a.fila === fila)
+  const tieneExcel = Boolean(copia?.formatos.find((x) => x.plantilla.id === i.plantilla_id)?.excel)
   const puedePapel = (i.inspector_id === cuenta || esAdmin) && i.estado === 'cerrada'
 
   /** El Excel de la organización lleno con esta inspección y sus firmas (null si el formato no tiene Excel). */
@@ -87,7 +89,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
     const firmantes = ordenadas.map((f) => ({
       rol_clave: f.rol_clave,
       nombre: f.persona_id ? nombre(f.persona_id) : (f.externo_nombre ?? ''),
-      cargo: f.persona_id ? (copia?.personas.find((p) => p.persona_id === f.persona_id)?.puesto ?? null) : null,
+      cargo: f.cargo, // se escribe a mano al llenar la inspección; no se toma el puesto de la persona
       // Con la firma dentro del Excel (revisión LOTO, 29/10/2026), la fecha es la de la firma; en papel se fecha a mano.
       fecha: f.estado === 'firmada' && f.firmado_en ? hoyLocal(new Date(f.firmado_en)) : null,
     }))
@@ -101,14 +103,47 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
       const r = await db().storage.from('evidencias').download(f.imagen_ruta)
       if (!r.error) imagenes.set(`firma.${f.rol_clave}${n > 1 ? `#${n}` : ''}.imagen`, new Uint8Array(await r.data.arrayBuffer()))
     }
-    return llenarExcel(archivo, valoresDe(datosHoja(i, {
+    // La primera foto de cada fila de un bloque repetible, donde diga {{foto.<punto>#<fila>}} (IPF: evidencia de la condición).
+    for (const s of secciones) {
+      if (!s.repetible) continue
+      for (const p of s.puntos.filter((x) => x.tipo === 'foto')) {
+        const filas = i.filas[s.clave] ?? []
+        for (let k = 0; k < filas.length; k++) {
+          const a = fotosDe(p.clave, k)[0]
+          if (!a) continue
+          const r = await db().storage.from('evidencias').download(a.ruta)
+          const png = r.error ? null : await fotoPng(r.data).catch(() => null)
+          if (png) imagenes.set(`foto.${p.clave}#${k + 1}`, png)
+        }
+      }
+    }
+    // El logo de la empresa, donde diga {{logo}} o arriba a la izquierda (revisión de diseño, 29/10/2026).
+    const logo = await logoPng(copia, (v as { logo?: string } | null)?.logo).catch(() => null)
+    if (logo) imagenes.set('logo', logo)
+    const datos = datosHoja(i, {
       nombreFormato: i.plantillas?.nombre ?? '',
       version: v!,
       copia,
       nombre,
       lugares: { sede: i.sedes?.nombre, area: i.unidades?.nombre, ubicacion: i.ubicaciones?.nombre },
       firmantes,
-    })), imagenes)
+    })
+    // Un formato con registro por período (extintores): una inspección sola sale como un registro de una fila, con el pie de quien la firmó.
+    if ((await marcasDeExcel(archivo)).some((m) => m.startsWith('fila.'))) {
+      const a = copia?.activos.find((x) => x.codigo === i.activo_foto?.codigo)
+      const quien = firmantes[0]
+      const firmaImagen = ordenadas[0] ? imagenes.get(`firma.${ordenadas[0].rol_clave}.imagen`) : undefined
+      const periodo = { etiqueta: i.fecha, desde: i.fecha, hasta: i.fecha }
+      const r = await llenarExcelPeriodo(
+        archivo,
+        valoresGenerales(valoresDe(datos), periodo, { hechos: 1, total: 1 }, { nombre: quien?.nombre ?? nombre(i.inspector_id), cargo: quien?.cargo ?? '' }),
+        valoresFilas([{ codigo: i.activo_foto?.codigo ?? '', datos: i.activo_foto?.datos ?? {}, inspeccion: datos, lugar: { area: i.unidades?.nombre ?? '', ubicacion: i.ubicaciones?.nombre ?? '', responsable: nombre(a?.responsable_id ?? null) } }]),
+        new Map<string, Uint8Array>([...(firmaImagen ? [['firma.registro.imagen', firmaImagen] as [string, Uint8Array]] : []), ...(imagenes.get('logo') ? [['logo', imagenes.get('logo')!] as [string, Uint8Array]] : [])]),
+      )
+      return r.bytes
+    }
+    // Las filas modelo del Excel se repiten según las condiciones encontradas y los firmantes (pedido del dueño, 29/10/2026).
+    return llenarExcel(archivo, valoresDe(datos), imagenes, gruposDe(datos))
   }
 
   async function descargar(como: 'excel' | 'pdf') {
@@ -147,7 +182,8 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
           <button className="btn-sec" type="button" onClick={() => void descargar('pdf')}>
             <FileText size={18} aria-hidden="true" /> PDF
           </button>
-          <button className="btn-link" type="button" onClick={() => window.print()}>
+          {/* Con Excel de la organización, «Imprimir» saca esa misma hoja (como el PDF); sin él, la hoja simple de CRC. */}
+          <button className="btn-link" type="button" onClick={() => (tieneExcel ? void descargar('pdf') : window.print())}>
             <Printer size={18} aria-hidden="true" /> Imprimir
           </button>
         </div>
@@ -206,7 +242,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
                       {s.puntos.map((p) => <RespuestaVista key={p.clave} p={p} r={fila[p.clave]} fotos={fotosDe(p.clave, k)} nombre={nombre} />)}
                     </div>
                   ))
-                : s.puntos.map((p) => <RespuestaVista key={p.clave} p={p} r={i.respuestas[p.clave]} fotos={fotosDe(p.clave, null)} nombre={nombre} />)}
+                : s.puntos.filter((p) => puntoVisible(p, i.respuestas)).map((p) => <RespuestaVista key={p.clave} p={p} r={i.respuestas[p.clave]} fotos={fotosDe(p.clave, null)} nombre={nombre} />)}
               {s.repetible && !(i.filas[s.clave] ?? []).length && <p className="nota">Sin filas.</p>}
             </div>
           ))}
@@ -214,17 +250,16 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
         </Seccion>
       )}
 
-      <Seccion titulo="Firmas">
-        {!d.firmas.length ? (
-          <p className="nota">Este formato no pide firmas.</p>
-        ) : (
+      {/* Un formato sin firmas (extintores) no muestra esta parte. */}
+      {d.firmas.length > 0 && (
+        <Seccion titulo="Firmas">
           <ul className="lista">
             {d.firmas.map((f) => (
               <FirmaVista key={f.id} f={f} nombre={nombre} puedePapel={puedePapel && online} onCambio={cargar} edicionActual={i.edicion} />
             ))}
           </ul>
-        )}
-      </Seccion>
+        </Seccion>
+      )}
 
       {d.ediciones.length > 0 && (
         <Seccion titulo="Historial de correcciones">
@@ -254,6 +289,8 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin }: { 
         </div>
       )}
       {modo === 'anular' && <Anular id={i.id} onListo={() => (setModo('ver'), cargar())} onCancelar={() => setModo('ver')} />}
+      {/* Desde «Registros» se puede pedir el Excel o el PDF directo: se descarga una vez que está lista la copia del equipo. */}
+      {auto && copia && <AutoDescarga onListo={() => void descargar(auto)} />}
       {createPortal(vistaPdf ? <VistaExcel vista={vistaPdf.vista} medias={vistaPdf.medias} /> : <HojaImpresa d={d} copia={copia} nombre={nombre} />, document.body)}
     </div>
   )
@@ -458,7 +495,7 @@ function Corregir({ d, copia, onListo, onCancelar }: { d: Detalle; copia: CopiaL
                   ))}
                 </div>
               ))
-            : s.puntos.map((p) => <PuntoCampo key={p.clave} {...props(p)} respuesta={respuestas[p.clave]} onCambio={(r) => setRespuestas((x) => ({ ...x, [p.clave]: r }))} />)}
+            : s.puntos.filter((p) => puntoVisible(p, respuestas)).map((p) => <PuntoCampo key={p.clave} {...props(p)} respuesta={respuestas[p.clave]} onCambio={(r) => setRespuestas((x) => sinOcultas(receta, { ...x, [p.clave]: r }))} />)}
         </div>
       ))}
       {receta.observacion_general && (
@@ -480,4 +517,15 @@ function Corregir({ d, copia, onListo, onCancelar }: { d: Detalle; copia: CopiaL
       </div>
     </Seccion>
   )
+}
+
+/** Corre una sola vez al aparecer (para la descarga directa de un registro). */
+function AutoDescarga({ onListo }: { onListo: () => void }) {
+  const hecho = useRef(false)
+  useEffect(() => {
+    if (hecho.current) return
+    hecho.current = true
+    onListo()
+  }, [onListo])
+  return null
 }

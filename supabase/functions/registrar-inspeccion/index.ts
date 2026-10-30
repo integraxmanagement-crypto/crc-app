@@ -14,7 +14,7 @@ const DIEZ_MINUTOS = 10 * 60 * 1000
 const TREINTA_DIAS = 30 * 24 * 60 * 60 * 1000
 
 type Archivo = { id: string; punto_clave: string; fila: number | null; ruta: string; bytes: number; tipo_mime: string; sha256: string }
-type Firmante = { rol_clave: string; rol_titulo?: string; orden?: number; persona_id?: string | null; externo_nombre?: string | null; externo_documento?: string | null }
+type Firmante = { rol_clave: string; rol_titulo?: string; orden?: number; persona_id?: string | null; externo_nombre?: string | null; externo_documento?: string | null; cargo?: string | null }
 type FotoActivo = { codigo: string; numero: number; subtipo: string | null; datos: Record<string, unknown>; dotacion: Record<string, unknown>; tipo: string }
 
 const admin = clienteAdmin()

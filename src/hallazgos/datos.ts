@@ -51,6 +51,9 @@ async function leer<T>(q: PromiseLike<{ data: unknown; error: { message: string;
 const CAMPOS = '*, plantillas(nombre), sedes(nombre)'
 export const listarHallazgos = (empresaId: string) =>
   leer<Hallazgo[]>(conLimite(db().from('hallazgos').select(CAMPOS).eq('empresa_id', empresaId).order('creado_en', { ascending: false }).limit(500)))
+/** Los hallazgos abiertos o en proceso que tiene a su cargo una persona (para «Mis hallazgos» del inicio). */
+export const misHallazgosPendientes = (empresaId: string, cuenta: string) =>
+  leer<Hallazgo[]>(conLimite(db().from('hallazgos').select(CAMPOS).eq('empresa_id', empresaId).eq('responsable_id', cuenta).in('estado', ['abierto', 'en_proceso']).order('plazo', { ascending: true, nullsFirst: false }).limit(200)))
 export const historialHallazgo = (id: string) =>
   leer<CambioHallazgo[]>(db().from('hallazgos_historial').select('id, cambio, antes, despues, comentario, hecho_por, hecho_en').eq('hallazgo_id', id).order('id', { ascending: false }))
 

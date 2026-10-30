@@ -20,13 +20,13 @@ export type FormatoLocal = {
   version: { id: string; numero: number; codigo_formato: string | null; version_formato: string | null; fecha_aprobacion: string | null; logo: string; receta: Receta }
   excel: { ruta: string; nombre_archivo: string; marcas: string[] } | null
 }
-export type ActivoLocal = { id: string; tipo_id: string; numero: number; codigo: string; subtipo: string | null; sede_id: string; unidad_id: string | null; ubicacion_id: string | null; datos: Record<string, string | number>; dotacion: Record<string, number> }
+export type ActivoLocal = { id: string; responsable_id: string | null; tipo_id: string; numero: number; codigo: string; subtipo: string | null; sede_id: string; unidad_id: string | null; ubicacion_id: string | null; datos: Record<string, string | number>; dotacion: Record<string, number> }
 export type CopiaLocal = {
   id: string // copia:<cuenta>:<empresa>
   cuenta: string
   empresa_id: string
   bajada_en: string
-  empresa: { razon_social: string; ruc: string; domicilio: string; actividad: string; logo_positivo: string | null; logo_negativo: string | null }
+  empresa: { razon_social: string; ruc: string; domicilio: string; actividad: string; trabajadores?: number | null; logo_positivo: string | null; logo_negativo: string | null }
   formatos: FormatoLocal[]
   tipos: { id: string; nombre: string; subtipos: Subtipo[]; campos: CampoFicha[] }[]
   activos: ActivoLocal[]
@@ -55,17 +55,19 @@ export async function bajarCopia(cuenta: string, empresa: string): Promise<Copia
       if (r.error) throw new Error(r.error.message)
       return r.data as never
     })
-  const [emp, plantillas, excel, tipos, activos, sedes, unidades, ubicaciones, listas, personas] = await Promise.all([
+  const [emp, plantillas, excel, tipos, activos, sedes, unidades, ubicaciones, listas, personas, trabajadores] = await Promise.all([
     sel(c.from('empresas').select('razon_social, ruc, domicilio_direccion, domicilio_distrito, domicilio_provincia, domicilio_departamento, actividad_texto, logo_positivo, logo_negativo').eq('id', empresa).single()),
     sel(c.from('plantillas').select('id, nombre, aplica_a, tipo_activo_id, frecuencia, vigente, versiones:plantillas_versiones(id, numero, estado, codigo_formato, version_formato, fecha_aprobacion, logo, receta)').eq('empresa_id', empresa).eq('vigente', true)),
     sel(c.from('plantillas_excel').select('plantilla_id, ruta, nombre_archivo, marcas').eq('empresa_id', empresa)),
     sel(c.from('tipos_activo').select('id, nombre, subtipos, campos').eq('empresa_id', empresa)),
-    sel(c.from('activos').select('id, tipo_id, numero, codigo, subtipo, sede_id, unidad_id, ubicacion_id, datos, dotacion').eq('empresa_id', empresa).eq('estado', 'activo').order('numero')),
+    sel(c.from('activos').select('id, tipo_id, numero, codigo, subtipo, sede_id, unidad_id, ubicacion_id, responsable_id, datos, dotacion').eq('empresa_id', empresa).eq('estado', 'activo').order('numero')),
     sel(c.from('sedes').select('id, nombre').eq('empresa_id', empresa).eq('activa', true).order('nombre')),
     sel(c.from('unidades').select('id, nivel, padre_id, nombre, vigente').eq('empresa_id', empresa)),
     sel(c.from('ubicaciones').select('id, sede_id, unidad_id, nombre').eq('empresa_id', empresa).eq('vigente', true).order('nombre')),
     sel(c.from('listas').select('codigo, valores:listas_valores(nombre, orden, vigente)').eq('empresa_id', empresa)),
     sel(c.rpc('personas_de_mi_empresa')),
+    // N.º de trabajadores de la empresa (automático o manual): va solo en todos los formatos que lo piden.
+    c.rpc('numero_trabajadores', { p_empresa: empresa }).then((r) => (r.error ? null : (r.data as number | null)), () => null),
   ])
   type P = { id: string; nombre: string; aplica_a: 'activo' | 'area'; tipo_activo_id: string | null; frecuencia: Frecuencia; versiones: (FormatoLocal['version'] & { estado: string })[] }
   const e = emp as Record<string, string | null>
@@ -80,6 +82,7 @@ export async function bajarCopia(cuenta: string, empresa: string): Promise<Copia
       ruc: e.ruc ?? '',
       domicilio: [e.domicilio_direccion, [e.domicilio_distrito, e.domicilio_provincia, e.domicilio_departamento].filter(Boolean).join(', ')].filter(Boolean).join(' · '),
       actividad: e.actividad_texto ?? '',
+      trabajadores: trabajadores as number | null,
       logo_positivo: e.logo_positivo,
       logo_negativo: e.logo_negativo,
     },
@@ -121,7 +124,7 @@ export async function bajarCopia(cuenta: string, empresa: string): Promise<Copia
 // ───────────────────────── Borradores ─────────────────────────
 
 export type FotoLocal = { id: string; punto_clave: string; fila: number | null; bytes: number; tipo_mime: string; sha256: string }
-export type Firmante = { rol_clave: string; rol_titulo: string; orden: number; persona_id?: string | null; externo_nombre?: string | null; externo_documento?: string | null }
+export type Firmante = { rol_clave: string; rol_titulo: string; orden: number; persona_id?: string | null; externo_nombre?: string | null; externo_documento?: string | null; cargo?: string | null }
 export type Borrador = {
   id: string
   cuenta: string

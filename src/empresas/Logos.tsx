@@ -10,14 +10,21 @@ export function Logos({ empresa, editable, onCambio }: { empresa: Empresa; edita
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
-  async function subir(tipo: Tipo, archivo: File) {
+  /** Revisa el archivo elegido; devuelve false si no sirve (el aviso queda arriba). */
+  async function revisar(archivo: File) {
     setError(null)
     setOk(null)
     const problema = await revisarLogo(archivo)
-    if (problema) return setError(problema)
+    if (problema) setError(problema)
+    return !problema
+  }
+
+  async function subir(tipo: Tipo, archivo: File) {
+    setError(null)
     try {
       await subirLogo(empresa.id, tipo, archivo, tipo === 'positivo' ? empresa.logo_positivo : empresa.logo_negativo)
       setOk(`Logo ${tipo} guardado.`)
+      window.dispatchEvent(new Event('crc:logo-cambiado')) // la cabecera vuelve a leer el logo
       onCambio()
     } catch (err) {
       setError((err as Error).message)
@@ -30,6 +37,7 @@ export function Logos({ empresa, editable, onCambio }: { empresa: Empresa; edita
     try {
       await quitarLogoNegativo(empresa.id, empresa.logo_negativo)
       setOk('Logo negativo quitado: se usará el positivo.')
+      window.dispatchEvent(new Event('crc:logo-cambiado'))
       onCambio()
     } catch (err) {
       setError((err as Error).message)
@@ -45,7 +53,8 @@ export function Logos({ empresa, editable, onCambio }: { empresa: Empresa; edita
           titulo="Positivo (fondo claro)"
           ruta={empresa.logo_positivo}
           editable={editable}
-          onArchivo={(a) => void subir('positivo', a)}
+          onRevisar={revisar}
+          onArchivo={(a) => subir('positivo', a)}
         />
         <CajaLogo
           key={`n-${empresa.actualizado_en}`}
@@ -54,7 +63,8 @@ export function Logos({ empresa, editable, onCambio }: { empresa: Empresa; edita
           ruta={empresa.logo_negativo ?? empresa.logo_positivo}
           prestado={!empresa.logo_negativo}
           editable={editable}
-          onArchivo={(a) => void subir('negativo', a)}
+          onRevisar={revisar}
+          onArchivo={(a) => subir('negativo', a)}
           onQuitar={empresa.logo_negativo ? () => void quitar() : undefined}
         />
       </div>
@@ -71,6 +81,7 @@ function CajaLogo({
   ruta,
   prestado,
   editable,
+  onRevisar,
   onArchivo,
   onQuitar,
 }: {
@@ -79,10 +90,14 @@ function CajaLogo({
   ruta: string | null
   prestado?: boolean
   editable: boolean
-  onArchivo: (a: File) => void
+  onRevisar: (a: File) => Promise<boolean>
+  onArchivo: (a: File) => Promise<void>
   onQuitar?: () => void
 }) {
   const [url, setUrl] = useState<string | null>(null)
+  // El archivo elegido queda en vista previa hasta confirmar: «Guardar cambio» o «Descartar» (pedido del dueño, 29/10/2026).
+  const [pendiente, setPendiente] = useState<{ archivo: File; vista: string } | null>(null)
+  const [guardando, setGuardando] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -104,11 +119,12 @@ function CajaLogo({
   return (
     <figure className="logo-caja">
       <div className={`logo-fondo logo-${tipo}`}>
-        {url ? <img src={url} alt={`Logo ${tipo}`} /> : <span className="vacio">{ruta ? 'Cargando…' : 'Sin logo'}</span>}
+        {pendiente ? <img src={pendiente.vista} alt={`Vista previa del logo ${tipo}`} /> : url ? <img src={url} alt={`Logo ${tipo}`} /> : <span className="vacio">{ruta ? 'Cargando…' : 'Sin logo'}</span>}
       </div>
       <figcaption>
         {titulo}
-        {prestado && ruta && <small> · usando el positivo</small>}
+        {prestado && ruta && !pendiente && <small> · usando el positivo</small>}
+        {pendiente && <small> · vista previa: sin guardar</small>}
       </figcaption>
       {editable && (
         <div className="acciones">
@@ -120,13 +136,22 @@ function CajaLogo({
             onChange={(e) => {
               const a = e.target.files?.[0]
               e.target.value = ''
-              if (a) onArchivo(a)
+              if (a) void onRevisar(a).then((bien) => bien && setPendiente((p) => (p && URL.revokeObjectURL(p.vista), { archivo: a, vista: URL.createObjectURL(a) })))
             }}
           />
-          <button className="btn-sec" type="button" onClick={() => input.current?.click()}>
-            <ImageUp size={18} aria-hidden="true" /> {prestado || !ruta ? 'Subir' : 'Cambiar'}
-          </button>
-          {onQuitar && (
+          {pendiente ? (
+            <>
+              <button className="btn" type="button" disabled={guardando} onClick={() => (setGuardando(true), void onArchivo(pendiente.archivo).finally(() => (setGuardando(false), setPendiente(null))))}>
+                {guardando ? 'Guardando…' : 'Guardar cambio'}
+              </button>
+              <button className="btn-sec" type="button" disabled={guardando} onClick={() => (URL.revokeObjectURL(pendiente.vista), setPendiente(null))}>Descartar</button>
+            </>
+          ) : (
+            <button className="btn-sec" type="button" onClick={() => input.current?.click()}>
+              <ImageUp size={18} aria-hidden="true" /> {prestado || !ruta ? 'Subir' : 'Cambiar'}
+            </button>
+          )}
+          {onQuitar && !pendiente && (
             <button className="btn-link" type="button" onClick={onQuitar}>
               <Trash2 size={16} aria-hidden="true" /> Quitar
             </button>

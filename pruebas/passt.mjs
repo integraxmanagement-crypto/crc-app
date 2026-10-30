@@ -90,10 +90,30 @@ comprobar('Nadie cambia las tablas directo', Boolean(directo.error) || (directo.
 
 seccion('3. Programar semanas, aprobar y reprogramar')
 const prog = (cl, act, w, val, motivo = null) => cl.rpc('programar_semana', { p_actividad: act, p_semana: w, p_programada: val, p_motivo: motivo })
-for (const [act, w] of [[a1, ANTES], [a1, SEM], [a2, ANTES], [a2, SEM], [a3, SEM]]) await prog(s.GESTOR_A, act, w, true)
+const gestorProg = await prog(s.GESTOR_A, a1, SEM, true)
+comprobar('El gestor no programa semanas: solo el administrador (pedido del dueño, 29/10/2026)', NO_AUTORIZADO(gestorProg), gestorProg.error?.message)
+for (const [act, w] of [[a1, ANTES], [a1, SEM], [a2, ANTES], [a2, SEM], [a3, SEM]]) await prog(s.ADMIN_A, act, w, true)
 const programadas = (await s.GESTOR_A.from('passt_semanas').select('id').in('actividad_id', [a1, a2, a3]).eq('programada', true)).data ?? []
-comprobar('El gestor programa semanas en borrador', programadas.length === (ANTES === SEM ? 3 : 5), String(programadas.length))
-const w54 = await prog(s.GESTOR_A, a1, 54, true)
+comprobar('El administrador programa semanas en borrador', programadas.length === (ANTES === SEM ? 3 : 5), String(programadas.length))
+// Frecuencia de la actividad: periódica (se programa sola) o manual; solo el administrador la define.
+const gestorFrec = await nodo(s.GESTOR_A, { tipo: 'actividad', padre_id: sec.data, texto: 'Con frecuencia', frecuencia: 'mensual' })
+comprobar('El gestor no define la frecuencia de una actividad', NO_AUTORIZADO(gestorFrec), gestorFrec.error?.message)
+const aFrec = await nodo(s.ADMIN_A, { tipo: 'actividad', padre_id: sec.data, texto: 'Mensual automática (ficticia)', frecuencia: 'mensual' })
+comprobar('El administrador crea una actividad mensual', !aFrec.error, aFrec.error?.message)
+const semMensual = (await s.ADMIN_A.from('passt_semanas').select('semana').eq('actividad_id', aFrec.data).eq('programada', true)).data ?? []
+comprobar('Mensual: una semana programada por mes (12)', semMensual.length === 12, String(semMensual.length))
+const cambioFrec = await nodo(s.ADMIN_A, { tipo: 'actividad', texto: 'Mensual automática (ficticia)', frecuencia: 'semanal' }, aFrec.data)
+const semSemanal = (await s.ADMIN_A.from('passt_semanas').select('semana').eq('actividad_id', aFrec.data).eq('programada', true)).data ?? []
+comprobar('Semanal: todas las semanas del año programadas', !cambioFrec.error && semSemanal.length >= 52, `${cambioFrec.error?.message ?? ''} ${semSemanal.length}`)
+const aTrim = await nodo(s.ADMIN_A, { tipo: 'actividad', padre_id: sec.data, texto: 'Trimestral (ficticia)', frecuencia: 'trimestral' })
+const semTrim = (await s.ADMIN_A.from('passt_semanas').select('semana').eq('actividad_id', aTrim.data).eq('programada', true)).data ?? []
+comprobar('Trimestral: 4 semanas programadas', semTrim.length === 4, String(semTrim.length))
+await prog(s.ADMIN_A, aTrim.data, 20, true)
+const trasManual = (await s.ADMIN_A.from('passt_nodos').select('frecuencia').eq('id', aTrim.data).single()).data
+comprobar('Programar una semana a mano la vuelve manual (sin frecuencia periódica)', trasManual.frecuencia === null)
+const mala = await nodo(s.ADMIN_A, { tipo: 'actividad', padre_id: sec.data, texto: 'Mal', frecuencia: 'diaria' })
+comprobar('Una frecuencia que no existe se rechaza', Boolean(mala.error), mala.error?.message)
+const w54 = await prog(s.ADMIN_A, a1, 54, true)
 comprobar('No existe la semana 54', Boolean(w54.error))
 const apG = await s.GESTOR_A.rpc('aprobar_programa', { p_id: P })
 comprobar('El gestor no aprueba', NO_AUTORIZADO(apG), apG.error?.message)
@@ -156,7 +176,10 @@ const dup = await s.GESTOR_A.rpc('duplicar_programa', { p_id: P, p_datos: { anio
 comprobar('El gestor duplica el programa para el año siguiente', !dup.error, dup.error?.message)
 const P2 = dup.data
 const n2 = (await s.GESTOR_A.from('passt_nodos').select('id, tipo, vigente').eq('programa_id', P2)).data ?? []
-comprobar('Copia el árbol vigente (sin lo dado de baja)', n2.filter((n) => n.tipo === 'actividad').length === 2 && n2.every((n) => n.vigente), JSON.stringify(n2.map((n) => n.tipo)))
+comprobar('Copia el árbol vigente (sin lo dado de baja)', n2.filter((n) => n.tipo === 'actividad').length === 4 && n2.every((n) => n.vigente), JSON.stringify(n2.map((n) => n.tipo)))
+const semDup = (await s.GESTOR_A.from('passt_nodos').select('id, frecuencia').eq('programa_id', P2).eq('frecuencia', 'semanal')).data ?? []
+const semDupP = semDup.length ? ((await s.GESTOR_A.from('passt_semanas').select('semana').eq('actividad_id', semDup[0].id).eq('programada', true)).data ?? []).length : 0
+comprobar('Al duplicar, la actividad con frecuencia semanal se programa sola en el año nuevo', semDup.length === 1 && semDupP >= 52, `${semDup.length} ${semDupP}`)
 const pr2 = (await s.GESTOR_A.from('passt_programas').select('estado, anio, duplicado_de').eq('id', P2).single()).data
 comprobar('La copia queda en borrador, con el año nuevo', pr2?.estado === 'borrador' && pr2.anio === ANIO + 1 && pr2.duplicado_de === P)
 const s2 = (await s.GESTOR_A.from('passt_semanas').select('programada, manual, passt_nodos!inner(programa_id)').eq('passt_nodos.programa_id', P2)).data ?? []
@@ -166,8 +189,38 @@ comprobar('Copia las 5 metas', metas2.length === 5)
 const dupB = await s.GESTOR_B.rpc('duplicar_programa', { p_id: P, p_datos: { anio: ANIO } })
 comprobar('Otra empresa no duplica', NO_AUTORIZADO(dupB))
 
+seccion('Seguimiento por mes o por semana')
+const malSeg = await s.GESTOR_A.rpc('crear_programa', { p_empresa: A, p_datos: { anio: ANIO, seguimiento: 'diario' } })
+comprobar('No acepta un seguimiento que no sea por semana ni por mes', Boolean(malSeg.error), malSeg.error?.message)
+const pm = await s.GESTOR_A.rpc('crear_programa', { p_empresa: A, p_datos: { anio: ANIO, nombre: `PASST ficticio ${SUFIJO} mensual`, seguimiento: 'mes' } })
+comprobar('Crea un programa con seguimiento por mes', !pm.error, pm.error?.message)
+const leido = (await s.GESTOR_A.from('passt_programas').select('seguimiento').eq('id', pm.data).single()).data
+comprobar('Queda guardado el seguimiento por mes y, por defecto, el programa es por semana', leido?.seguimiento === 'mes' && (await s.GESTOR_A.from('passt_programas').select('seguimiento').eq('id', P).single()).data?.seguimiento === 'semana')
+const dm = await s.GESTOR_A.rpc('duplicar_programa', { p_id: pm.data, p_datos: { anio: ANIO + 1 } })
+comprobar('Al duplicar se conserva el seguimiento', !dm.error && (await s.GESTOR_A.from('passt_programas').select('seguimiento').eq('id', dm.data).single()).data?.seguimiento === 'mes', dm.error?.message)
+for (const x of [pm.data, dm.data]) if (x) await s.ADMIN_A.rpc('cambiar_vigencia_programa', { p_id: x, p_vigente: false })
+
+seccion('N.º de trabajadores de la empresa (automático o manual)')
+const activos = (await s.ADMIN_A.from('vinculos').select('id', { count: 'exact', head: true }).eq('empresa_id', A).eq('estado', 'activo')).count
+const auto = await s.GESTOR_A.rpc('numero_trabajadores', { p_empresa: A })
+comprobar('En modo automático se cuenta el personal activo de la empresa', auto.data === activos, `${auto.data} / ${activos}`)
+const manualGestor = await s.GESTOR_A.rpc('guardar_trabajadores', { p_empresa: A, p_modo: 'manual', p_cantidad: 5 })
+comprobar('El gestor no cambia el modo ni el número', NO_AUTORIZADO(manualGestor), manualGestor.error?.message)
+const sinNumero = await s.ADMIN_A.rpc('guardar_trabajadores', { p_empresa: A, p_modo: 'manual', p_cantidad: null })
+comprobar('En modo manual hay que escribir la cantidad', Boolean(sinNumero.error), sinNumero.error?.message)
+const manual = await s.ADMIN_A.rpc('guardar_trabajadores', { p_empresa: A, p_modo: 'manual', p_cantidad: 247 })
+comprobar('El administrador pone el modo manual con su número', !manual.error && (await s.GESTOR_A.rpc('numero_trabajadores', { p_empresa: A })).data === 247, manual.error?.message)
+comprobar('El PASST usa el mismo número', (await s.GESTOR_A.rpc('passt_trabajadores', { p_empresa: A })).data === 247)
+comprobar('Otra empresa no ve el número', (await s.GESTOR_B.rpc('numero_trabajadores', { p_empresa: A })).data == null)
+const otraEmpresa = await s.GESTOR_B.rpc('guardar_trabajadores', { p_empresa: A, p_modo: 'automatico', p_cantidad: null })
+comprobar('Otra empresa no cambia el de A', NO_AUTORIZADO(otraEmpresa), otraEmpresa.error?.message)
+const vuelta = await s.ADMIN_A.rpc('guardar_trabajadores', { p_empresa: A, p_modo: 'automatico', p_cantidad: 999 })
+comprobar('Al volver a automático se vuelve a contar y se olvida el número manual', !vuelta.error && (await s.GESTOR_A.rpc('numero_trabajadores', { p_empresa: A })).data === activos, vuelta.error?.message)
+
 // Al terminar, el formato ficticio de esta prueba se desactiva para que no se acumulen en la lista (revisión de diseño, obs. 12).
 await s.ADMIN_A.rpc('cambiar_vigencia_plantilla', { p_plantilla: formato, p_vigente: false })
+// Y se desactivan los programas ficticios (el de esta prueba y su copia del año siguiente) para que no se acumulen.
+for (const x of [P, P2]) await s.ADMIN_A.rpc('cambiar_vigencia_programa', { p_id: x, p_vigente: false })
 const res = resumen()
 const lineas = ['# Pruebas del Programa Anual de SST (tarea 3.4-E)', '', `Fecha: ${new Date().toISOString()} · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: ${SEM} de ${ANIO} · **${res.ok} de ${res.total} correctas**`, '']
 for (const [k, g] of grupos.entries()) {

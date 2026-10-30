@@ -1,8 +1,9 @@
 import { ArrowLeft, Camera, Check, PenLine, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Aviso } from '../empresas/campos'
-import { type Fila, type Respuesta, evaluar, repetibleActivo, seccionesVisibles } from '../formatos/motor'
+import { type Fila, type Respuesta, evaluar, puntoVisible, textoVencido, repetibleActivo, seccionesVisibles, sinOcultas } from '../formatos/motor'
 import type { Punto } from '../formatos/receta'
+import { useOnline } from '../hooks'
 import { ir } from '../ruta'
 import { type Borrador, type CopiaLocal, type Firmante, type FotoLocal, cerrar, guardarBorrador, guardarFoto, leerArchivo, leerBorrador, leerCopia, quitarArchivo } from './campo'
 import { BuscarFirmante } from './BuscarFirmante'
@@ -46,6 +47,8 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
   const [copia, setCopia] = useState<CopiaLocal | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [firmando, setFirmando] = useState<string | null>(null)
+  const [intentoCierre, setIntentoCierre] = useState(false)
+  const online = useOnline()
   const [cerrando, setCerrando] = useState(false)
   const pendiente = useRef<Borrador | null>(null)
 
@@ -107,9 +110,10 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
   const receta = b.receta
   const secciones = seccionesVisibles(receta, b.activo_foto?.subtipo ?? null)
   const personas = copia?.personas ?? []
+  // DACI, motobomba y electrobomba: el cargo sale solo al elegir a la persona (pedido del dueño, 30/10/2026).
+  const esDaci = receta.secciones.some((x) => x.puntos.some((q) => /^(DACI|MB|EB)-/.test(q.clave)))
   const listas = copia?.listas ?? []
   const faltaFirmas = faltanFirmantes(receta, b.firmantes)
-  const miRol = b.firmantes.find((f) => f.persona_id === cuenta)
   const faltan = [...ev.faltan, ...faltaFirmas]
 
   async function agregarFoto(punto: string, fila: number | null, archivo: File) {
@@ -183,7 +187,7 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
         <span>Fecha de la inspección</span>
         <input type="date" value={b.fecha} max={hoyLocal()} onChange={(e) => e.target.value && cambiar((x) => ({ ...x, fecha: e.target.value }))} />
       </label>
-      {ev.vencidos.length > 0 && <p className="aviso-suave">Vencido en la ficha del activo: {ev.vencidos.join(', ')}.</p>}
+      {ev.vencidos.length > 0 && <p className="aviso-suave">Inoperativo por: {ev.vencidos.map((c) => textoVencido(c, receta)).join('; ')}.</p>}
 
       {secciones.map((s) => (
         <div key={s.clave} className="prueba-seccion">
@@ -218,7 +222,8 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
               <p className="nota">Este bloque aparece cuando se contesta «Sí» en la pregunta que lo activa.</p>
             )
           ) : (
-            s.puntos.map((p) => punto(p, b.respuestas[p.clave], null, (r) => cambiar((x) => ({ ...x, respuestas: { ...x.respuestas, [p.clave]: r } }))))
+            s.puntos.filter((p) => puntoVisible(p, b.respuestas)).map((p) => punto(p, b.respuestas[p.clave], null, (r) =>
+              cambiar((x) => ({ ...x, respuestas: sinOcultas(receta, { ...x.respuestas, [p.clave]: r }) }))))
           )}
         </div>
       ))}
@@ -269,9 +274,11 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
                         <BuscarFirmante personas={personas} elegido={f.persona_id ?? null} cuenta={cuenta} rolTitulo={rol.titulo} permiteExterno={rol.externo}
                           ocupados={new Set(b.firmantes.filter((y, j) => j !== k && y.rol_clave === rol.clave && y.persona_id).map((y) => y.persona_id!))}
                           onPersona={(id) => {
+                            // DACI: el cargo sale solo con el puesto de la persona elegida (se puede corregir). Otros formatos: se escribe a mano.
+                            const puesto = esDaci ? (personas.find((q) => q.persona_id === id)?.puesto ?? null) : null
                             const quita = f.persona_id === cuenta && f.persona_id !== id && b.mi_firma?.rol_clave === rol.clave
                             if (quita) void quitarArchivo(b.mi_firma!.archivo_id)
-                            cambiar((x) => ({ ...x, mi_firma: quita ? null : x.mi_firma, firmantes: x.firmantes.map((y, j) => (j === k ? { ...y, persona_id: id, externo_nombre: null, externo_documento: null } : y)) }))
+                            cambiar((x) => ({ ...x, mi_firma: quita ? null : x.mi_firma, firmantes: x.firmantes.map((y, j) => (j === k ? { ...y, persona_id: id, externo_nombre: null, externo_documento: null, ...(esDaci && puesto ? { cargo: puesto } : {}) } : y)) }))
                           }}
                           onExterno={(nombre) => {
                             const quita = f.persona_id === cuenta && b.mi_firma?.rol_clave === rol.clave
@@ -279,6 +286,8 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
                             cambiar((x) => ({ ...x, mi_firma: quita ? null : x.mi_firma, firmantes: x.firmantes.map((y, j) => (j === k ? { ...y, persona_id: null, externo_nombre: nombre, externo_documento: null } : y)) }))
                           }} />
                       )}
+                      <input type="text" className="firmante-cargo" placeholder="Cargo (escríbelo)" aria-label={`Cargo: ${rol.titulo}`} maxLength={120} value={f.cargo ?? ''}
+                        onChange={(e) => cambiarF({ cargo: e.target.value || null })} />
                       {f.persona_id === cuenta && (
                         b.mi_firma?.rol_clave === rol.clave ? (
                           <span className="chip chip-ok"><Check size={14} aria-hidden="true" /> Firmaste</span>
@@ -319,8 +328,9 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
           Resultado: <b>{ev.resultado ?? 'Sin resultado (solo «Realizado»)'}</b>
           {ev.puntaje != null && <> · Puntaje: <b>{ev.puntaje} %</b></>} · Hallazgos: <b>{ev.hallazgos.length}</b> · Fotos: <b>{b.fotos.length}</b>
         </p>
-        {faltan.length > 0 && (
-          <details open={faltan.length <= 4}>
+        {/* La lista de lo que falta solo sale si se intenta cerrar con cosas pendientes (pedido del dueño, 29/10/2026). */}
+        {intentoCierre && faltan.length > 0 && (
+          <details open>
             <summary>Faltan {faltan.length} cosas para poder cerrar</summary>
             <ul>
               {faltan.slice(0, 40).map((f, i) => (
@@ -330,11 +340,10 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
           </details>
         )}
         <Aviso>{error}</Aviso>
-        <button className="btn" type="button" disabled={faltan.length > 0 || cerrando} onClick={() => void cerrarYa()}>
+        <button className="btn" type="button" disabled={cerrando} onClick={() => (faltan.length ? setIntentoCierre(true) : void cerrarYa())}>
           {cerrando ? 'Cerrando…' : 'Cerrar inspección'}
         </button>
-        {miRol && !b.mi_firma && <p className="nota">Todavía no firmas: puedes hacerlo ahora o después, en «Mis firmas».</p>}
-        <p className="nota">Al cerrarla ya no se puede cambiar desde el equipo. Se envía sola cuando haya señal.</p>
+        {!online && <p className="nota">Sin señal: la información se guardará en este equipo y se cargará cuando te conectes a una red de nuevo.</p>}
       </div>
     </div>
   )

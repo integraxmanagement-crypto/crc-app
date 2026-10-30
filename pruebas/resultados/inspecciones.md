@@ -1,6 +1,6 @@
 # Inspecciones, fotos y firmas (tarea 3.4-C)
 
-Fecha: 2026-10-29 · Resultado: **59 de 59** · Cuentas y datos ficticios de crc-dev.
+Fecha: 2026-10-30 · Resultado: **60 de 60** · Cuentas y datos ficticios de crc-dev.
 
 ## 1. Registrar una inspección con foto y firma, una sola vez
 
@@ -14,7 +14,7 @@ Fecha: 2026-10-29 · Resultado: **59 de 59** · Cuentas y datos ficticios de crc
 | Si el equipo la reenvía, responde «ya recibida» y no la duplica | ✅ |
 | Queda una sola inspección con ese identificador | ✅ |
 | El resultado lo calcula el servidor: X en un crítico → «No conforme» | ✅ |
-| …y nace el hallazgo de EXT-07 | ✅ |
+| …y nace el hallazgo de EXT-09 | ✅ |
 | Las fotos se cuentan con lo que llegó, no con lo que dice el equipo | ✅ |
 | Guarda quién, cuándo (equipo y servidor) y la huella | ✅ |
 | La firma del inspector queda firmada, con su cuenta y la huella de lo firmado | ✅ |
@@ -62,6 +62,7 @@ Fecha: 2026-10-29 · Resultado: **59 de 59** · Cuentas y datos ficticios de crc
 | LOTO con una X: No conforme y 92 % calculado en el servidor | ✅ |
 | Del externo quedan su nombre y documento, sin cuenta de CRC | ✅ |
 | El externo queda «en papel», el de Admin A firmado y el del área pendiente | ✅ |
+| El cargo escrito a mano se guarda y, si no se escribe, queda vacío (no se toma el puesto de la persona) | ✅ |
 | Usuario A2 (firmante) sí ve la inspección que debe firmar | ✅ |
 | Nadie puede firmar por otra persona | ✅ |
 | Usuario A2 sube la imagen de su firma pendiente | ✅ |

@@ -3,8 +3,10 @@
 // la función registrar-inspeccion.
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { conLimite, db, mensaje, rpc } from '../empresas/datos'
+import type { Frecuencia } from '../formatos/base'
 import type { Fila, Hallazgo, Respuesta } from '../formatos/motor'
 import type { Receta } from '../formatos/receta'
+import type { CopiaLocal } from './campo'
 
 export type Inspeccion = {
   id: string
@@ -47,6 +49,7 @@ export type FirmaServidor = {
   persona_id: string | null
   externo_nombre: string | null
   externo_documento: string | null
+  cargo: string | null // escrito a mano al llenar la inspección
   estado: 'pendiente' | 'firmada' | 'en_papel'
   imagen_ruta: string | null
   firmado_en: string | null
@@ -147,6 +150,62 @@ export type FilaAvance = {
   resultado: string | null
   hallazgos: number
 }
+/** La última inspección cerrada de cada equipo de un formato (para «no operativos» y «última inspección» de extintores). */
+export type UltimaInspeccion = { activo_id: string; fecha: string; numero: number; resultado: string | null; respuestas: Record<string, { valor?: unknown }> }
+export async function ultimasInspecciones(plantillaId: string): Promise<Map<string, UltimaInspeccion>> {
+  const filas = await leer<(UltimaInspeccion & { activo_id: string | null })[]>(
+    db().from('inspecciones').select('activo_id, fecha, numero, resultado, respuestas').eq('plantilla_id', plantillaId).eq('estado', 'cerrada')
+      .order('fecha', { ascending: false }).order('numero', { ascending: false }).limit(3000),
+  )
+  const mapa = new Map<string, UltimaInspeccion>()
+  for (const f of filas) if (f.activo_id && !mapa.has(f.activo_id)) mapa.set(f.activo_id, f as UltimaInspeccion)
+  return mapa
+}
+
+/** Las inspecciones cerradas de un formato en un rango de fechas, con su área y ubicación (para «Ver por mes»). */
+export type InspeccionDelMes = { id: string; numero: number; fecha: string; resultado: string | null; hallazgos: unknown[]; unidades: { nombre: string } | null; ubicaciones: { nombre: string } | null; activo_foto: { codigo: string } | null }
+export const inspeccionesDelMes = (plantillaId: string, desde: string, hasta: string) =>
+  leer<InspeccionDelMes[]>(
+    db().from('inspecciones').select('id, numero, fecha, resultado, hallazgos, activo_foto, unidades(nombre), ubicaciones(nombre)').eq('plantilla_id', plantillaId).eq('estado', 'cerrada')
+      .gte('fecha', desde).lte('fecha', hasta).order('fecha').order('numero').limit(1000),
+  )
+
+/**
+ * La frecuencia de cada formato, tal como está ahora en el servidor (pedido del dueño, 29/10/2026): un formato no tiene un período
+ * propio; nace en la actividad del programa anual de SST que lo vincula (la más frecuente, si hay varias). Si ninguna actividad vigente
+ * lo vincula con una frecuencia periódica, se usa la que traía el formato. La copia del equipo puede traer una vieja.
+ */
+const ORDEN_FRECUENCIA: Frecuencia[] = ['semanal', 'mensual', 'bimestral', 'trimestral', 'semestral', 'anual']
+export async function frecuenciasActuales(empresaId: string): Promise<Map<string, Frecuencia>> {
+  const filas = await leer<{ id: string; frecuencia: Frecuencia }[]>(db().from('plantillas').select('id, frecuencia').eq('empresa_id', empresaId))
+  const mapa = new Map(filas.map((f) => [f.id, f.frecuencia]))
+  const actividades = await leer<{ plantilla_id: string; frecuencia: Frecuencia }[]>(
+    db().from('passt_nodos').select('plantilla_id, frecuencia, passt_programas!inner(vigente)').eq('empresa_id', empresaId).eq('tipo', 'actividad').eq('vigente', true)
+      .eq('passt_programas.vigente', true).not('frecuencia', 'is', null).not('plantilla_id', 'is', null),
+  ).catch(() => [])
+  const delPrograma = new Map<string, Frecuencia>()
+  for (const x of actividades) {
+    const actual = delPrograma.get(x.plantilla_id)
+    if (!actual || ORDEN_FRECUENCIA.indexOf(x.frecuencia) < ORDEN_FRECUENCIA.indexOf(actual)) delPrograma.set(x.plantilla_id, x.frecuencia)
+  }
+  for (const [id, f] of delPrograma) mapa.set(id, f)
+  return mapa
+}
+
+/** La copia del equipo con la frecuencia actual de cada formato (la copia guardada no cambia). */
+export const conFrecuencias = (copia: CopiaLocal, m: Map<string, Frecuencia>): CopiaLocal => ({
+  ...copia,
+  formatos: copia.formatos.map((f) => (m.has(f.plantilla.id) ? { ...f, plantilla: { ...f.plantilla, frecuencia: m.get(f.plantilla.id)! } } : f)),
+})
+
+/** Las inspecciones cerradas con porcentaje de un formato (por su nombre, sin importar cuál copia), la más reciente primero. */
+export type ResultadoInspeccion = { id: string; numero: number; fecha: string; puntaje: number; unidad_id: string | null; unidades: { nombre: string } | null }
+export const resultadosDeFormato = (nombreFormato: string) =>
+  leer<ResultadoInspeccion[]>(
+    db().from('inspecciones').select('id, numero, fecha, puntaje, unidad_id, unidades(nombre), plantillas!inner(nombre)').eq('estado', 'cerrada').eq('plantillas.nombre', nombreFormato)
+      .not('puntaje', 'is', null).order('fecha', { ascending: false }).order('numero', { ascending: false }).limit(1000),
+  )
+
 export const avancePeriodo = (plantillaId: string, sedeId: string, desde: string, hasta: string) =>
   rpc<FilaAvance[]>('avance_periodo', { p_plantilla: plantillaId, p_sede: sedeId, p_desde: desde, p_hasta: hasta })
 

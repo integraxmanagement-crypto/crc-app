@@ -1922,7 +1922,8 @@
 .firmante > select,
 .firmante > .fila2,
 .firmante > .buscar-firmante,
-.firmante > .externo-escrito {
+.firmante > .externo-escrito,
+.firmante > .firmante-cargo {
   flex: 1 1 16rem;
 }
 
@@ -2210,7 +2211,10 @@
 }
 
 .grilla-passt {
-  border-collapse: collapse;
+  /* «separate» y no «collapse»: con bordes colapsados las líneas de las columnas fijas no se mueven con su celda y se ven
+     transparentes al deslizar; así cada celda lleva sus propias líneas (pedido del dueño, 29/10/2026). */
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.75rem;
   min-width: 100%;
 }
@@ -2218,20 +2222,111 @@
 .grilla-passt th,
 .grilla-passt td {
   padding: 0.15rem 0.25rem;
-  border: 1px solid var(--rule);
+  border: 0;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
   text-align: center;
   white-space: nowrap;
 }
 
-.grilla-passt .col-act {
+/* Columnas fijas (pedido del dueño, 29/10/2026): a la izquierda Actividad y P/E, a la derecha #, % y Meta; solo se
+   mueven los meses. Cada una lleva su fondo para que no se vea lo que pasa por debajo. */
+.grilla-passt {
+  --ancho-act: 15rem;
+  --ancho-pe: 2.25rem;
+  --ancho-av: 2.5rem;
+  --ancho-pct: 3.4rem;
+  --ancho-meta: 3.4rem;
+}
+
+.grilla-passt .col-act,
+.grilla-passt .col-fijo-texto {
   position: sticky;
   left: 0;
-  z-index: 1;
-  min-width: 14rem;
-  max-width: 22rem;
+  z-index: 3;
+  width: var(--ancho-act);
+  min-width: var(--ancho-act);
+  max-width: var(--ancho-act);
   white-space: normal;
   text-align: left;
   background: var(--surface);
+}
+
+.grilla-passt .col-pe {
+  position: sticky;
+  left: var(--ancho-act);
+  z-index: 3;
+  width: var(--ancho-pe);
+  min-width: var(--ancho-pe);
+  background: var(--surface);
+  box-shadow: 2px 0 0 var(--rule);
+}
+
+.grilla-passt .col-fijo-texto {
+  width: calc(var(--ancho-act) + var(--ancho-pe));
+  min-width: calc(var(--ancho-act) + var(--ancho-pe));
+  max-width: calc(var(--ancho-act) + var(--ancho-pe));
+  box-shadow: 2px 0 0 var(--rule);
+}
+
+.grilla-passt .col-av,
+.grilla-passt .col-pct,
+.grilla-passt .col-meta {
+  position: sticky;
+  z-index: 3;
+  background: var(--surface);
+}
+
+.grilla-passt .col-av {
+  right: calc(var(--ancho-pct) + var(--ancho-meta));
+  width: var(--ancho-av);
+  min-width: var(--ancho-av);
+  box-shadow: -2px 0 0 var(--rule);
+}
+
+.grilla-passt .col-pct {
+  right: var(--ancho-meta);
+  width: var(--ancho-pct);
+  min-width: var(--ancho-pct);
+}
+
+.grilla-passt .col-meta {
+  right: 0;
+  width: var(--ancho-meta);
+  min-width: var(--ancho-meta);
+}
+
+.grilla-passt .col-total {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  width: calc(var(--ancho-av) + var(--ancho-pct) + var(--ancho-meta));
+  min-width: calc(var(--ancho-av) + var(--ancho-pct) + var(--ancho-meta));
+  background: var(--surface);
+  box-shadow: -2px 0 0 var(--rule);
+  font-weight: 650;
+}
+
+.grilla-passt tfoot td {
+  background: var(--surface);
+}
+
+.grilla-passt thead .col-act,
+.grilla-passt thead .col-pe,
+.grilla-passt thead .col-av,
+.grilla-passt thead .col-pct,
+.grilla-passt thead .col-meta {
+  z-index: 4;
+  background: var(--blue);
+}
+
+.grilla-passt tr.fila-objetivo_especifico .col-fijo-texto,
+.grilla-passt tr.fila-seccion .col-fijo-texto {
+  background: var(--ground);
+}
+
+.grilla-passt .relleno-fila {
+  background: var(--ground);
 }
 
 .grilla-passt .col-act small {
@@ -2374,4 +2469,711 @@
 .hoja-excel img {
   position: absolute;
   object-fit: fill;
+}
+
+/* Formatos desactivados, aparte y plegados (revisión de diseño, obs. 12) */
+.desactivados {
+  margin-top: 0.75rem;
+}
+
+.desactivados summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+/* Alerta de formatos sin código, versión o fecha de aprobación (revisión de diseño, 29/10/2026) */
+.alerta-formatos {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e3a93b;
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #fff7e8;
+}
+
+.alerta-formatos p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.4rem;
+}
+
+.alerta-formatos ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alerta-formatos li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+}
+
+/* Alerta de sismos — Perú (pedido del dueño, 29/10/2026) */
+.panel.panel-inicio:has(.sismos) {
+  max-width: 64rem;
+}
+
+.sismos {
+  margin: 2rem 0 3rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgb(11 34 51 / 0.06);
+}
+
+@media (min-width: 640px) {
+  .sismos {
+    padding: 1.25rem;
+  }
+}
+
+.sismos-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.sismos-cab h2 {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.sismos-cab p {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+.sismos-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+.sismos-estado span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9aa7b1;
+}
+
+.sismos-estado[data-tipo='vivo'] span {
+  background: #2ecc71;
+}
+
+.sismos-estado[data-tipo='error'] {
+  color: #b4232a;
+}
+
+.sismos-estado[data-tipo='error'] span {
+  background: #e5484d;
+}
+
+.sismos-alerta {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #e5484d;
+  border-radius: 10px;
+  background: #fdecec;
+  color: #8f1d22;
+  font-size: 0.875rem;
+}
+
+.sismos-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.8rem;
+  margin: 0.85rem 0;
+  font-size: 0.8125rem;
+}
+
+.sismos-controles label {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--ink-2);
+}
+
+.sismos-controles select {
+  min-height: 2.4rem;
+  font-size: 0.875rem;
+}
+
+.sismos-controles .sismos-casilla {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.4rem;
+  color: var(--ink);
+}
+
+.sismos-controles .btn,
+.sismos-controles .btn-sec {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+  min-height: 2.4rem;
+  padding: 0 0.9rem;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.sismos-controles .btn:active {
+  transform: scale(0.97);
+}
+
+.sismos-cuerpo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .sismos-cuerpo {
+    grid-template-columns: 1fr 1.1fr;
+  }
+}
+
+/* isolate: los z-index internos de Leaflet (hasta 1000) no tapan la barra ni los menús. */
+.sismos-mapa {
+  isolation: isolate;
+  height: 360px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .sismos-mapa {
+    height: 420px;
+  }
+}
+
+.sismos-lista {
+  max-height: 420px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.sismos-lista li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.sismos-lista button {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 0.6rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sismos-lista button:hover {
+  background: var(--ground);
+}
+
+.sismos-mag {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+
+.sismos-texto {
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.8125rem;
+}
+
+.sismos-texto small {
+  color: var(--ink-2);
+  font-size: 0.75rem;
+}
+
+.sismos-lista .nota {
+  padding: 0.8rem;
+}
+
+.sismos-legal {
+  margin: 0.75rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--ink-2);
+}
+
+/* En el celular las columnas fijas son más angostas y «#» se mueve con los meses, para que se vean semanas. */
+@media (max-width: 640px) {
+  .grilla-passt {
+    --ancho-act: 6.75rem;
+    --ancho-pe: 1.6rem;
+    --ancho-pct: 2.7rem;
+    --ancho-meta: 2.7rem;
+  }
+
+  .grilla-passt .col-act,
+  .grilla-passt .col-fijo-texto {
+    font-size: 0.6875rem;
+  }
+
+  .grilla-passt .col-av {
+    position: static;
+    box-shadow: none;
+  }
+
+  .grilla-passt .col-pct {
+    box-shadow: -2px 0 0 var(--rule);
+  }
+
+  .grilla-passt .col-total {
+    width: calc(var(--ancho-pct) + var(--ancho-meta));
+    min-width: calc(var(--ancho-pct) + var(--ancho-meta));
+    font-size: 0.6875rem;
+    white-space: normal;
+  }
+}
+
+.seguimiento {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.seguimiento legend {
+  padding: 0 0.3rem;
+  font-weight: 650;
+}
+
+/* Inspecciones por tipo (pedido del dueño, 29/10/2026) */
+.tarjetas-tipos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjetas-tipos button {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.9rem;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper, #fff);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.tarjetas-tipos button:hover {
+  border-color: var(--blue);
+}
+
+.tarjetas-tipos small {
+  color: var(--ink-2);
+}
+
+/* Pantalla de extintores */
+.tarjetas-ext {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.tarjeta-ext {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.9rem;
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper, #fff);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+button.tarjeta-ext {
+  cursor: pointer;
+}
+
+.tarjeta-ext b {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.tarjeta-ext span,
+.tarjeta-ext small {
+  color: var(--ink-2);
+}
+
+.tarjeta-ext.mal b {
+  color: var(--bad, #b3261e);
+}
+
+.tarjeta-ext.aviso b {
+  color: var(--warn, #b26a00);
+}
+
+.tarjeta-ext[aria-pressed='true'] {
+  border-color: var(--blue);
+}
+
+.tabla-scroll {
+  overflow-x: auto;
+}
+
+.tabla-catastro {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-catastro th,
+.tabla-catastro td {
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  border: 1px solid var(--rule);
+}
+
+.tabla-catastro th[scope='row'],
+.tabla-catastro thead th:first-child {
+  text-align: left;
+}
+
+.tabla-catastro thead th,
+.tabla-catastro tfoot th,
+.tabla-catastro tfoot td {
+  background: var(--ground);
+}
+
+.tabla-clic td {
+  text-align: left;
+}
+
+.tabla-clic tbody tr {
+  cursor: pointer;
+}
+
+.tabla-clic tbody tr:hover {
+  background: var(--ground);
+}
+
+.ficha-ext {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+}
+
+.datos-ficha {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.datos-ficha dt {
+  color: var(--ink-2);
+  font-size: 0.85rem;
+}
+
+.datos-ficha dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Ventana sobre la pantalla */
+.ventana-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 45%);
+}
+
+.ventana {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: min(60rem, 100%);
+  max-height: 90vh;
+  padding: 1rem;
+  background: var(--paper, #fff);
+  border-radius: 12px;
+}
+
+.ventana h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.ventana-cuerpo {
+  overflow: auto;
+}
+
+/* Botón de la pantalla que se está mostrando */
+.acciones button[aria-pressed='true'] {
+  color: var(--on-blue);
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.tabla-catastro button.celda-btn {
+  min-width: 2rem;
+  padding: 0.1rem 0.4rem;
+  font: inherit;
+  font-weight: 700;
+  color: var(--blue);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.tabla-catastro tr.sub-area th {
+  text-align: left;
+  background: var(--ground);
+}
+
+/* Aviso visible de «Cambio guardado» o del error, aunque se esté abajo en la pantalla */
+.toast-aviso {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 60;
+  max-width: min(26rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.7rem 1rem;
+  color: #fff;
+  background: #1f7a3d;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 25%);
+}
+
+.toast-aviso.mal {
+  background: #b3261e;
+}
+
+/* Calendario del programa: el mes y la semana de hoy, en colores pastel */
+.grilla-passt thead th.mes-hoy {
+  color: #3d2f00;
+  background: #ffd96b;
+}
+
+.grilla-passt thead th.col-hoy {
+  color: #3d2f00;
+  background: #ffe9a3;
+}
+
+.grilla-passt td.celda.col-hoy:not(.c-p):not(.c-e):not(.c-x):not(.c-v) {
+  background: #fff4c9;
+}
+
+.grilla-passt td.celda.col-hoy {
+  box-shadow: inset 0 0 0 1px #e6c24f;
+}
+
+/* Gráfico de barras de los resultados (IPF) y registros con descarga */
+.grafico-barras {
+  display: block;
+  width: 100%;
+  max-width: 46rem;
+  height: auto;
+  color: var(--ink);
+}
+
+.registro-fila {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin: 0 0.8rem 0.3rem 0;
+}
+
+/* Menú lateral (tres líneas a la izquierda del logo) */
+.barra-menu {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  margin-right: 0.25rem;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.barra-menu:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.menu-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  visibility: hidden;
+  background: rgb(0 0 0 / 45%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.menu-fondo.abierto {
+  visibility: visible;
+  opacity: 1;
+}
+
+.menu-lateral {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 71;
+  display: flex;
+  flex-direction: column;
+  width: min(19rem, 86vw);
+  color: #fff;
+  background: var(--blue, #0b3c5d);
+  box-shadow: 4px 0 18px rgb(0 0 0 / 30%);
+  transform: translateX(-105%);
+  visibility: hidden;
+  transition: transform 0.25s ease, visibility 0.25s;
+}
+
+.menu-lateral.abierto {
+  transform: translateX(0);
+  visibility: visible;
+}
+
+.menu-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid rgb(255 255 255 / 18%);
+}
+
+.menu-cab button {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.menu-lateral nav {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem 0.6rem;
+  overflow-y: auto;
+}
+
+.menu-lateral nav > button,
+.menu-sub button {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.menu-lateral nav > button:hover,
+.menu-sub button:hover {
+  background: rgb(255 255 255 / 14%);
+}
+
+.menu-sub {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0 0 0.3rem 1.6rem;
+  padding: 0 0 0 0.6rem;
+  list-style: none;
+  border-left: 2px solid rgb(255 255 255 / 25%);
+}
+
+.menu-sub button {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.92rem;
+  opacity: 0.92;
+}
+
+.menu-sub .menu-ver-todas {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.menu-cab .logo {
+  height: 40px;
+}
+
+/* Logo de la empresa cliente en la barra superior */
+.barra-marca .logo-empresa {
+  display: block;
+  max-width: 9rem;
+  height: 40px;
+  object-fit: contain;
+}
+
+/* Secciones resumen del inicio: icono, nombre y cantidad a la izquierda; «Ver detalle» al final a la derecha */
+.resumen-cab {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.resumen-cab h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.resumen-icono {
+  display: inline-grid;
+  place-items: center;
+}
+
+.resumen-ver {
+  margin-left: auto;
+  white-space: nowrap;
 }

@@ -26,6 +26,28 @@ export function Programas({ empresaId, online }: { empresaId: string; online: bo
     if (online) cargar()
   }, [online, cargar])
 
+  const fila = (p: Programa) => (
+              <li key={p.id} className={p.vigente ? '' : 'inactiva'}>
+                <CalendarDays aria-hidden="true" />
+                <div>
+                  <b>{p.nombre}</b>
+                  <span className={`chip ${p.estado === 'aprobado' ? 'chip-ok' : 'chip-aviso'}`}>{p.estado === 'aprobado' ? 'Aprobado' : 'Borrador'}</span>
+                  {!p.vigente && <span className="chip chip-gris">Desactivado</span>}
+                  <small>
+                    {p.anio} · {p.sede_id ? `Sede ${p.sedes?.nombre ?? ''}` : 'General (todas las sedes)'} · meta {Number(p.meta_cumplimiento)} %
+                  </small>
+                </div>
+                <span className="lista-acciones">
+                  <button className="btn-link" type="button" onClick={() => ir(`/passt/${p.id}`)}>
+                    Abrir
+                  </button>
+                  <button className="btn-link" type="button" disabled={!online} onClick={() => setForm({ modo: 'duplicar', origen: p })}>
+                    <Copy size={16} aria-hidden="true" /> Duplicar
+                  </button>
+                </span>
+              </li>
+  )
+
   return (
     <div className="detalle">
       <header className="detalle-cab fila-entre">
@@ -51,29 +73,15 @@ export function Programas({ empresaId, online }: { empresaId: string; online: bo
         ) : !lista.length ? (
           <p className="nota">Todavía no hay programas. Crea el de este año.</p>
         ) : (
-          <ul className="lista">
-            {lista.map((p) => (
-              <li key={p.id} className={p.vigente ? '' : 'inactiva'}>
-                <CalendarDays aria-hidden="true" />
-                <div>
-                  <b>{p.nombre}</b>
-                  <span className={`chip ${p.estado === 'aprobado' ? 'chip-ok' : 'chip-aviso'}`}>{p.estado === 'aprobado' ? 'Aprobado' : 'Borrador'}</span>
-                  {!p.vigente && <span className="chip chip-gris">Desactivado</span>}
-                  <small>
-                    {p.anio} · {p.sede_id ? `Sede ${p.sedes?.nombre ?? ''}` : 'General (todas las sedes)'} · meta {Number(p.meta_cumplimiento)} %
-                  </small>
-                </div>
-                <span className="lista-acciones">
-                  <button className="btn-link" type="button" onClick={() => ir(`/passt/${p.id}`)}>
-                    Abrir
-                  </button>
-                  <button className="btn-link" type="button" disabled={!online} onClick={() => setForm({ modo: 'duplicar', origen: p })}>
-                    <Copy size={16} aria-hidden="true" /> Duplicar
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="lista">{lista.filter((p) => p.vigente).map(fila)}</ul>
+            {lista.some((p) => !p.vigente) && (
+              <details className="desactivados">
+                <summary>Programas desactivados ({lista.filter((p) => !p.vigente).length})</summary>
+                <ul className="lista">{lista.filter((p) => !p.vigente).map(fila)}</ul>
+              </details>
+            )}
+          </>
         )}
       </Seccion>
     </div>
@@ -84,6 +92,7 @@ function FormPrograma({ empresaId, sedes, origen, onCancelar }: { empresaId: str
   const [anio, setAnio] = useState(origen ? origen.anio + 1 : ANIO)
   const [sede, setSede] = useState(origen?.sede_id ?? '')
   const [nombre, setNombre] = useState('')
+  const [seguimiento, setSeguimiento] = useState<'semana' | 'mes'>(origen?.seguimiento ?? 'semana')
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const sugerido = `Programa anual de SST ${anio}${sede ? ` · ${sedes.find((s) => s.id === sede)?.nombre ?? ''}` : ''}`
@@ -94,7 +103,7 @@ function FormPrograma({ empresaId, sedes, origen, onCancelar }: { empresaId: str
     setError(null)
     try {
       const datos = { anio, sede_id: sede || null, nombre: nombre.trim() || sugerido }
-      const id = origen ? await duplicarPrograma(origen.id, datos) : await crearPrograma(empresaId, datos)
+      const id = origen ? await duplicarPrograma(origen.id, datos) : await crearPrograma(empresaId, { ...datos, seguimiento })
       ir(`/passt/${id}`)
     } catch (err) {
       setError((err as Error).message)
@@ -124,6 +133,17 @@ function FormPrograma({ empresaId, sedes, origen, onCancelar }: { empresaId: str
         </label>
         <Campo etiqueta="Nombre" opcional value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={160} placeholder={sugerido} />
       </div>
+      {/* Cómo se hace el seguimiento (pedido del dueño, 29/10/2026): una casilla por semana o una por mes. Se elige al crear. */}
+      <fieldset className="seguimiento">
+        <legend>Seguimiento del programa</legend>
+        <label className="check-linea">
+          <input type="radio" name="seguimiento" disabled={Boolean(origen)} checked={seguimiento === 'semana'} onChange={() => setSeguimiento('semana')} /> Por semana (una casilla por semana)
+        </label>
+        <label className="check-linea">
+          <input type="radio" name="seguimiento" disabled={Boolean(origen)} checked={seguimiento === 'mes'} onChange={() => setSeguimiento('mes')} /> Por mes (una casilla por mes)
+        </label>
+        {origen && <p className="nota">Un programa duplicado conserva el seguimiento del original.</p>}
+      </fieldset>
       <Aviso>{error}</Aviso>
       <div className="acciones">
         <button className="btn" type="submit" disabled={ocupado}>

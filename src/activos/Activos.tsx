@@ -35,11 +35,10 @@ export type Contexto = {
  * dispositivos de alarma…), tipos, ubicaciones dentro de cada sede y listas de los formatos.
  * Nada viene precargado con personas ni lugares: cada empresa carga lo suyo. Los activos no se borran: se dan de baja.
  */
-export function Activos({ empresaId, rutas, puedeEditar, esDueno }: { empresaId: string; rutas: Rutas; puedeEditar: boolean; esDueno: boolean }) {
-  const [pestana, setPestana] = useState<Pestana>('activos')
+/** Lo que necesitan los formularios de activos (sedes, áreas, ubicaciones, tipos, listas y personas), con su recarga. */
+export function useContextoActivos(empresaId: string, puedeEditar: boolean, esDueno: boolean) {
   const [ctx, setCtx] = useState<Omit<Contexto, 'recargar' | 'puedeEditar' | 'empresaId'> | null>(null)
   const [error, setError] = useState<string | null>(null)
-
   const recargar = useCallback(() => {
     Promise.all([leerEmpresa(empresaId), leerListas(empresaId), listarUbicaciones(empresaId), listarTipos(empresaId), listarListas(empresaId), listarPersonas(empresaId, esDueno)])
       .then(([e, l, ub, t, ls, pe]) => {
@@ -49,8 +48,13 @@ export function Activos({ empresaId, rutas, puedeEditar, esDueno }: { empresaId:
       .catch((e) => setError((e as Error).message))
   }, [empresaId, esDueno])
   useEffect(recargar, [recargar])
-
   const contexto: Contexto | null = ctx ? { ...ctx, empresaId, puedeEditar, recargar } : null
+  return { contexto, error }
+}
+
+export function Activos({ empresaId, rutas, puedeEditar, esDueno }: { empresaId: string; rutas: Rutas; puedeEditar: boolean; esDueno: boolean }) {
+  const [pestana, setPestana] = useState<Pestana>('activos')
+  const { contexto, error } = useContextoActivos(empresaId, puedeEditar, esDueno)
 
   return (
     <div className="detalle">
@@ -235,19 +239,25 @@ function ListaActivos({ ctx, onIrTipos }: { ctx: Contexto; onIrTipos: () => void
   )
 }
 
+/** Campos que se exigen siempre al dar de alta o modificar un extintor desde su pantalla. */
+const OBLIGATORIOS_EXT = [
+  { clave: 'anio_fabricacion', etiqueta: 'Año de fabricación' },
+  { clave: 'anio_prueba_hidrostatica', etiqueta: 'Año de la última prueba hidrostática' },
+]
+
 function siguienteMes(mes: string, meses: number) {
   const [a, m] = mes.split('-').map(Number)
   const d = new Date(Date.UTC(a, m - 1 + meses, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
-function FormActivo({
-  ctx, tipo, activo, materiales, onListo, onCancelar,
-}: { ctx: Contexto; tipo: TipoActivo; activo: Activo | null; materiales: { clave: string; texto: string; cantidad: number | null }[]; onListo: () => void; onCancelar: () => void }) {
+export function FormActivo({
+  ctx, tipo, activo, materiales, onListo, onCancelar, codigoInicial, exigirTodo,
+}: { codigoInicial?: string; exigirTodo?: boolean; ctx: Contexto; tipo: TipoActivo; activo: Activo | null; materiales: { clave: string; texto: string; cantidad: number | null }[]; onListo: () => void; onCancelar: () => void }) {
   const sedesActivas = ctx.sedes.filter((s) => s.activa || s.id === activo?.sede_id)
   const [d, setD] = useState<DatosActivo>(() => ({
     tipo_id: tipo.id,
-    codigo: activo?.codigo ?? '',
+    codigo: activo?.codigo ?? codigoInicial ?? '',
     subtipo: activo?.subtipo ?? tipo.subtipos[0]?.codigo ?? null,
     sede_id: activo?.sede_id ?? sedesActivas[0]?.id ?? '',
     unidad_id: activo?.unidad_id ?? null,
@@ -261,6 +271,7 @@ function FormActivo({
   const areas = useMemo(() => unidadesAsignables(ctx.unidades), [ctx.unidades])
   const ubicaciones = ctx.ubicaciones.filter((u) => u.sede_id === d.sede_id && (u.vigente || u.id === d.ubicacion_id))
   const campos = tipo.campos.filter((c) => aplicaSubtipo(c.solo_subtipos, d.subtipo))
+  const exigidos = (c: CampoFicha) => c.obligatorio || Boolean(exigirTodo && OBLIGATORIOS_EXT.some((x) => x.clave === c.clave))
 
   function setDato(c: CampoFicha, valor: string) {
     const v = valor === '' ? null : c.tipo === 'numero' || c.tipo === 'anio' ? Number(valor) : valor
@@ -276,6 +287,12 @@ function FormActivo({
   async function guardar(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    // Con exigirTodo (extintores, pedido del dueño 29/10/2026): área, ubicación, responsable y los dos años son obligatorios.
+    if (exigirTodo) {
+      const falta = [!d.unidad_id && 'el área', !d.ubicacion_id && 'la ubicación', !d.responsable_id && 'el responsable',
+        ...OBLIGATORIOS_EXT.filter((c) => d.datos[c.clave] == null || d.datos[c.clave] === '').map((c) => `«${c.etiqueta}»`)].filter(Boolean)
+      if (falta.length) return setError(`Falta completar: ${falta.join(', ')}.`)
+    }
     setOcupado(true)
     try {
       await guardarActivo(ctx.empresaId, activo?.id ?? null, d)
@@ -319,7 +336,7 @@ function FormActivo({
         </label>
         <label className="field">
           <span>
-            Área <em className="opcional">(opcional)</em>
+            Área {exigirTodo ? '*' : <em className="opcional">(opcional)</em>}
           </span>
           <select value={d.unidad_id ?? ''} onChange={(e) => setD({ ...d, unidad_id: e.target.value || null })}>
             <option value="">— Sin área —</option>
@@ -332,7 +349,7 @@ function FormActivo({
         </label>
         <label className="field">
           <span>
-            Ubicación <em className="opcional">(opcional)</em>
+            Ubicación {exigirTodo ? '*' : <em className="opcional">(opcional)</em>}
           </span>
           <select value={d.ubicacion_id ?? ''} onChange={(e) => setD({ ...d, ubicacion_id: e.target.value || null })}>
             <option value="">— Sin ubicación —</option>
@@ -347,7 +364,7 @@ function FormActivo({
       </div>
       <label className="field">
         <span>
-          Responsable <em className="opcional">(opcional)</em>
+          Responsable {exigirTodo ? '*' : <em className="opcional">(opcional)</em>}
         </span>
         <select value={d.responsable_id ?? ''} onChange={(e) => setD({ ...d, responsable_id: e.target.value || null })}>
           <option value="">— Sin responsable —</option>
@@ -370,7 +387,7 @@ function FormActivo({
                 return (
                   <label key={c.clave} className="field">
                     <span>
-                      {etiqueta} {!c.obligatorio && <em className="opcional">(opcional)</em>}
+                      {etiqueta} {!exigidos(c) && <em className="opcional">(opcional)</em>}
                     </span>
                     <select value={(v as string) ?? ''} onChange={(e) => setDato(c, e.target.value)}>
                       <option value="">— Elige —</option>
@@ -384,13 +401,13 @@ function FormActivo({
                 return (
                   <label key={c.clave} className="field">
                     <span>
-                      {etiqueta} {!c.obligatorio && <em className="opcional">(opcional)</em>}
+                      {etiqueta} {!exigidos(c) && <em className="opcional">(opcional)</em>}
                     </span>
                     <textarea rows={2} maxLength={2000} value={(v as string) ?? ''} onChange={(e) => setDato(c, e.target.value)} />
                   </label>
                 )
               return (
-                <Campo key={c.clave} etiqueta={etiqueta} opcional={!c.obligatorio} value={v ?? ''}
+                <Campo key={c.clave} etiqueta={etiqueta} opcional={!exigidos(c)} value={v ?? ''}
                   type={c.tipo === 'mes' ? 'month' : c.tipo === 'numero' || c.tipo === 'anio' ? 'number' : 'text'}
                   min={c.tipo === 'anio' ? 1900 : undefined} max={c.tipo === 'anio' ? 2100 : undefined} step={c.tipo === 'numero' ? 'any' : undefined}
                   ayuda={c.calcula ? `Se sugiere solo: +${c.calcula.meses} meses; se puede cambiar.` : undefined}
@@ -429,7 +446,7 @@ function FormActivo({
   )
 }
 
-function FormBaja({ activo, onListo, onCancelar }: { activo: Activo; onListo: () => void; onCancelar: () => void }) {
+export function FormBaja({ activo, onListo, onCancelar }: { activo: Activo; onListo: () => void; onCancelar: () => void }) {
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)

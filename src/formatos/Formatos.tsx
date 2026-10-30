@@ -12,7 +12,7 @@ import {
 export type Rutas = { formatos: string; activos: string; volver: string | null }
 
 /** Las plantillas base en el orden del anexo de textos base. */
-const ORDEN_BASE = ['extintores', 'car', 'bombas', 'daci', 'loto', 'ipf']
+const ORDEN_BASE = ['extintores', 'car', 'bombas', 'motobomba', 'electrobomba', 'daci', 'loto', 'ipf']
 
 function estadoDe(p: Plantilla) {
   const vigente = p.versiones.find((v) => v.estado === 'vigente')
@@ -58,6 +58,28 @@ export function Formatos({ empresaId, rutas, puedeEditar }: { empresaId: string;
 
   // Una sola copia activa por formato base (revisión de diseño, obs. 12): si ya la tiene, se abre esa en vez de copiar.
   const copiaDe = (baseId: string) => propias?.find((p) => p.base_id === baseId && p.vigente)
+  const fila = (p: Plantilla) => {
+    const { vigente, borrador } = estadoDe(p)
+    return (
+      <li key={p.id} className={p.vigente ? '' : 'inactiva'}>
+        <ClipboardCheck aria-hidden="true" />
+        <div>
+          <b>{p.nombre}</b>
+          {vigente && <span className="chip chip-ok">v{vigente.numero} vigente</span>}
+          {borrador && <span className="chip chip-aviso">v{borrador.numero} en borrador</span>}
+          {!p.vigente && <span className="chip chip-gris">Desactivado</span>}
+          <small>
+            {p.aplica_a === 'activo' ? `Activo: ${p.tipos_activo?.nombre ?? '—'}` : 'Se aplica a un área'} · {NOMBRE_FRECUENCIA[p.frecuencia]}
+          </small>
+        </div>
+        <span className="lista-acciones">
+          <button className="btn-link" type="button" onClick={() => ir(`${rutas.formatos}/${p.id}`)}>
+            {puedeEditar ? <Pencil size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />} {puedeEditar ? 'Abrir' : 'Ver'}
+          </button>
+        </span>
+      </li>
+    )
+  }
 
   return (
     <div className="detalle">
@@ -93,30 +115,16 @@ export function Formatos({ empresaId, rutas, puedeEditar }: { empresaId: string;
         ) : propias.length === 0 ? (
           <p className="nota">Todavía no hay formatos. Copia una plantilla base de abajo y adáptala.</p>
         ) : (
-          <ul className="lista">
-            {propias.map((p) => {
-              const { vigente, borrador } = estadoDe(p)
-              return (
-                <li key={p.id} className={p.vigente ? '' : 'inactiva'}>
-                  <ClipboardCheck aria-hidden="true" />
-                  <div>
-                    <b>{p.nombre}</b>
-                    {vigente && <span className="chip chip-ok">v{vigente.numero} vigente</span>}
-                    {borrador && <span className="chip chip-aviso">v{borrador.numero} en borrador</span>}
-                    {!p.vigente && <span className="chip chip-gris">Desactivado</span>}
-                    <small>
-                      {p.aplica_a === 'activo' ? `Activo: ${p.tipos_activo?.nombre ?? '—'}` : 'Se aplica a un área'} · {NOMBRE_FRECUENCIA[p.frecuencia]}
-                    </small>
-                  </div>
-                  <span className="lista-acciones">
-                    <button className="btn-link" type="button" onClick={() => ir(`${rutas.formatos}/${p.id}`)}>
-                      {puedeEditar ? <Pencil size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />} {puedeEditar ? 'Abrir' : 'Ver'}
-                    </button>
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
+          <>
+            {/* Solo los formatos activos; los desactivados quedan aparte, plegados (revisión de diseño, obs. 12). */}
+            <ul className="lista">{propias.filter((p) => p.vigente).map(fila)}</ul>
+            {propias.some((p) => !p.vigente) && (
+              <details className="desactivados">
+                <summary>Formatos desactivados ({propias.filter((p) => !p.vigente).length})</summary>
+                <ul className="lista">{propias.filter((p) => !p.vigente).map(fila)}</ul>
+              </details>
+            )}
+          </>
         )}
       </Seccion>
 
@@ -169,7 +177,7 @@ function NuevaPlantilla({ empresaId, tipos, rutas, onCancelar }: { empresaId: st
   const [nombre, setNombre] = useState('')
   const [aplica, setAplica] = useState<'activo' | 'area'>('area')
   const [tipo, setTipo] = useState('')
-  const [frecuencia, setFrecuencia] = useState<Frecuencia>('sin_frecuencia')
+  const frecuencia: Frecuencia = 'sin_frecuencia' // el formato no tiene período propio: la frecuencia nace en el programa anual de SST
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const vigentes = tipos.filter((t) => t.vigente)
@@ -214,16 +222,6 @@ function NuevaPlantilla({ empresaId, tipos, rutas, onCancelar }: { empresaId: st
             {!vigentes.length && <small className="ayuda">Primero activa o crea un tipo en «Activos y listas».</small>}
           </label>
         )}
-        <label className="field">
-          <span>Frecuencia</span>
-          <select value={frecuencia} onChange={(e) => setFrecuencia(e.target.value as Frecuencia)}>
-            {Object.entries(NOMBRE_FRECUENCIA).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
       <Aviso>{error}</Aviso>
       <div className="acciones">

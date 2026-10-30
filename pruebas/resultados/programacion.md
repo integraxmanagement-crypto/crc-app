@@ -1,10 +1,10 @@
 # Pruebas de la programación (tarea 3.4-D, parte 1)
 
-Fecha: 2026-10-29T14:39:34.799Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
+Fecha: 2026-10-30T14:10:09.402Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
 
 ## 1. Frecuencias de las plantillas base
 
-- ❌ Valores iniciales aprobados: extintores, caseta, DACI e IPF mensual; bombas semanal; LOTO trimestral — {"extintores":"mensual","car":"mensual","bombas":"semanal","daci":"mensual","ipf":"mensual","loto":"trimestral"}
+- ❌ Valores iniciales aprobados: caseta, DACI e IPF mensual; extintores y bombas semanal; LOTO trimestral — {"extintores":"semanal","car":"mensual","bombas":"semanal","daci":"mensual","ipf":"mensual","motobomba":"semanal","loto":"trimestral","electrobomba":"semanal"}
 
 ## 2. Formato propio y quién cambia la frecuencia
 
@@ -21,10 +21,10 @@ Fecha: 2026-10-29T14:39:34.799Z · Base: crc-dev · Datos FICTICIOS · **undefin
 
 ## 3. Avance por período
 
-- ❌ Se inspecciona el equipo 1 con una X: «Inoperativo» — {"id":"0cd1d87e-93ba-4f9c-96fe-36f31b190696","estado":"grabada","huella":"fa1da4bc673d1ee07e6905f29dfa9fa04586f70af7103fa3220a5e90e226e6a3","numero":41}
+- ❌ Se inspecciona el equipo 1 con una X: «Inoperativo» — {"id":"9a1c95fb-2605-4316-a33b-f0ad1f515647","estado":"grabada","huella":"dcdc0fd7e4974ba24189aa06c4a4975679ab6877345bb483b0f4cd1de9e64eb7","numero":138}
 - ❌ El equipo 3 se da de baja hoy
-- ❌ Mes actual (Octubre 2026 · 28/09/2026 al 01/11/2026): total 2 (el dado de baja no cuenta) — ["LUZ-33926-1","LUZ-33926-2"]
-- ❌ 1 de 2 inspeccionados: el «Inoperativo» cuenta como inspeccionado — [{"activo_id":"a3985a9b-cceb-4aab-9020-8c26d1838bbc","codigo":"LUZ-33926-1","numero":1,"subtipo":null,"ubicacion_id":null,"unidad_id":null,"inspeccion_id":"0cd1d87e-93ba-4f9c-96fe-36f31b190696","inspeccion_numero":41,"fecha":"2026-10-29","resultado":"Inoperativo","hallazgos":1}]
+- ❌ Mes actual (Octubre 2026 · 01/10/2026 al 31/10/2026): total 2 (el dado de baja no cuenta) — ["LUZ-97716-1","LUZ-97716-2"]
+- ❌ 1 de 2 inspeccionados: el «Inoperativo» cuenta como inspeccionado — [{"activo_id":"80594280-5a8b-4ff6-ad66-1d948fd38703","codigo":"LUZ-97716-1","numero":1,"subtipo":null,"ubicacion_id":null,"unidad_id":null,"inspeccion_id":"9a1c95fb-2605-4316-a33b-f0ad1f515647","inspeccion_numero":138,"fecha":"2026-10-30","resultado":"Inoperativo","hallazgos":1}]
 - ❌ Falta el equipo 2
 - ❌ El equipo inspeccionado trae su hallazgo
 - ❌ Mes anterior: los equipos todavía no existían, total 0 — []

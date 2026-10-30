@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion as Caja } from '../empresas/campos'
 import { ExcelFormato } from '../inspecciones/ExcelFormato'
 import { ir } from '../ruta'
-import type { Frecuencia } from './base'
 import {
   type Lista, type Logo, NOMBRE_ESTADO, NOMBRE_FRECUENCIA, type Plantilla, type TipoActivo, type Version, cambiarVigenciaPlantilla,
   descartarBorrador, guardarBorrador, guardarPlantilla, leerPlantilla, listarListas, listarTipos, listarTiposBase, nuevoBorrador,
@@ -271,7 +270,7 @@ export function Editor({
         </label>
       )}
 
-      {!esBase && puedeEditar && <DatosPlantilla plantilla={plantilla} puedeFrecuencia={puedePublicar} onCambio={() => void cargar(version.id)} />}
+      {!esBase && puedeEditar && <DatosPlantilla plantilla={plantilla} onCambio={() => void cargar(version.id)} />}
 
       <Caja titulo="Encabezado de esta versión">
         <p className="nota">Razón social, RUC, domicilio y actividad salen solos de la ficha de la empresa.</p>
@@ -336,17 +335,16 @@ function claveSeccion(r: Receta) {
   for (let n = 1; ; n++) if (!r.secciones.some((s) => s.clave === `seccion-${n}`)) return `seccion-${n}`
 }
 
-function DatosPlantilla({ plantilla, puedeFrecuencia, onCambio }: { plantilla: Plantilla; puedeFrecuencia: boolean; onCambio: () => void }) {
+function DatosPlantilla({ plantilla, onCambio }: { plantilla: Plantilla; onCambio: () => void }) {
   const [abierto, setAbierto] = useState(false)
   const [nombre, setNombre] = useState(plantilla.nombre)
   const [descripcion, setDescripcion] = useState(plantilla.descripcion ?? '')
-  const [frecuencia, setFrecuencia] = useState<Frecuencia>(plantilla.frecuencia)
   const [error, setError] = useState<string | null>(null)
 
   async function guardar() {
     setError(null)
     try {
-      await guardarPlantilla(plantilla.id, { nombre, descripcion: descripcion || null, frecuencia })
+      await guardarPlantilla(plantilla.id, { nombre, descripcion: descripcion || null, frecuencia: plantilla.frecuencia })
       setAbierto(false)
       onCambio()
     } catch (e) {
@@ -379,24 +377,13 @@ function DatosPlantilla({ plantilla, puedeFrecuencia, onCambio }: { plantilla: P
       }
     >
       <p className="nota">
-        Frecuencia: <b>{NOMBRE_FRECUENCIA[plantilla.frecuencia]}</b>. Con ella se arman los períodos del avance y del Excel por período. El nombre, la
-        descripción y la frecuencia no forman parte de la versión. La frecuencia la cambia solo el administrador.
+        Un formato no tiene un período propio: la frecuencia (semanal, mensual…) se define en la actividad del programa anual de SST a la que se vincula (solo el administrador). El nombre y la
+        descripción no forman parte de la versión.
       </p>
       {abierto && (
         <div className="form subform">
           <Campo etiqueta="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={160} />
           <Campo etiqueta="Descripción" opcional value={descripcion} onChange={(e) => setDescripcion(e.target.value)} maxLength={400} />
-          <label className="field">
-            <span>Frecuencia</span>
-            <select value={frecuencia} disabled={!puedeFrecuencia} onChange={(e) => setFrecuencia(e.target.value as Frecuencia)}>
-              {Object.entries(NOMBRE_FRECUENCIA).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-            {!puedeFrecuencia && <small className="ayuda">Solo el administrador de la empresa cambia la frecuencia.</small>}
-          </label>
           <Aviso>{error}</Aviso>
           <div className="acciones">
             <button className="btn" type="button" onClick={() => void guardar()}>

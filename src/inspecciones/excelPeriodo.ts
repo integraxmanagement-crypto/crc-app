@@ -7,7 +7,8 @@
 //    combinadas, validaciones, imágenes y área de impresión.
 // Las demás marcas ({{razon_social}}, {{periodo}}, {{avance}}…) se llenan una sola vez. Sin librerías, en el equipo.
 import { crearZip, escaparXml, textoDe, textoXml } from '../carga/xlsx.ts'
-import { type DatosHoja, type Parte, partes, reemplazarMarcas, valoresDe } from './excel.ts'
+import { anclasDeFirmas, insertarImagenes } from './excelImagenes.ts'
+import { type DatosHoja, type Parte, datoDeActivo, partes, reemplazarMarcas, valoresDe } from './excel.ts'
 
 const MARCA_FILA = /\{\{\s*fila\.([^{}]+?)\s*\}\}/g
 const RE_FILA = /<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g
@@ -72,7 +73,7 @@ export type ResultadoPeriodo = { bytes: Uint8Array; filas: number; usadasDelForm
  * Llena el Excel con una fila por elemento de `filas` (cada uno da el valor de sus marcas {{fila.X}} sin el «fila.»),
  * y el resto de las marcas con `general`. Si el Excel no tiene fila modelo, solo llena las marcas generales.
  */
-export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: string) => string | null, filas: ((marca: string) => string | null)[]): Promise<ResultadoPeriodo> {
+export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: string) => string | null, filas: ((marca: string) => string | null)[], imagenes?: Map<string, Uint8Array>): Promise<ResultadoPeriodo> {
   const lista = await partes(archivo)
   const leer = (nombre: string) => {
     const p = lista.find((x) => x.nombre === nombre)
@@ -135,6 +136,7 @@ export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: s
     xml = xml
       .replace(/(<mergeCell ref=")([^"]+)(")/g, (_, a, ref: string, b) => `${a}${correrRefs(ref, desde, agregadas)}${b}`)
       .replace(/(<dimension ref=")([^"]+)(")/, (_, a, ref: string, b) => `${a}${correrRefs(ref, desde, agregadas)}${b}`)
+      .replace(/(<autoFilter\b[^>]*\sref=")([^"]+)(")/, (_, a, ref: string, b) => `${a}${correrRefs(ref, desde, agregadas)}${b}`)
       .replace(/(\ssqref=")([^"]+)(")/g, (_, a, ref: string, b) => `${a}${correrRefs(ref, desde, agregadas)}${b}`)
       .replace(/(<hyperlink\b[^>]*\sref=")([^"]+)(")/g, (_, a, ref: string, b) => `${a}${correrRefs(ref, desde, agregadas)}${b}`)
     // Imágenes (logos, sellos) ancladas debajo: se corren igual. En el dibujo las filas empiezan en 0.
@@ -152,6 +154,40 @@ export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: s
     if (libro && nombreHoja)
       escribir('xl/workbook.xml', libro.replace(/(<definedName\b[^>]*>)([\s\S]*?)(<\/definedName>)/g, (todo, a, dentro: string, b) =>
         textoXml(dentro).includes(textoXml(nombreHoja)) ? `${a}${correrRefs(dentro, desde, agregadas)}${b}` : todo))
+  }
+
+  // 3b. Si sobran filas dibujadas y vacías: se quitan antes de entregar el archivo (pedido del dueño, 29/10/2026: tantas filas como equipos),
+  //     y todo lo que está debajo (pie, firmas) sube. Las celdas combinadas, las imágenes, el filtro y el área de impresión suben igual.
+  if (Number.isFinite(capacidad) && total < capacidad) {
+    const sobran = capacidad - total
+    const ini = modelo + total
+    const fin = modelo + capacidad - 1
+    const nueva = (f: number) => (f < ini ? f : f > fin ? f - sobran : ini) // lo que cae en las filas quitadas queda en el borde
+    const refs = (texto: string) => texto.replace(/(\$?[A-Z]{1,3}\$?)(\d+)\b/g, (_, col: string, fila: string) => `${col}${nueva(Number(fila))}`)
+    const quitadas = new Map<number, Fila>()
+    for (const [n, f] of filasHoja) if (n < ini || n > fin) quitadas.set(nueva(n), f)
+    filasHoja = quitadas
+    xml = xml
+      .replace(/<mergeCell ref="([A-Z]+)(\d+):([A-Z]+)(\d+)"\s*\/>/g, (_t, c1: string, f1: string, c2: string, f2: string) =>
+        Number(f1) >= ini && Number(f2) <= fin ? '' : `<mergeCell ref="${c1}${nueva(Number(f1))}:${c2}${nueva(Number(f2))}"/>`)
+      .replace(/(<dimension ref=")([^"]+)(")/, (_, a, ref: string, b) => `${a}${refs(ref)}${b}`)
+      .replace(/(<autoFilter\b[^>]*\sref=")([^"]+)(")/, (_, a, ref: string, b) => `${a}${refs(ref)}${b}`)
+      .replace(/(\ssqref=")([^"]+)(")/g, (_, a, ref: string, b) => `${a}${refs(ref)}${b}`)
+      .replace(/(<hyperlink\b[^>]*\sref=")([^"]+)(")/g, (_, a, ref: string, b) => `${a}${refs(ref)}${b}`)
+    xml = xml.replace(/<mergeCells\b[^>]*>([\s\S]*?)<\/mergeCells>/, (_, d: string) => `<mergeCells count="${(d.match(/<mergeCell\b/g) ?? []).length}">${d}</mergeCells>`)
+    const relsH = leer(hoja.replace('worksheets/', 'worksheets/_rels/') + '.rels') ?? ''
+    for (const m of relsH.matchAll(/Type="[^"]*\/drawing"[^>]*Target="([^"]+)"|Target="([^"]+)"[^>]*Type="[^"]*\/drawing"/g)) {
+      const nombre = `xl/${(m[1] ?? m[2]).replace(/^\.\.\//, '')}`
+      const dibujo = leer(nombre)
+      if (dibujo) escribir(nombre, dibujo.replace(/<xdr:row>(\d+)<\/xdr:row>/g, (_, f: string) => `<xdr:row>${nueva(Number(f) + 1) - 1}</xdr:row>`))
+    }
+    const libro = leer('xl/workbook.xml')
+    const rid = (leer('xl/_rels/workbook.xml.rels') ?? '').match(new RegExp(`Id="([^"]+)"[^>]*Target="(?:/xl/)?${hoja.slice(3)}"|Target="(?:/xl/)?${hoja.slice(3)}"[^>]*Id="([^"]+)"`))
+    const idHoja = rid?.[1] ?? rid?.[2]
+    const nombreHoja = idHoja ? libro?.match(new RegExp(`<sheet [^>]*name="([^"]+)"[^>]*r:id="${idHoja}"`))?.[1] : null
+    if (libro && nombreHoja)
+      escribir('xl/workbook.xml', libro.replace(/(<definedName\b[^>]*>)([\s\S]*?)(<\/definedName>)/g, (todo, a, dentro: string, b) =>
+        textoXml(dentro).includes(textoXml(nombreHoja)) ? `${a}${refs(dentro)}${b}` : todo))
   }
 
   // 4. Una fila por equipo.
@@ -198,7 +234,10 @@ export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: s
   escribir(hoja, xml)
 
   // 5. Las marcas generales (encabezado, período, avance). Las {{fila.…}} que quedaran sueltas, en blanco.
-  const final: Parte[] = reemplazarMarcas(lista, (m) => (m.startsWith('fila.') ? '' : general(m)))
+  // Las firmas (y el logo) del pie van como imágenes, ya con las filas puestas en su lugar.
+  const anclas = imagenes?.size ? anclasDeFirmas(lista, imagenes.has('logo')) : []
+  const llenas: Parte[] = reemplazarMarcas(lista, (m) => (m.startsWith('fila.') ? '' : general(m)))
+  const final = anclas.length ? insertarImagenes(llenas, anclas, imagenes!) : llenas
   return {
     bytes: crearZip(final),
     filas: total,
@@ -212,7 +251,17 @@ const nombreHojaDe = (parte: string) => parte.replace(/^xl\/worksheets\//, '')
 
 // ───────────────────────── Valores del período ─────────────────────────
 
-export type EquipoPeriodo = { codigo: string; datos: Record<string, string | number | null>; inspeccion: DatosHoja | null }
+/** lugar: área, ubicación y responsable de la ficha del equipo ({{fila.activo_area}}, {{fila.activo_ubicacion}}, {{fila.activo_responsable}}). */
+export type EquipoPeriodo = {
+  codigo: string
+  datos: Record<string, string | number | null>
+  inspeccion: DatosHoja | null
+  lugar?: { area: string; ubicacion: string; responsable: string }
+  /** Nombre del subtipo del equipo (marca `tipo_dispositivo`). */
+  tipo?: string
+  /** Claves de los puntos que no se evalúan en este equipo por su subtipo: salen «N/A». */
+  noAplica?: Set<string>
+}
 
 /** Valores de cada fila: los de su inspección (las mismas marcas que en una inspección) o «No inspeccionado». */
 export function valoresFilas(equipos: EquipoPeriodo[]): ((marca: string) => string | null)[] {
@@ -221,20 +270,22 @@ export function valoresFilas(equipos: EquipoPeriodo[]): ((marca: string) => stri
     return (marca) => {
       if (marca === 'item') return String(k + 1)
       if (marca === 'estado') return e.inspeccion ? 'Inspeccionado' : 'No inspeccionado'
+      if (marca === 'activo_area') return e.lugar?.area ?? ''
+      if (marca === 'activo_ubicacion') return e.lugar?.ubicacion ?? ''
+      if (marca === 'activo_responsable') return e.lugar?.responsable ?? ''
+      if (marca === 'tipo_dispositivo') return e.tipo ?? ''
+      if (e.noAplica?.has(marca)) return 'N/A'
       if (deInspeccion) return deInspeccion(marca)
       if (marca === 'activo_codigo') return e.codigo
       if (marca === 'resultado') return 'No inspeccionado'
-      if (marca.startsWith('activo.')) {
-        const v = e.datos[marca.slice(7)]
-        return v == null ? '' : /^\d{4}-\d{2}$/.test(String(v)) ? `${String(v).slice(5)}/${String(v).slice(0, 4)}` : String(v)
-      }
+      if (marca.startsWith('activo.')) return datoDeActivo(e.datos, marca)
       return ''
     }
   })
 }
 
 /** Marcas generales del período, además de las de la empresa y del formato. */
-export function valoresGenerales(base: (marca: string) => string | null, periodo: { etiqueta: string; desde: string; hasta: string }, avance: { hechos: number; total: number | null }) {
+export function valoresGenerales(base: (marca: string) => string | null, periodo: { etiqueta: string; desde: string; hasta: string }, avance: { hechos: number; total: number | null }, registro?: { nombre: string; cargo: string; fecha?: string }) {
   const fecha = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
   const extra: Record<string, string> = {
     periodo: periodo.etiqueta.split(' · ')[0],
@@ -242,6 +293,11 @@ export function valoresGenerales(base: (marca: string) => string | null, periodo
     hasta: fecha(periodo.hasta),
     inspeccionados: String(avance.hechos),
     total: avance.total == null ? '' : String(avance.total),
+    // Pie del registro (persona que realizó la inspección y custodia del registro): se escribe a mano; la fecha es el inicio del período.
+    'firma.registro.nombre': registro?.nombre ?? '',
+    'firma.registro.cargo': registro?.cargo ?? '',
+    'firma.registro.fecha': fecha(registro?.fecha || periodo.desde),
+    fecha_inspeccion: fecha(registro?.fecha || periodo.desde),
     avance: avance.total ? `${avance.hechos} de ${avance.total} (${Math.round((100 * avance.hechos) / avance.total)} %)` : String(avance.hechos),
   }
   return (marca: string) => (marca in extra ? extra[marca] : base(marca))

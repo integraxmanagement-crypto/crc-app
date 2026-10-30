@@ -1,7 +1,7 @@
 // Períodos de las inspecciones programadas (tarea 3.4-D, decisión del dueño 27/10/2026, D-37).
-// Todo se arma con semanas ISO (lunes a domingo). Cada semana cuenta en el mes de su jueves: así un mes, un bimestre
-// o un trimestre siempre son semanas completas y ninguna semana queda en dos meses. El año es el año ISO (52 o 53
-// semanas). Las fechas van como texto AAAA-MM-DD y se calculan en UTC para que la zona horaria no mueva el día.
+// La semana es ISO (lunes a domingo). Mensual, bimestral, trimestral, semestral y anual son del calendario: un mes va del 1 al
+// último día (revisión del 29/10/2026). El programa anual (PASST) sí cuenta cada semana en el mes de su jueves (mesDeLaSemana).
+// Las fechas van como texto AAAA-MM-DD y se calculan en UTC para que la zona horaria no mueva el día.
 import type { Frecuencia } from '../formatos/base.ts'
 
 export type Periodo = { clave: string; etiqueta: string; desde: string; hasta: string }
@@ -36,15 +36,10 @@ export function mesDeLaSemana(fecha: string): { anio: number; mes: number } {
   return { anio: j.getUTCFullYear(), mes: j.getUTCMonth() + 1 }
 }
 
-/** Primer día (lunes) y último (domingo) de los meses [mesDesde, mesHasta] de un año, en semanas completas. */
+/** Primer y último día de los meses [mesDesde, mesHasta] de un año: meses del calendario (del 1 al 30 o 31), no semanas completas. */
 function tramo(anio: number, mesDesde: number, mesHasta: number) {
-  const primerJueves = (a: number, m: number) => {
-    const d1 = Date.UTC(a, m - 1, 1)
-    return d1 + ((3 - diaSemana(d1) + 7) % 7) * DIA
-  }
-  const desde = primerJueves(anio, mesDesde) - 3 * DIA
-  const sig = mesHasta === 12 ? primerJueves(anio + 1, 1) : primerJueves(anio, mesHasta + 1)
-  return { desde: aTexto(desde), hasta: aTexto(sig - 4 * DIA) }
+  const mm = String(mesDesde).padStart(2, '0')
+  return { desde: `${anio}-${mm}-01`, hasta: aTexto(Date.UTC(anio, mesHasta, 0)) }
 }
 
 /** El período al que pertenece una fecha, según la frecuencia del formato. «Sin frecuencia» no tiene períodos. */
@@ -56,7 +51,9 @@ export function periodoDe(fecha: string, frecuencia: Frecuencia): Periodo | null
   }
   const n = MESES_POR[frecuencia]
   if (!n) return null
-  const { anio, mes } = mesDeLaSemana(fecha)
+  // Mensual y más: meses del calendario (pedido del dueño, 29/10/2026: octubre va del 1 al 31). Solo la semana usa semanas ISO.
+  const anio = Number(fecha.slice(0, 4))
+  const mes = Number(fecha.slice(5, 7))
   const inicio = Math.floor((mes - 1) / n) * n + 1
   const fin = inicio + n - 1
   const { desde, hasta } = tramo(anio, inicio, fin)

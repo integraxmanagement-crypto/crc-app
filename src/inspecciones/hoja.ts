@@ -58,3 +58,39 @@ export function datosHoja(
     persona: (pid) => nombre(pid) || null,
   }
 }
+
+/**
+ * Logo de la empresa en PNG para el Excel y el PDF de cada registro (revisión de diseño, 29/10/2026), según lo que diga
+ * el formato: claro (positivo), oscuro (negativo, si no hay se usa el claro) o ninguno. Del equipo si ya está; si no,
+ * del almacén. Se pasa a PNG porque Excel no muestra WebP.
+ */
+/** Una foto de evidencia como PNG reducido (Excel no muestra WebP y la foto completa haría muy pesado el archivo). */
+export async function fotoPng(archivo: Blob, lado = 640): Promise<Uint8Array | null> {
+  const imagen = await createImageBitmap(archivo)
+  const esc = Math.min(1, lado / Math.max(imagen.width, imagen.height))
+  const lienzo = document.createElement('canvas')
+  lienzo.width = Math.max(1, Math.round(imagen.width * esc))
+  lienzo.height = Math.max(1, Math.round(imagen.height * esc))
+  lienzo.getContext('2d')!.drawImage(imagen, 0, 0, lienzo.width, lienzo.height)
+  const png = await new Promise<Blob | null>((ok) => lienzo.toBlob(ok, 'image/png'))
+  return png ? new Uint8Array(await png.arrayBuffer()) : null
+}
+
+export async function logoPng(copia: CopiaLocal | null, eleccion: string | null | undefined): Promise<Uint8Array | null> {
+  if (!copia || eleccion === 'ninguno') return null
+  const ruta = (eleccion === 'negativo' && copia.empresa.logo_negativo) || copia.empresa.logo_positivo
+  if (!ruta) return null
+  let archivo = await leerArchivo(`logos:${ruta}`)
+  if (!archivo) {
+    const r = await db().storage.from('logos').download(ruta)
+    if (r.error) return null
+    archivo = r.data
+  }
+  const imagen = await createImageBitmap(archivo)
+  const lienzo = document.createElement('canvas')
+  lienzo.width = imagen.width
+  lienzo.height = imagen.height
+  lienzo.getContext('2d')!.drawImage(imagen, 0, 0)
+  const png = await new Promise<Blob | null>((ok) => lienzo.toBlob(ok, 'image/png'))
+  return png ? new Uint8Array(await png.arrayBuffer()) : null
+}

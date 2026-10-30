@@ -1,4 +1,4 @@
-// Prueba de los períodos (tarea 3.4-D): semanas ISO y «cada semana cuenta en el mes de su jueves».
+// Prueba de los períodos (tarea 3.4-D): semanas ISO, meses del calendario y «cada semana cuenta en el mes de su jueves» (PASST).
 // No usa la base de datos. Uso: node pruebas/periodos.mjs
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { mesDeLaSemana, periodoDe, periodosHasta, semanaIso } from '../src/inspecciones/periodos.ts'
@@ -25,21 +25,23 @@ seccion('Cada semana cuenta en el mes de su jueves')
 comprobar('30/09/2026 (miércoles) cuenta en octubre: su jueves es 01/10', igual(mesDeLaSemana('2026-09-30'), { anio: 2026, mes: 10 }))
 comprobar('01/11/2026 (domingo) cuenta en octubre: su jueves es 29/10', igual(mesDeLaSemana('2026-11-01'), { anio: 2026, mes: 10 }))
 const oct = periodoDe('2026-10-15', 'mensual')
-comprobar('Octubre 2026 va del lunes 28/09 al domingo 01/11 (5 semanas completas)', oct.desde === '2026-09-28' && oct.hasta === '2026-11-01' && oct.clave === '2026-10', JSON.stringify(oct))
+comprobar('Octubre 2026 va del 1 al 31 de octubre (mes del calendario)', oct.desde === '2026-10-01' && oct.hasta === '2026-10-31' && oct.clave === '2026-10', JSON.stringify(oct))
 const nov = periodoDe('2026-11-02', 'mensual')
-comprobar('Noviembre 2026 empieza el lunes 02/11 y termina el domingo 29/11', nov.desde === '2026-11-02' && nov.hasta === '2026-11-29', JSON.stringify(nov))
-const ene = periodoDe('2025-12-30', 'mensual')
-comprobar('30/12/2025 cuenta en enero 2026 (su jueves es 01/01/2026)', ene.clave === '2026-01' && ene.desde === '2025-12-29', JSON.stringify(ene))
+comprobar('Noviembre 2026 va del 1 al 30 de noviembre', nov.desde === '2026-11-01' && nov.hasta === '2026-11-30', JSON.stringify(nov))
+const dic = periodoDe('2025-12-30', 'mensual')
+comprobar('30/12/2025 cuenta en diciembre 2025 (del 1 al 31), aunque su semana ISO sea del año 2026', dic.clave === '2025-12' && dic.desde === '2025-12-01' && dic.hasta === '2025-12-31', JSON.stringify(dic))
+const feb = periodoDe('2028-02-10', 'mensual')
+comprobar('Febrero de un año bisiesto termina el 29', feb.hasta === '2028-02-29', JSON.stringify(feb))
 
 seccion('Bimestre, trimestre, semestre y año')
 const bim = periodoDe('2026-10-15', 'bimestral')
-comprobar('Bimestre 5 de 2026 = septiembre y octubre', bim.clave === '2026-B5' && bim.desde === '2026-08-31' && bim.hasta === '2026-11-01', JSON.stringify(bim))
+comprobar('Bimestre 5 de 2026 = septiembre y octubre (01/09 al 31/10)', bim.clave === '2026-B5' && bim.desde === '2026-09-01' && bim.hasta === '2026-10-31', JSON.stringify(bim))
 const tri = periodoDe('2026-10-15', 'trimestral')
-comprobar('Trimestre 4 de 2026 = octubre a diciembre, del 28/09/2026 al 03/01/2027', tri.clave === '2026-T4' && tri.desde === '2026-09-28' && tri.hasta === '2027-01-03', JSON.stringify(tri))
+comprobar('Trimestre 4 de 2026 = octubre a diciembre (01/10 al 31/12)', tri.clave === '2026-T4' && tri.desde === '2026-10-01' && tri.hasta === '2026-12-31', JSON.stringify(tri))
 const semes = periodoDe('2026-03-10', 'semestral')
-comprobar('Semestre 1 de 2026 = enero a junio, desde el 29/12/2025', semes.clave === '2026-S1' && semes.desde === '2025-12-29' && semes.hasta === '2026-06-28', JSON.stringify(semes))
+comprobar('Semestre 1 de 2026 = enero a junio (01/01 al 30/06)', semes.clave === '2026-S1' && semes.desde === '2026-01-01' && semes.hasta === '2026-06-30', JSON.stringify(semes))
 const anio = periodoDe('2026-06-01', 'anual')
-comprobar('Año 2026 = año ISO: del 29/12/2025 al 03/01/2027 (53 semanas)', anio.desde === '2025-12-29' && anio.hasta === '2027-01-03', JSON.stringify(anio))
+comprobar('Año 2026 = del 01/01 al 31/12', anio.desde === '2026-01-01' && anio.hasta === '2026-12-31', JSON.stringify(anio))
 comprobar('«Sin frecuencia» no tiene períodos', periodoDe('2026-10-15', 'sin_frecuencia') === null)
 
 seccion('Sin huecos ni solapes')
@@ -52,10 +54,10 @@ for (const frec of ['semanal', 'mensual', 'bimestral', 'trimestral', 'semestral'
     const p = periodoDe(d, frec)
     if (!(p.desde <= d && d <= p.hasta)) { ok = false; detalle = `${d} fuera de ${p.clave}`; break }
     if (anterior && anterior.clave !== p.clave && sumar(anterior.hasta, 1) !== p.desde) { ok = false; detalle = `hueco entre ${anterior.clave} y ${p.clave}`; break }
-    if (diaSemanaUtc(p.desde) !== 1 || diaSemanaUtc(p.hasta) !== 0) { ok = false; detalle = `${p.clave} no va de lunes a domingo`; break }
+    if (frec === 'semanal' ? diaSemanaUtc(p.desde) !== 1 || diaSemanaUtc(p.hasta) !== 0 : p.desde.slice(8) !== '01' || sumar(p.hasta, 1).slice(8) !== '01') { ok = false; detalle = `${p.clave} no va de lunes a domingo (semanal) o de primer a último día del mes`; break }
     anterior = p
   }
-  comprobar(`${frec}: cada día de 2024 a 2028 está en un solo período, de lunes a domingo y sin huecos`, ok, detalle)
+  comprobar(`${frec}: cada día de 2024 a 2028 está en un solo período (semanal: de lunes a domingo; los demás: meses completos) y sin huecos`, ok, detalle)
 }
 function diaSemanaUtc(f) {
   return new Date(Date.UTC(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10))).getUTCDay()

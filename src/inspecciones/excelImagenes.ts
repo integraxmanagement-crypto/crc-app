@@ -2,10 +2,12 @@
 // En el Excel se escribe la marca {{firma.<rol>.imagen}} (o {{firma.<rol>#2.imagen}}) en la celda donde va la firma; si la
 // celda está combinada, la imagen ocupa todo el bloque combinado (p. ej. E24:F26). La marca queda en blanco y la imagen
 // se agrega como dibujo de la hoja, sin tocar lo demás del archivo. Sin imagen (firma en papel o pendiente) queda vacía.
+// El logo de la empresa va igual con {{logo}}; si el Excel no tiene esa marca ni imágenes propias, se pone en el bloque
+// combinado de la esquina superior izquierda (A1), si está vacío. Cada imagen se ajusta a su recuadro sin deformarse.
 import { textoDe } from '../carga/xlsx.ts'
 import type { Parte } from './excel.ts'
 
-export const MARCA_IMAGEN = /\{\{\s*(firma\.[^.#{}\s]+(?:#\d+)?\.imagen)\s*\}\}/
+export const MARCA_IMAGEN = /\{\{\s*(logo|firma\.[^.#{}\s]+(?:#\d+)?\.imagen|foto\.[^.#{}\s]+#\d+)\s*\}\}/
 
 type Ancla = { hoja: string; marca: string; c1: number; r1: number; c2: number; r2: number }
 
@@ -15,8 +17,11 @@ const celda = (ref: string) => {
   return m ? { c: columna(m[1]), r: Number(m[2]) - 1 } : null
 }
 
-/** Dónde va cada firma: las celdas con {{firma.…imagen}} y su bloque combinado, si lo tiene. */
-export function anclasDeFirmas(lista: Parte[]): Ancla[] {
+/**
+ * Dónde va cada imagen: las celdas con {{firma.…imagen}} o {{logo}} y su bloque combinado, si lo tiene. Con logoArriba,
+ * si no hay marca {{logo}}, el logo va en el bloque de A1 de la primera hoja (si está vacío y la hoja no trae imágenes).
+ */
+export function anclasDeFirmas(lista: Parte[], logoArriba = false): Ancla[] {
   const dec = (p?: Parte) => (p ? new TextDecoder().decode(p.bytes) : '')
   const compartidos = [...dec(lista.find((p) => p.nombre === 'xl/sharedStrings.xml')).matchAll(/<si>([\s\S]*?)<\/si>/g)].map((m) => textoDe(m[1]))
   const anclas: Ancla[] = []
@@ -34,7 +39,59 @@ export function anclasDeFirmas(lista: Parte[]): Ancla[] {
       anclas.push({ hoja: p.nombre, marca, c1: bloque?.[0].c ?? c.c, r1: bloque?.[0].r ?? c.r, c2: bloque?.[1].c ?? c.c, r2: bloque?.[1].r ?? c.r })
     }
   }
+  if (logoArriba && !anclas.some((a) => a.marca === 'logo')) {
+    const hoja = 'xl/worksheets/sheet1.xml'
+    const xml = dec(lista.find((p) => p.nombre === hoja))
+    const conDibujo = /<drawing\b/.test(xml)
+    const bloque = [...xml.matchAll(/<mergeCell ref="([A-Z]+\d+):([A-Z]+\d+)"/g)].map((m) => [celda(m[1])!, celda(m[2])!]).find(([a]) => a.c === 0 && a.r === 0)
+    const a1 = xml.match(/<c r="A1"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/)
+    const vacia = !a1 || !/<v>|<is>/.test(a1[2] ?? '')
+    if (xml && !conDibujo && bloque && vacia) anclas.push({ hoja, marca: 'logo', c1: 0, r1: 0, c2: bloque[1].c, r2: bloque[1].r })
+  }
   return anclas
+}
+
+// Medidas de la hoja en píxeles (mismo cálculo que la vista para PDF): ancho de columna y alto de fila.
+function medidas(xml: string) {
+  const attr = (t: string, n: string) => t.match(new RegExp(`\\b${n}="([^"]*)"`))?.[1] ?? null
+  const formato = xml.match(/<sheetFormatPr\b[^>]*\/?>/)?.[0] ?? ''
+  const anchoBase = Number(attr(formato, 'defaultColWidth') ?? Number(attr(formato, 'baseColWidth') ?? 8) + 0.71)
+  const altoBase = Number(attr(formato, 'defaultRowHeight') ?? 15)
+  const cols = [...xml.matchAll(/<col\b[^>]*\/>/g)].map((m) => ({ desde: Number(attr(m[0], 'min')) - 1, hasta: Number(attr(m[0], 'max')) - 1, w: Number(attr(m[0], 'width') ?? anchoBase) }))
+  const filas = new Map([...xml.matchAll(/<row\b[^>]*>/g)].map((m) => [Number(attr(m[0], 'r')) - 1, Number(attr(m[0], 'ht') ?? altoBase)]))
+  return {
+    col: (c: number) => Math.round((cols.find((x) => c >= x.desde && c <= x.hasta)?.w ?? anchoBase) * 7 + 5),
+    fila: (r: number) => Math.round((filas.get(r) ?? altoBase) * (96 / 72)),
+  }
+}
+
+// Ancho y alto de un PNG (lo dicen sus bytes 16 a 23); null si no es PNG.
+function tamanoPng(b: Uint8Array) {
+  if (b.length < 24 || b[0] !== 0x89 || b[1] !== 0x50) return null
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength)
+  return { w: v.getUint32(16), h: v.getUint32(20) }
+}
+
+const EMU = 9525 // por píxel
+
+/** Desde/hasta de una imagen centrada en su bloque y sin deformarse (si no se conoce su tamaño, llena el bloque). */
+function posicion(a: Ancla, xml: string, imagen: Uint8Array) {
+  const m = medidas(xml)
+  const anchos = Array.from({ length: a.c2 - a.c1 + 1 }, (_, k) => m.col(a.c1 + k))
+  const altos = Array.from({ length: a.r2 - a.r1 + 1 }, (_, k) => m.fila(a.r1 + k))
+  const bw = anchos.reduce((x, y) => x + y, 0), bh = altos.reduce((x, y) => x + y, 0)
+  const t = tamanoPng(imagen)
+  const margen = 4
+  const esc = t ? Math.min((bw - 2 * margen) / t.w, (bh - 2 * margen) / t.h) : 0
+  const w = t ? t.w * esc : bw - 2 * margen, h = t ? t.h * esc : bh - 2 * margen
+  const x0 = (bw - w) / 2, y0 = (bh - h) / 2
+  // Un punto del bloque (en píxeles desde su esquina) como columna/fila y desplazamiento dentro de ella.
+  const ubicar = (px: number, medidasDe: number[], inicio: number) => {
+    let i = 0
+    while (i < medidasDe.length - 1 && px >= medidasDe[i]) px -= medidasDe[i++]
+    return { n: inicio + i, off: Math.max(0, Math.round(px * EMU)) }
+  }
+  return { desdeC: ubicar(x0, anchos, a.c1), desdeF: ubicar(y0, altos, a.r1), hastaC: ubicar(x0 + w, anchos, a.c1), hastaF: ubicar(y0 + h, altos, a.r1) }
 }
 
 const rels = (nombre: string) => nombre.replace(/([^/]+)$/, '_rels/$1.rels')
@@ -85,11 +142,11 @@ export function insertarImagenes(lista: Parte[], anclas: Ancla[], imagenes: Map<
       binarios.set(media, imagenes.get(a.marca)!)
       const rid = `rIdCrcFirma${n}`
       rd = rd.replace('</Relationships>', `<Relationship Id="${rid}" Type="${TIPO_IMAGEN}" Target="../media/crc_firma_${n}.png"/></Relationships>`)
-      // Un margen pequeño dentro del bloque (en EMU: 1 cm = 360000) para que la firma no pise los bordes.
-      const m = 45720
-      piezas += `<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${a.c1}</xdr:col><xdr:colOff>${m}</xdr:colOff><xdr:row>${a.r1}</xdr:row><xdr:rowOff>${m}</xdr:rowOff></xdr:from>`
-        + `<xdr:to><xdr:col>${a.c2 + 1}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${a.r2 + 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>`
-        + `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${5000 + n}" name="Firma ${n}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>`
+      // Centrada en su bloque y sin deformarse, con un margen pequeño para no pisar los bordes.
+      const p = posicion(a, mapa.get(hoja)!, imagenes.get(a.marca)!)
+      piezas += `<xdr:twoCellAnchor editAs="twoCell"><xdr:from><xdr:col>${p.desdeC.n}</xdr:col><xdr:colOff>${p.desdeC.off}</xdr:colOff><xdr:row>${p.desdeF.n}</xdr:row><xdr:rowOff>${p.desdeF.off}</xdr:rowOff></xdr:from>`
+        + `<xdr:to><xdr:col>${p.hastaC.n}</xdr:col><xdr:colOff>${p.hastaC.off}</xdr:colOff><xdr:row>${p.hastaF.n}</xdr:row><xdr:rowOff>${p.hastaF.off}</xdr:rowOff></xdr:to>`
+        + `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${5000 + n}" name="${a.marca === 'logo' ? 'Logo' : `Firma ${n}`}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr>`
         + `<xdr:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>`
         + `<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor>`
     }

@@ -1,11 +1,14 @@
 import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
+import { todosLosPuntos } from '../formatos/receta'
+import { NOMBRE_FRECUENCIA } from '../formatos/datos'
 import { ir } from '../ruta'
 import { NOMBRE_NIVEL, type Nivel } from '../usuarios/datos'
-import { type Borrador, type CopiaLocal, type EnCola, bajarCopia, descartarBorrador, guardarBorrador, leerCopia, sincronizar, useCampo, volverABorrador } from './campo'
-import { type ResumenInspeccion, listarInspecciones } from './datos'
+import { type Borrador, type CopiaLocal, type EnCola, type FormatoLocal, bajarCopia, descartarBorrador, guardarBorrador, leerCopia, sincronizar, useCampo, volverABorrador } from './campo'
+import { type ResumenInspeccion, conFrecuencias, frecuenciasActuales, listarInspecciones } from './datos'
 import { espacioLleno, hoyLocal, ordenarUnidades, useUso } from './ayudas'
+import { esBombaIncendio } from './BombasIncendio'
 
 const fechaCorta = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
 const hora = (iso: string) => new Date(iso).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -16,7 +19,7 @@ const mb = (b: number) => `${(b / 1048576).toFixed(b < 10 * 1048576 ? 1 : 0)} MB
  * recibidas por el servidor. Lo del equipo funciona sin señal.
  */
 /** preset: formato y área ya elegidos, cuando se llega con «Realizar» desde una actividad del PASST (revisión LOTO, 29/10/2026). */
-export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId: string; cuenta: string; online: boolean; preset?: { plantilla: string; unidad: string | null } }) {
+export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId: string; cuenta: string; online: boolean; preset?: { plantilla: string; unidad: string | null; activo?: string | null } }) {
   const { borradores, cola } = useCampo(cuenta)
   const [copia, setCopia] = useState<CopiaLocal | null | undefined>(undefined)
   const [recibidas, setRecibidas] = useState<ResumenInspeccion[] | null>(null)
@@ -25,8 +28,12 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
   const [bajando, setBajando] = useState(false)
 
   useEffect(() => {
-    void leerCopia(cuenta, empresaId).then((c) => setCopia(c ?? null))
-  }, [cuenta, empresaId])
+    void leerCopia(cuenta, empresaId).then(async (c) => {
+      // Con señal, la frecuencia de cada formato es la de ahora (la copia del equipo puede traer una vieja).
+      const m = c && online ? await frecuenciasActuales(empresaId).catch(() => null) : null
+      setCopia(c && m ? conFrecuencias(c, m) : (c ?? null))
+    })
+  }, [cuenta, empresaId, online])
   const enviadas = cola.filter((c) => c.estado === 'enviada').length
   const uso = useUso(empresaId, online, enviadas)
   useEffect(() => {
@@ -93,66 +100,48 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
 
       {nueva && copia && <NuevaInspeccion copia={copia} cuenta={cuenta} preset={preset} onCancelar={() => setNueva(false)} />}
 
-      <Seccion
-        titulo="En este equipo"
-        accion={
-          porEnviar > 0 && online ? (
-            <button className="btn-sec" type="button" onClick={() => void sincronizar(cuenta, true)}>
-              <CloudUpload size={18} aria-hidden="true" /> Enviar ahora
-            </button>
-          ) : null
-        }
-      >
-        {!borradores.length && !cola.length ? (
-          <p className="nota">No hay inspecciones a medio llenar ni por enviar.</p>
-        ) : (
-          <ul className="lista">
-            {borradores.map((b) => (
-              <FilaBorrador key={b.id} b={b} />
-            ))}
-            {cola.map((c) => (
-              <FilaCola key={c.id} c={c} online={online} />
-            ))}
-          </ul>
-        )}
-        {porEnviar > 0 && !online && (
-          <p className="nota">
-            <CloudOff size={16} aria-hidden="true" /> Sin señal: {porEnviar} inspección(es) esperan para enviarse. No cierres sesión en este equipo.
-          </p>
-        )}
-      </Seccion>
+      {/* Lo que está a medio llenar o por enviar se ve dentro de cada tipo; aquí solo el aviso de envío pendiente. */}
+      {porEnviar > 0 && (
+        <p className="nota">
+          {online ? (
+            <>
+              <CloudUpload size={16} aria-hidden="true" /> {porEnviar} inspección(es) por enviar.{' '}
+              <button className="btn-link" type="button" onClick={() => void sincronizar(cuenta, true)}>Enviar ahora</button>
+            </>
+          ) : (
+            <>
+              <CloudOff size={16} aria-hidden="true" /> Sin señal: {porEnviar} inspección(es) esperan para enviarse. No cierres sesión en este equipo.
+            </>
+          )}
+        </p>
+      )}
 
-      <Seccion titulo="Recibidas">
-        {!online ? (
-          <p className="nota">Se ven con señal.</p>
-        ) : !recibidas ? (
-          !error && <p className="nota">Cargando…</p>
-        ) : !recibidas.length ? (
-          <p className="nota">Todavía no hay inspecciones recibidas.</p>
+      {/* Las inspecciones se ordenan por tipo: cada tarjeta abre las de ese formato (pedido del dueño, 29/10/2026). */}
+      <Seccion titulo="Tipos de inspección">
+        {!copia?.formatos.length ? (
+          <p className="nota">Todavía no hay formatos para inspeccionar.</p>
         ) : (
-          <ul className="lista">
-            {recibidas.map((i) => (
-              <li key={i.id} className={i.estado === 'anulada' ? 'inactiva' : ''}>
-                <ClipboardCheck aria-hidden="true" />
-                <div>
-                  <b>
-                    N.º {i.numero} · {i.plantillas?.nombre}
-                  </b>
-                  {i.estado === 'anulada' && <span className="chip chip-gris">Anulada</span>}
-                  {i.resultado && <span className={`chip ${i.hallazgos.length ? 'chip-aviso' : 'chip-ok'}`}>{i.resultado}</span>}
-                  {i.hallazgos.length > 0 && <span className="chip chip-mal">{i.hallazgos.length} hallazgo(s)</span>}
-                  <small>
-                    {fechaCorta(i.fecha)} · {i.activo_foto ? i.activo_foto.codigo : (i.sedes?.nombre ?? '')}
-                    {i.puntaje != null ? ` · ${i.puntaje} %` : ''}
-                  </small>
-                </div>
-                <span className="lista-acciones">
-                  <button className="btn-link" type="button" onClick={() => ir(`/inspecciones/${i.id}`)}>
-                    <Eye size={16} aria-hidden="true" /> Ver
+          <ul className="tarjetas-tipos">
+            {[...copia.formatos.filter((f) => !esBombaIncendio(f.plantilla.nombre)), ...(copia.formatos.some((f) => esBombaIncendio(f.plantilla.nombre)) ? [GRUPO_BOMBAS(copia.formatos.filter((f) => esBombaIncendio(f.plantilla.nombre)))] : [])]
+              .sort((x, y) => x.plantilla.nombre.localeCompare(y.plantilla.nombre, 'es')).map((f) => {
+              const grupo = f.plantilla.id === 'bombas'
+              const ids = grupo ? copia.formatos.filter((x) => esBombaIncendio(x.plantilla.nombre)).map((x) => x.plantilla.id) : [f.plantilla.id]
+              const n = recibidas?.filter((i) => ids.includes(i.plantilla_id) && i.estado !== 'anulada').length
+              const medio = borradores.filter((b) => ids.includes(b.plantilla_id)).length
+              return (
+                <li key={f.plantilla.id}>
+                  <button type="button" onClick={() => ir(`/inspecciones/tipo/${f.plantilla.id}`)}>
+                    <ClipboardCheck aria-hidden="true" />
+                    <b>{f.plantilla.nombre}</b>
+                    <small>
+                      {NOMBRE_FRECUENCIA[f.plantilla.frecuencia]}
+                      {n != null ? ` · ${n} recibida(s)` : ''}
+                    </small>
+                    {medio > 0 && <span className="chip chip-aviso">{medio} a medio llenar</span>}
                   </button>
-                </span>
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
         )}
       </Seccion>
@@ -160,7 +149,47 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
   )
 }
 
-function FilaBorrador({ b }: { b: Borrador }) {
+/** La tarjeta que reúne motobomba y electrobomba bajo «Inspección de bomba contra incendio» (su pantalla propone las dos). */
+const GRUPO_BOMBAS = (formatos: FormatoLocal[]): FormatoLocal => ({
+  plantilla: { id: 'bombas', nombre: 'Inspección de bomba contra incendio', aplica_a: 'activo', tipo_activo_id: null, frecuencia: formatos[0].plantilla.frecuencia },
+  version: formatos[0].version,
+  excel: null,
+})
+
+/** Las inspecciones ya recibidas por el servidor, de un tipo de formato (o de todos). */
+export function ListaRecibidas({ recibidas, error, online }: { recibidas: ResumenInspeccion[] | null; error: string | null; online: boolean }) {
+  if (!online) return <p className="nota">Se ven con señal.</p>
+  if (!recibidas) return error ? null : <p className="nota">Cargando…</p>
+  if (!recibidas.length) return <p className="nota">Todavía no hay inspecciones recibidas.</p>
+  return (
+    <ul className="lista">
+      {recibidas.map((i) => (
+        <li key={i.id} className={i.estado === 'anulada' ? 'inactiva' : ''}>
+          <ClipboardCheck aria-hidden="true" />
+          <div>
+            <b>
+              N.º {i.numero} · {i.plantillas?.nombre}
+            </b>
+            {i.estado === 'anulada' && <span className="chip chip-gris">Anulada</span>}
+            {i.resultado && <span className={`chip ${i.hallazgos.length ? 'chip-aviso' : 'chip-ok'}`}>{i.resultado}</span>}
+            {i.hallazgos.length > 0 && <span className="chip chip-mal">{i.hallazgos.length} hallazgo(s)</span>}
+            <small>
+              {fechaCorta(i.fecha)} · {i.activo_foto ? i.activo_foto.codigo : (i.sedes?.nombre ?? '')}
+              {i.puntaje != null ? ` · ${i.puntaje} %` : ''}
+            </small>
+          </div>
+          <span className="lista-acciones">
+            <button className="btn-link" type="button" onClick={() => ir(`/inspecciones/${i.id}`)}>
+              <Eye size={16} aria-hidden="true" /> Ver
+            </button>
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function FilaBorrador({ b }: { b: Borrador }) {
   const [seguro, setSeguro] = useState(false)
   return (
     <li>
@@ -197,7 +226,7 @@ const NOMBRE_ESTADO_COLA: Record<EnCola['estado'], [string, string]> = {
   rechazada: ['No aceptada', 'chip-mal'],
 }
 
-function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
+export function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
   const [texto, clase] = NOMBRE_ESTADO_COLA[c.estado]
   return (
     <li>
@@ -236,11 +265,11 @@ function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
 }
 
 /** Elegir formato y qué se inspecciona (un activo, o un área: sede, área y ubicación). Todo sale de la copia local. */
-function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLocal; cuenta: string; preset?: { plantilla: string; unidad: string | null }; onCancelar: () => void }) {
+function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLocal; cuenta: string; preset?: { plantilla: string; unidad: string | null; activo?: string | null }; onCancelar: () => void }) {
   const [formatoId, setFormatoId] = useState(
     preset && copia.formatos.some((x) => x.plantilla.id === preset.plantilla) ? preset.plantilla : (copia.formatos[0]?.plantilla.id ?? ''),
   )
-  const [activoId, setActivoId] = useState('')
+  const [activoId, setActivoId] = useState(preset?.activo ?? '')
   const [buscar, setBuscar] = useState('')
   const [sede, setSede] = useState(copia.sedes.length === 1 ? copia.sedes[0].id : '')
   const [unidad, setUnidad] = useState(preset?.unidad && copia.unidades.some((u) => u.id === preset.unidad) ? preset.unidad : '')
@@ -265,8 +294,8 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
     [copia.formatos],
   )
 
-  async function crear(e: FormEvent) {
-    e.preventDefault()
+  async function crear(e?: FormEvent) {
+    e?.preventDefault()
     setError(null)
     if (!f) return setError('Elige el formato.')
     const activo = f.plantilla.aplica_a === 'activo' ? copia.activos.find((a) => a.id === activoId) : null
@@ -274,10 +303,6 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
     if (!activo && !sede) return setError('Elige la sede.')
     const tipo = activo ? copia.tipos.find((t) => t.id === activo.tipo_id) : null
     const ahora = new Date().toISOString()
-    // Se propone a quien registra en el rol del inspector o del responsable del registro (en LOTO el primero es el
-    // observado); si no hay ninguno, en el primer rol. Se puede cambiar.
-    const firmas = f.version.receta.firmas
-    const primera = firmas.find((x) => /inspector|registro/.test(x.clave)) ?? firmas[0]
     const b: Borrador = {
       id: crypto.randomUUID(),
       cuenta,
@@ -293,13 +318,14 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
       activo_foto: activo
         ? { codigo: activo.codigo, numero: activo.numero, subtipo: activo.subtipo, datos: activo.datos, dotacion: activo.dotacion, tipo: tipo?.nombre ?? '' }
         : null,
-      respuestas: {},
+      // Los puntos con valor por defecto (IPF: objetivo de la inspección) ya vienen escritos; se pueden cambiar.
+      respuestas: Object.fromEntries(todosLosPuntos(f.version.receta).filter((x) => x.punto.valor_defecto && !x.seccion.repetible).map((x) => [x.punto.clave, { valor: x.punto.valor_defecto! }])),
       filas: {},
       observacion: '',
       fecha: hoyLocal(),
       iniciada_en: ahora,
       fotos: [],
-      firmantes: primera && copia.personas.some((p) => p.persona_id === cuenta) ? [{ rol_clave: primera.clave, rol_titulo: primera.titulo, orden: 1, persona_id: cuenta }] : [],
+      firmantes: [],
       mi_firma: null,
       actualizado_en: ahora,
     }
@@ -310,6 +336,12 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
       setError((err as Error).message)
     }
   }
+
+  // Con un equipo ya elegido (desde la pantalla de extintores), la inspección empieza sola.
+  useEffect(() => {
+    if (preset?.activo && copia.activos.some((x) => x.id === preset.activo)) void crear()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <form className="form subform" onSubmit={crear} noValidate>
@@ -327,7 +359,18 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
         <div className="fila2">
           <label className="field">
             <span>Buscar por código</span>
-            <input type="search" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Ej.: EXT-001" />
+            {/* Se completa y predice al escribir (lista de códigos que coinciden); al elegir un código exacto, queda elegido el activo. */}
+            <input type="search" value={buscar} list="codigos-activos" autoComplete="off" placeholder="Ej.: EXT-001"
+              onChange={(e) => {
+                setBuscar(e.target.value)
+                const exacto = deTipo.find((a) => a.codigo.toLowerCase() === e.target.value.trim().toLowerCase())
+                if (exacto) setActivoId(exacto.id)
+              }} />
+            <datalist id="codigos-activos">
+              {filtrados.slice(0, 30).map((a) => (
+                <option key={a.id} value={a.codigo}>{a.ubicacion_id ? (copia.ubicaciones.find((u) => u.id === a.ubicacion_id)?.nombre ?? '') : ''}</option>
+              ))}
+            </datalist>
           </label>
           <label className="field">
             <span>Activo</span>

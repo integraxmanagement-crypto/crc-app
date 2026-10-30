@@ -1,5 +1,5 @@
-import { Boxes, Building2, CircleCheck, ClipboardCheck, CalendarDays, ClipboardList, ListChecks, Download, Home, PenLine, ShieldCheck, Smartphone, Users } from 'lucide-react'
-import { type ReactNode, useEffect, useState } from 'react'
+import { Building2, CircleCheck, Download, Menu, ShieldCheck, Smartphone } from 'lucide-react'
+import { type ReactNode, Suspense, lazy, useEffect, useState } from 'react'
 import { Activos } from './activos/Activos'
 import { CambioContrasena } from './CambioContrasena'
 import { Carga } from './carga/Carga'
@@ -16,6 +16,7 @@ import { ProgramaAnual } from './passt/Programa'
 import { Programas } from './passt/Programas'
 import { AvancePasst } from './inicio/AvancePasst'
 import { Campana } from './inicio/Campana'
+import { MisHallazgos } from './inicio/MisHallazgos'
 import { PendientesMes } from './inicio/PendientesMes'
 import { Ingreso } from './Ingreso'
 import { pedirPersistencia } from './inspecciones/almacen'
@@ -24,9 +25,13 @@ import { Avance } from './inspecciones/Avance'
 import { DetalleInspeccion } from './inspecciones/Detalle'
 import { espacioLleno, useFirmasPendientes, useUso } from './inspecciones/ayudas'
 import { Inspecciones } from './inspecciones/Inspecciones'
+import { TipoInspeccion } from './inspecciones/TipoInspeccion'
+import { BombasIncendio } from './inspecciones/BombasIncendio'
 import { Llenar } from './inspecciones/Llenar'
 import { MisFirmas } from './inspecciones/MisFirmas'
 import { Logo } from './marca/Logo'
+import { MenuLateral } from './MenuLateral'
+import { LogoBarra } from './marca/LogoBarra'
 import { InfoEmpresa, MenuPerfil, MiInformacion } from './perfil/Perfil'
 import { ir, useRuta } from './ruta'
 import { type Perfil, useSesion } from './sesion'
@@ -71,7 +76,7 @@ function nombreCorto(apellidosNombres: string) {
   return primero === primero.toLocaleUpperCase('es') ? primero.charAt(0) + primero.slice(1).toLocaleLowerCase('es') : primero
 }
 
-function Inicio({ perfil, firmas, online }: { perfil: Perfil; firmas: number; online: boolean }) {
+function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
   return (
     <>
       <h1 className="saludo">Hola, {nombreCorto(perfil.apellidosNombres)}</h1>
@@ -79,69 +84,35 @@ function Inicio({ perfil, firmas, online }: { perfil: Perfil; firmas: number; on
       {esEquipoSso(perfil) && perfil.empresaId && <AvancePasst empresaId={perfil.empresaId} online={online} />}
       {esEquipoSso(perfil) && perfil.empresaId && <PendientesMes empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
 
-      {(perfil.esDueno || perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'gestor') && (
-        <div className="accesos">
-          {perfil.esDueno && (
-            <>
-              <button className="btn" type="button" onClick={() => ir('/empresas')}>
-                <Building2 size={20} aria-hidden="true" /> Empresas clientes
-              </button>
-              <button className="btn-sec" type="button" onClick={() => ir('/intentos')}>
-                <ShieldCheck size={18} aria-hidden="true" /> Registro de intentos de ingreso
-              </button>
-            </>
-          )}
-          {perfil.rolCodigo === 'admin_empresa' && perfil.empresaId && (
-            <>
-              <button className="btn" type="button" onClick={() => ir('/mi-empresa/usuarios')}>
-                <Users size={20} aria-hidden="true" /> Usuarios de mi empresa
-              </button>
-              <button className="btn-sec" type="button" onClick={() => ir('/perfil/empresa')}>
-                <Building2 size={18} aria-hidden="true" /> Mi empresa
-              </button>
-            </>
-          )}
-          {esEquipoSso(perfil) && (
-            <>
-              <button className="btn" type="button" onClick={() => ir('/inspecciones')}>
-                <ClipboardList size={20} aria-hidden="true" /> Inspecciones
-              </button>
-              <button className="btn-sec" type="button" onClick={() => ir('/passt')}>
-                <CalendarDays size={18} aria-hidden="true" /> Programa anual de SST
-              </button>
-              <button className="btn-sec" type="button" onClick={() => ir('/formatos')}>
-                <ClipboardCheck size={18} aria-hidden="true" /> Formatos de inspección
-              </button>
-              <button className="btn-sec" type="button" onClick={() => ir('/activos')}>
-                <Boxes size={18} aria-hidden="true" /> Activos y listas
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      {/* Debajo de los atrasados: mis hallazgos por cerrar (pedido del dueño, 29/10/2026). */}
+      {perfil.empresaId && <MisHallazgos empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
 
-      {perfil.empresaId && !esEquipoSso(perfil) && (
-        <button className="btn" type="button" onClick={() => ir('/hallazgos')}>
-          <ListChecks size={20} aria-hidden="true" /> Mis hallazgos
-        </button>
-      )}
-      {firmas > 0 && (
-        <button className="btn-sec" type="button" onClick={() => ir('/firmas')}>
-          <PenLine size={18} aria-hidden="true" /> Tienes {firmas} firma(s) pendiente(s)
-        </button>
-      )}
+      {/* Alerta de sismos — Perú (pedido del dueño, 29/10/2026). */}
+      <Suspense fallback={null}>
+        <AlertaSismos online={online} />
+      </Suspense>
 
+      {/* Lo último del inicio: cómo instalar la aplicación (pedido del dueño, 30/10/2026). */}
       <Install />
     </>
   )
 }
 
+// El mapa de sismos (Leaflet) se carga aparte, para que el inicio abra rápido.
+const AlertaSismos = lazy(() => import('./inicio/AlertaSismos'))
+
 /** Barra superior compacta de las pantallas de gestión. */
 function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; online: boolean }) {
+  const [menu, setMenu] = useState(false)
   return (
     <header className="barra">
+      {/* Las tres líneas abren el menú lateral (Inicio, Programa anual de SST, Inspecciones y Formatos) (pedido del dueño, 29/10/2026). */}
+      <button className="barra-menu" type="button" aria-label="Abrir el menú" aria-expanded={menu} onClick={() => setMenu(true)}>
+        <Menu size={22} aria-hidden="true" />
+      </button>
+      <MenuLateral perfil={perfil} equipoSso={esEquipoSso(perfil)} online={online} abierto={menu} onCerrar={() => setMenu(false)} />
       <button className="barra-marca" type="button" onClick={() => ir('/')} title="Ir al inicio">
-        <Logo fondo="oscuro" />
+        <LogoBarra perfil={perfil} />
       </button>
       {/* Conexión junto al logo (revisión de diseño, obs. 2): luz verde con señal, roja sin señal. */}
       <span className="conexion" data-online={online} role="status" title={online ? 'En línea' : 'Modo sin conexión'}>
@@ -149,9 +120,6 @@ function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; onl
         <span className="conexion-texto">{online ? 'En línea' : 'Modo sin conexión'}</span>
       </span>
       <nav aria-label="Secciones">
-        <button type="button" onClick={() => ir('/')} title="Inicio">
-          <Home size={18} aria-hidden="true" /> <span>Inicio</span>
-        </button>
         {perfil.esDueno && (
           <button type="button" onClick={() => ir('/empresas')} title="Empresas">
             <Building2 size={18} aria-hidden="true" /> <span>Empresas</span>
@@ -162,27 +130,7 @@ function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; onl
             <ShieldCheck size={18} aria-hidden="true" /> <span>Intentos</span>
           </button>
         )}
-        {esEquipoSso(perfil) && (
-          <button type="button" onClick={() => ir('/inspecciones')} title="Inspecciones">
-            <ClipboardList size={18} aria-hidden="true" /> <span>Inspecciones</span>
-          </button>
-        )}
-        {esEquipoSso(perfil) && (
-          <button type="button" onClick={() => ir('/passt')} title="PASST">
-            <CalendarDays size={18} aria-hidden="true" /> <span>PASST</span>
-          </button>
-        )}
-        {perfil.empresaId && (
-          <button type="button" onClick={() => ir('/hallazgos')} title="Hallazgos">
-            <ListChecks size={18} aria-hidden="true" /> <span>Hallazgos</span>
-          </button>
-        )}
-        {esEquipoSso(perfil) && (
-          <button type="button" onClick={() => ir('/formatos')} title="Formatos">
-            <ClipboardCheck size={18} aria-hidden="true" /> <span>Formatos</span>
-          </button>
-        )}
-        {perfil.empresaId && <Campana firmas={firmas} />}
+        {perfil.empresaId && <Campana firmas={firmas} cuenta={perfil.id} online={online} />}
         <MenuPerfil perfil={perfil} />
       </nav>
     </header>
@@ -246,10 +194,13 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
       return <PantallaLlenar key={ruta[2]} id={ruta[2]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} />
     if (ruta[1] === 'avance' && esEquipoSso(perfil)) return <Avance empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
     if (ruta[1] === 'nueva' && ruta[2] && esEquipoSso(perfil))
-      return <Inspecciones key={ruta.join('/')} empresaId={perfil.empresaId} cuenta={perfil.id} online={online} preset={{ plantilla: ruta[2], unidad: ruta[3] ?? null }} />
+      return <Inspecciones key={ruta.join('/')} empresaId={perfil.empresaId} cuenta={perfil.id} online={online} preset={{ plantilla: ruta[2], unidad: ruta[3] && ruta[3] !== '-' ? ruta[3] : null, activo: ruta[4] ?? null }} />
+    if (ruta[1] === 'tipo' && ruta[2] === 'bombas' && esEquipoSso(perfil)) return <BombasIncendio empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
+    if (ruta[1] === 'tipo' && ruta[2] && esEquipoSso(perfil))
+      return <TipoInspeccion key={ruta[2]} id={ruta[2]} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
     // El detalle también lo abre cada firmante (la base de datos decide qué puede ver).
     if (ruta[1])
-      return <DetalleInspeccion key={ruta[1]} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
+      return <DetalleInspeccion key={`${ruta[1]}${ruta[2] ?? ''}`} auto={ruta[2] === 'excel' || ruta[2] === 'pdf' ? ruta[2] : undefined} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
     if (esEquipoSso(perfil)) return <Inspecciones empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
   }
   if (ruta[0] === 'firmas' && perfil.empresaId) return <MisFirmas cuenta={perfil.id} online={online} />
@@ -316,8 +267,7 @@ export default function App() {
           <section className="panel panel-ancho">{gestion}</section>
         ) : (
           <section className="panel panel-inicio">
-            <Inicio perfil={sesion.perfil} firmas={firmas} online={online} />
-            <footer className="foot">{VERSION}</footer>
+            <Inicio perfil={sesion.perfil} online={online} />
           </section>
         )}
       </main>
@@ -345,4 +295,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.9.0 · Formato LOTO, firmas en Excel y PDF'
+const VERSION = 'Versión 0.9.1 · Bombas contra incendio, DACI y extintores con su registro'

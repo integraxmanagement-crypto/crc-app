@@ -1,15 +1,17 @@
-import { ArrowLeft, CalendarRange, Eye, FileSpreadsheet } from 'lucide-react'
+import { ArrowLeft, CalendarRange, Eye, FileSpreadsheet, FileText, PenLine } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
 import { NOMBRE_FRECUENCIA } from '../formatos/datos'
 import { ir } from '../ruta'
 import { hoyLocal } from './ayudas'
 import { type CopiaLocal, type FormatoLocal, bajarCopia, leerCopia } from './campo'
-import { type FilaAvance, avancePeriodo, inspeccionesCompletas } from './datos'
-import { valoresDe } from './excel'
-import { type EquipoPeriodo, llenarExcelPeriodo, valoresFilas, valoresGenerales } from './excelPeriodo'
-import { datosHoja, excelDeFormato, guardarExcel } from './hoja'
+import { type FilaAvance, avancePeriodo, conFrecuencias, frecuenciasActuales } from './datos'
+import { armarRegistro, entregarRegistro } from './registroPeriodo'
+import { vistaDeExcel } from './excelVista'
+import { PanelFirma } from './Firma'
 import { CON_PERIODO, type Periodo, periodoDe, periodosHasta } from './periodos'
+import { VistaExcel } from './VistaExcel'
 
 const fechaCorta = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
 const porcentaje = (hechos: number, total: number) => (total ? Math.round((100 * hechos) / total) : 0)
@@ -33,7 +35,10 @@ export function Avance({ empresaId, cuenta, online }: { empresaId: string; cuent
 
   useEffect(() => {
     void leerCopia(cuenta, empresaId).then(async (c) => {
-      const x = c ?? (online ? await bajarCopia(cuenta, empresaId).catch(() => null) : null)
+      const x0 = c ?? (online ? await bajarCopia(cuenta, empresaId).catch(() => null) : null)
+      // Con señal, la frecuencia es la de ahora (la copia del equipo puede traer una vieja).
+      const m = x0 && online ? await frecuenciasActuales(empresaId).catch(() => null) : null
+      const x = x0 && m ? conFrecuencias(x0, m) : x0
       setCopia(x)
       if (x?.sedes.length) setSede((s) => s || x.sedes[0].id)
     })
@@ -158,6 +163,23 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [armando, setArmando] = useState(false)
+  // Pie del registro del período (revisión del 29/10/2026, formato de extintores): quién hizo la inspección y custodia el registro.
+  const [registro, setRegistro] = useState({ nombre: '', cargo: '' })
+  const [firma, setFirma] = useState<Uint8Array | null>(null)
+  const [firmando, setFirmando] = useState(false)
+  const [vistaPdf, setVistaPdf] = useState<ReturnType<typeof vistaDeExcel> | null>(null)
+  const pideRegistro = Boolean(formato.excel?.marcas.some((m) => m.startsWith('firma.registro.')))
+  // PDF igual al Excel: cuando la hoja ya está dibujada, se abre «Imprimir» (ahí se elige «Guardar como PDF»).
+  useEffect(() => {
+    if (!vistaPdf) return
+    const listo = () => setVistaPdf(null)
+    window.addEventListener('afterprint', listo)
+    const t = setTimeout(() => window.print(), 300)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('afterprint', listo)
+    }
+  }, [vistaPdf])
   const esActivo = formato.plantilla.aplica_a === 'activo'
   const nombreUbicacion = (id: string | null) => (id ? (copia.ubicaciones.find((u) => u.id === id)?.nombre ?? '') : '')
   const nombreSede = copia.sedes.find((s) => s.id === sede)?.nombre ?? ''
@@ -174,39 +196,23 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
     }
   }, [formato, sede, periodo, online])
 
-  async function excel() {
+  async function excel(como: 'excel' | 'pdf' = 'excel') {
     if (!filas || !periodo) return
-    setArmando(true)
     setError(null)
     setAviso(null)
+    if (pideRegistro && (registro.nombre.trim().length < 3 || !registro.cargo.trim() || !firma)) {
+      setError('Antes de generar el registro escribe tu nombre y apellido, tu cargo y firma (el pie del formato los pide).')
+      return
+    }
+    setArmando(true)
     try {
-      const archivo = await excelDeFormato(formato.plantilla.id)
-      if (!archivo) {
+      const r = await armarRegistro({ formato, copia, sede, periodo, filas, registro, firma })
+      if (!r) {
         setAviso('Este formato no tiene un Excel de la organización. Súbelo en el formato (con una fila modelo {{fila.…}}).')
         return
       }
-      const completas = new Map((await inspeccionesCompletas(filas.flatMap((f) => (f.inspeccion_id ? [f.inspeccion_id] : [])))).map((i) => [i.id, i]))
-      const personas = new Map(copia.personas.map((p) => [p.persona_id, p.apellidos_nombres]))
-      const nombre = (id: string | null) => (id ? (personas.get(id) ?? 'Persona de la empresa') : '')
-      const equipos: EquipoPeriodo[] = filas.map((f) => {
-        const i = f.inspeccion_id ? completas.get(f.inspeccion_id) : undefined
-        return {
-          codigo: f.codigo ?? '',
-          datos: copia.activos.find((a) => a.id === f.activo_id)?.datos ?? {},
-          inspeccion: i && i.plantillas_versiones
-            ? datosHoja(i, { nombreFormato: formato.plantilla.nombre, version: i.plantillas_versiones, copia, nombre, lugares: { sede: i.sedes?.nombre, area: i.unidades?.nombre, ubicacion: i.ubicaciones?.nombre } })
-            : null,
-        }
-      })
-      const v = formato.version
-      const base = valoresDe({
-        empresa: copia.empresa,
-        formato: { nombre: formato.plantilla.nombre, codigo_formato: v.codigo_formato, version_formato: v.version_formato, fecha_aprobacion: v.fecha_aprobacion },
-        receta: v.receta, numero: null, fecha: periodo.hasta, hora: null, sede: nombreSede, area: null, ubicacion: null, inspector: null,
-        resultado: null, puntaje: null, observacion: null, activo: null, respuestas: {}, filas: {}, firmantes: [], persona: () => null,
-      })
-      const r = await llenarExcelPeriodo(archivo, valoresGenerales(base, periodo, resumir(formato, filas)), valoresFilas(equipos))
-      guardarExcel(r.bytes, `${formato.plantilla.nombre}-${nombreSede}-${periodo.clave}`)
+      const vista = await entregarRegistro(r.bytes, como, `${formato.plantilla.nombre}-${nombreSede}-${periodo.clave}`)
+      if (vista) setVistaPdf(vista)
       setAviso(
         r.hoja
           ? `Excel listo: ${r.filas} fila(s)${r.agregadas ? `; se agregaron ${r.agregadas} porque el formato tenía espacio para ${r.usadasDelFormato}` : ''}.`
@@ -237,7 +243,35 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
         <button className="btn-sec" type="button" disabled={!filas || armando} onClick={() => void excel()}>
           <FileSpreadsheet size={18} aria-hidden="true" /> {armando ? 'Armando…' : 'Excel del período'}
         </button>
+        <button className="btn-sec" type="button" disabled={!filas || armando} onClick={() => void excel('pdf')}>
+          <FileText size={18} aria-hidden="true" /> PDF del período
+        </button>
       </div>
+      {pideRegistro && (
+        <Seccion titulo="Responsable de la inspección y custodia del registro">
+          <p className="nota">Va en el pie del Excel y del PDF. La fecha es la del inicio del período; el cargo se escribe a mano.</p>
+          <div className="fila2">
+            <label className="field">
+              <span>Nombre y apellido *</span>
+              <input type="text" maxLength={200} value={registro.nombre} onChange={(e) => setRegistro((r) => ({ ...r, nombre: e.target.value }))} />
+            </label>
+            <label className="field">
+              <span>Cargo *</span>
+              <input type="text" maxLength={120} value={registro.cargo} onChange={(e) => setRegistro((r) => ({ ...r, cargo: e.target.value }))} />
+            </label>
+          </div>
+          {firmando ? (
+            <PanelFirma onListo={(png) => void png.arrayBuffer().then((b) => (setFirma(new Uint8Array(b)), setFirmando(false)))} onCancelar={() => setFirmando(false)} />
+          ) : (
+            <div className="acciones">
+              <button className="btn-sec" type="button" onClick={() => setFirmando(true)}>
+                <PenLine size={16} aria-hidden="true" /> {firma ? 'Firmar de nuevo' : 'Firmar *'}
+              </button>
+              {firma && <span className="chip chip-ok">Firma lista (no se guarda: hay que firmar cada vez)</span>}
+            </div>
+          )}
+        </Seccion>
+      )}
       <Aviso>{error}</Aviso>
       {aviso && <p className="aviso-suave">{aviso}</p>}
       {!filas ? (
@@ -298,6 +332,7 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
           </Seccion>
         </>
       )}
+      {vistaPdf && createPortal(<VistaExcel vista={vistaPdf.vista} medias={vistaPdf.medias} />, document.body)}
     </>
   )
 }

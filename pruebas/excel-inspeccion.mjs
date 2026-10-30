@@ -5,7 +5,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { crearZip, descomprimir, entradasZip, escaparXml, leerHoja } from '../src/carga/xlsx.ts'
 import { PLANTILLAS_BASE } from '../src/formatos/base.ts'
-import { llenarExcel, marcasDeExcel, marcasDesconocidas, partes as partesDe, valoresDe } from '../src/inspecciones/excel.ts'
+import { gruposDe, llenarExcel, marcasDeExcel, marcasDesconocidas, partes as partesDe, valoresDe } from '../src/inspecciones/excel.ts'
 import { llenarExcelPeriodo, valoresFilas, valoresGenerales } from '../src/inspecciones/excelPeriodo.ts'
 import { comprobar, resultados, resumen } from './comun.mjs'
 
@@ -62,7 +62,8 @@ mkdirSync('pruebas/excel', { recursive: true })
 writeFileSync('pruebas/excel/CRC_formato_extintores_FICTICIO_v01.xlsx', original)
 
 // ───── Inspección ficticia ─────
-const receta = PLANTILLAS_BASE.find((p) => p.codigo === 'extintores').receta
+// La hoja de prueba tiene una firma de «inspector»; el formato real de extintores ya no pide firmas, así que se le agrega aquí.
+const receta = { ...PLANTILLAS_BASE.find((p) => p.codigo === 'extintores').receta, firmas: [{ clave: 'inspector', titulo: 'Inspector', obligatoria: true, externo: false, minimo: 1 }] }
 const respuestas = Object.fromEntries(receta.secciones[0].puntos.map((p) => [p.clave, { valor: 'si' }]))
 respuestas['EXT-03'] = { valor: 'no', obs: 'Manómetro en zona roja' }
 respuestas['EXT-05'] = { valor: 'na' }
@@ -131,7 +132,8 @@ comprobar('Los textos especiales quedan bien escritos (& < >)', sst.includes('Ca
 comprobar('La marca partida en dos tramos también se llena', sst.includes('Actividad: Actividad de prueba'))
 comprobar('La marca escrita en la celda se llena', sheet.includes('Dirección: Av. Inventada 123 · Lima'))
 comprobar('La «imagen» del archivo no cambia', partes.get('xl/media/logo.png').length === LOGO.length && partes.get('xl/media/logo.png').every((b, i) => b === LOGO[i]))
-comprobar('Los estilos (bordes) no cambian', new TextDecoder().decode(partes.get('xl/styles.xml')) === estilos)
+// El ajuste de texto agrega formatos al final (celdas con texto largo); los bordes y las fuentes del formato no cambian.
+comprobar('Los estilos (bordes) no cambian', new TextDecoder().decode(partes.get('xl/styles.xml')).includes(estilos.match(/<borders[\s\S]*<\/borders>/)[0]))
 comprobar('Las celdas que no son marcas no cambian', sheet.includes('<c r="B21"><v>42</v></c>'))
 comprobar('Están todas las partes del archivo', partes.size === 8)
 const leida = await leerHoja(lleno.buffer.slice(lleno.byteOffset, lleno.byteOffset + lleno.byteLength), 'Inspección')
@@ -200,7 +202,7 @@ comprobar('Fila 1: ítem, código, resultado y fecha', JSON.stringify(x3.fila(5)
 comprobar('Fila 2: la observación del punto', x3.fila(6)[4] === 'Sin manómetro (ficticio)', JSON.stringify(x3.fila(6)))
 comprobar('Equipo sin inspección: «No inspeccionado»', x3.fila(7)[1] === 'EXT-003' && x3.fila(7)[2] === 'No inspeccionado', JSON.stringify(x3.fila(7)))
 comprobar('Encabezado: período y avance', x3.fila(1)[3] === 'Período: Octubre 2026' && x3.fila(2)[3] === 'Avance: 2 de 3 (67 %)', JSON.stringify([x3.fila(1), x3.fila(2)]))
-comprobar('El pie de firmas no se mueve', x3.fila(10)[0] === 'Firma del inspector: ________')
+comprobar('Las filas dibujadas que sobran se quitan: el pie sube y queda justo después del último equipo', x3.fila(9)[0] === 'Firma del inspector: ________' && x3.fila(10).every((c) => !c), JSON.stringify([x3.fila(9), x3.fila(10)]))
 comprobar('No queda ninguna marca', ![...x3.p.values()].some((t) => t.includes('{{')))
 comprobar('La fila 3 recibe la celda combinada de la fila modelo', x3.p.get('xl/worksheets/sheet1.xml').includes('<mergeCell ref="D7:E7"/>'))
 comprobar('Las filas mantienen su estilo (bordes)', /<c r="B7" s="1" t="inlineStr">/.test(x3.p.get('xl/worksheets/sheet1.xml')))
@@ -240,11 +242,95 @@ const piezas = new Map((await partesDe(conImagen)).map((x) => [x.nombre, x]))
 const textoParte = (n) => new TextDecoder().decode(piezas.get(n)?.bytes ?? new Uint8Array())
 comprobar('La imagen de la firma va dentro del archivo, sin cambios', [...piezas.values()].some((x) => /^xl\/media\/crc_firma_\d+\.png$/.test(x.nombre) && x.bytes.length === 120 && x.bytes.every((b, i) => b === firmaPng[i])))
 comprobar('La hoja enlaza un dibujo y el dibujo, la imagen', /<drawing r:id="[^"]+"\/>/.test(textoParte('xl/worksheets/sheet1.xml')) && /crc_firma_1\.png/.test(textoParte('xl/drawings/_rels/drawing1.xml.rels')))
-comprobar('La firma ocupa el bloque combinado (C20:D21)', /<xdr:from><xdr:col>2<\/xdr:col>.*<xdr:row>19<\/xdr:row>.*<xdr:to><xdr:col>4<\/xdr:col>.*<xdr:row>21<\/xdr:row>/.test(textoParte('xl/drawings/drawing1.xml')))
+comprobar('La firma queda dentro del bloque combinado (C20:D21)', /<xdr:from><xdr:col>2<\/xdr:col>.*<xdr:row>19<\/xdr:row>.*<xdr:to><xdr:col>3<\/xdr:col>.*<xdr:row>20<\/xdr:row>/.test(textoParte('xl/drawings/drawing1.xml')))
+
+// Logo de la empresa y firmas sin deformarse (revisión de diseño, 29/10/2026). PNG ficticio de 400×100 (solo el encabezado
+// importa para el tamaño).
+const pngDe = (w, h) => {
+  const b = new Uint8Array(64)
+  b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52])
+  new DataView(b.buffer).setUint32(16, w)
+  new DataView(b.buffer).setUint32(20, h)
+  return b
+}
+const conLogoArriba = crearZip((await partesDe(original)).map((x) => {
+  let t = new TextDecoder().decode(x.bytes)
+  if (x.nombre === 'xl/worksheets/sheet1.xml') t = t.replace('<c r="A1" t="s" s="1"><v>0</v></c>', '').replace('</sheetData>', '</sheetData><mergeCells count="1"><mergeCell ref="A1:B3"/></mergeCells>')
+  return x.nombre.endsWith('.png') ? x : { nombre: x.nombre, texto: t }
+}))
+const conLogo = new Map((await partesDe(await llenarExcel(conLogoArriba, valoresDe(datos), new Map([['logo', pngDe(400, 100)]])))).map((x) => [x.nombre, x]))
+const dibujoLogo = new TextDecoder().decode(conLogo.get('xl/drawings/drawing1.xml')?.bytes ?? new Uint8Array())
+comprobar('Sin marca {{logo}}, el logo va en el bloque de arriba a la izquierda (A1:B3)', /name="Logo"/.test(dibujoLogo) && /<xdr:from><xdr:col>0<\/xdr:col>.*<xdr:row>0<\/xdr:row>/.test(dibujoLogo))
+const desde = dibujoLogo.match(/<xdr:from><xdr:col>(\d+)<\/xdr:col><xdr:colOff>(\d+)<\/xdr:colOff><xdr:row>(\d+)<\/xdr:row><xdr:rowOff>(\d+)/)
+const hasta = dibujoLogo.match(/<xdr:to><xdr:col>(\d+)<\/xdr:col><xdr:colOff>(\d+)<\/xdr:colOff><xdr:row>(\d+)<\/xdr:row><xdr:rowOff>(\d+)/)
+comprobar('El logo queda dentro de su bloque', Boolean(desde && hasta) && Number(hasta[1]) <= 1 && Number(hasta[3]) <= 2)
+const sinBloque = new Map((await partesDe(await llenarExcel(original, valoresDe(datos), new Map([['logo', pngDe(400, 100)]])))).map((x) => [x.nombre, x]))
+comprobar('Si A1 tiene texto o no hay bloque, no se tapa nada con el logo', ![...sinBloque.keys()].some((n) => n.includes('crc_firma')))
+
+// Fotos de evidencia dentro de una fila repetible (IPF): {{foto.CLAVE#n}} en la celda de la foto.
+const conFoto = crearZip((await partesDe(original)).map((x) => {
+  let t = new TextDecoder().decode(x.bytes)
+  if (x.nombre === 'xl/sharedStrings.xml') t = t.replace('Firma: ____________', 'Foto: {{foto.IPF-C03#1}}')
+  if (x.nombre === 'xl/worksheets/sheet1.xml') t = t.replace('</sheetData>', '</sheetData><mergeCells count="1"><mergeCell ref="C20:D21"/></mergeCells>')
+  return x.nombre.endsWith('.png') ? x : { nombre: x.nombre, texto: t }
+}))
+comprobar('La marca de foto de una fila se reconoce como imagen y queda en blanco', (await marcasDeExcel(conFoto)).includes('foto.IPF-C03#1')
+  && valoresDe(datos)('foto.IPF-C03#1') === '' && marcasDesconocidas(['foto.IPF-C03#1'], PLANTILLAS_BASE.find((x) => x.nombre.includes('seguridad'))?.receta ?? receta).length <= 1)
+const conFotoLlena = new Map((await partesDe(await llenarExcel(conFoto, valoresDe(datos), new Map([['foto.IPF-C03#1', pngDe(300, 200)]])))).map((x) => [x.nombre, x]))
+comprobar('La foto de la fila va como imagen en su celda', [...conFotoLlena.keys()].some((n) => /^xl\/media\/crc_firma_\d+\.png$/.test(n)))
+
 comprobar('Declara el dibujo y el PNG en los tipos de contenido', textoParte('[Content_Types].xml').includes('/xl/drawings/drawing1.xml') && /Extension="png"/i.test(textoParte('[Content_Types].xml')))
 comprobar('La marca de la imagen queda en blanco y el logo no cambia', !textoParte('xl/sharedStrings.xml').includes('{{') && piezas.get('xl/media/logo.png')?.bytes.every((b, i) => b === LOGO[i]))
 const sinImagen = new Map((await partesDe(await llenarExcel(conFirma, valoresDe(datos), new Map()))).map((x) => [x.nombre, x]))
 comprobar('Sin firma hecha en CRC (en papel), no agrega imagen', ![...sinImagen.keys()].some((n) => n.includes('crc_firma')))
+
+seccion('Filas que se repiten según la inspección (condiciones y firmantes)')
+{
+  const ipfR = PLANTILLAS_BASE.find((x) => x.codigo === 'ipf').receta
+  const celdaT = (ref, t, s = 1) => `<c r="${ref}" t="inlineStr" s="${s}"><is><t xml:space="preserve">${escaparXml(t)}</t></is></c>`
+  const hojaRep = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="${raiz}/spreadsheetml/2006/main"><dimension ref="A1:D8"/><cols><col min="1" max="1" width="4" customWidth="1"/><col min="2" max="2" width="12" customWidth="1"/><col min="3" max="4" width="10" customWidth="1"/></cols><sheetData>`
+    + `<row r="1">${celdaT('A1', 'No')}${celdaT('B1', 'Detalle')}${celdaT('C1', 'Acción')}</row>`
+    + `<row r="2" ht="20" customHeight="1">${celdaT('A2', '{{#}}')}${celdaT('B2', '{{IPF-C01#1}}\n{{IPF-C02#1}}')}${celdaT('C2', '{{IPF-C04#1}}')}<c r="D2" s="1"><v>5</v></c></row>`
+    + `<row r="3">${celdaT('A3', '2')}${celdaT('B3', '{{IPF-C01#2}}')}${celdaT('C3', '{{IPF-C04#2}}')}</row>`
+    + `<row r="4">${celdaT('A4', 'RESPONSABLES')}</row>`
+    + `<row r="5">${celdaT('A5', '{{firma.inspectores.nombre}}')}${celdaT('C5', '{{firma.inspectores.cargo}}')}</row>`
+    + `<row r="6">${celdaT('A6', '{{firma.inspectores#2.nombre}}')}${celdaT('C6', '{{firma.inspectores#2.cargo}}')}</row>`
+    + `<row r="7"/>`
+    + `<row r="8">${celdaT('A8', 'Fin del formato')}</row>`
+    + `</sheetData><mergeCells count="2"><mergeCell ref="B2:B2"/><mergeCell ref="A8:D8"/></mergeCells></worksheet>`
+  const libroRep = crearZip([
+    { nombre: '[Content_Types].xml', texto: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${raiz}/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>` },
+    { nombre: 'xl/workbook.xml', texto: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${raiz}/spreadsheetml/2006/main" xmlns:r="${raiz}/officeDocument/2006/relationships"><sheets><sheet name="IPF" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">IPF!$A$1:$D$8</definedName></definedNames></workbook>` },
+    { nombre: 'xl/styles.xml', texto: estilos },
+    { nombre: 'xl/worksheets/sheet1.xml', texto: hojaRep },
+  ])
+  const llenarRep = async (nCond, firmantes, extra = {}) => {
+    const d = {
+      ...datos, receta: ipfR, respuestas: { 'IPF-01': { valor: nCond ? 'si' : 'no' } },
+      filas: { condiciones: Array.from({ length: nCond }, (_, i) => ({ 'IPF-C01': { valor: `Peligro ${i + 1}` }, 'IPF-C02': { valor: `Riesgo ${i + 1}` }, 'IPF-C04': { valor: `Acción ${i + 1} ` + 'larga '.repeat(extra.largo ?? 0) } })) },
+      firmantes: firmantes.map((n, i) => ({ rol_clave: 'inspectores', nombre: n, cargo: `Cargo ${i + 1}`, fecha: null })),
+    }
+    const zip = await llenarExcel(libroRep, valoresDe(d), undefined, gruposDe(d))
+    const ps = new Map((await partesDe(zip)).map((x) => [x.nombre, new TextDecoder().decode(x.bytes)]))
+    const xml = ps.get('xl/worksheets/sheet1.xml')
+    return { xml, ps, filas: [...xml.matchAll(/<row r="(\d+)"/g)].map((m) => Number(m[1])), textos: (n) => [...xml.matchAll(new RegExp(`<c r="[A-Z]+${n}"[^>]*>(?:<is><t[^>]*>([^<]*)</t></is>)?`, 'g'))].map((m) => m[1]).filter(Boolean) }
+  }
+  const unaC = await llenarRep(1, ['Ana'])
+  comprobar('Una sola condición: una sola fila de condiciones (la segunda del formato se quita)', unaC.filas.join() === '1,2,3,4,5,6' && unaC.textos(2).includes('1') && unaC.textos(2).some((t) => t.includes('Peligro 1')), unaC.filas.join())
+  comprobar('Un solo firmante: una sola fila de firma y sin fila vacía', !unaC.xml.includes('{{') && unaC.textos(4).includes('Ana') && !unaC.textos(5).some((t) => t.includes('Cargo 2')))
+  comprobar('Lo que sigue baja o sube con las filas (celda combinada final)', unaC.xml.includes('<mergeCell ref="A6:D6"/>') && unaC.xml.includes('<dimension ref="A1:D6"/>') && unaC.ps.get('xl/workbook.xml').includes('$D$6'), unaC.xml.match(/<mergeCells[\s\S]*?<\/mergeCells>/)?.[0])
+  const tresC = await llenarRep(3, ['Ana', 'Beto'])
+  comprobar('Tres condiciones: tres filas numeradas 1, 2 y 3', tresC.filas.slice(0, 5).join() === '1,2,3,4,5' && ['1', '2', '3'].every((n, i) => tresC.textos(i + 2).includes(n)) && tresC.textos(4).some((t) => t.includes('Peligro 3')))
+  comprobar('Dos firmantes: dos filas, cada una con su nombre y su cargo', tresC.textos(6).includes('Ana') && tresC.textos(7).includes('Beto') && tresC.textos(7).includes('Cargo 2'), tresC.filas.join())
+  comprobar('El pie baja las filas que se agregaron', tresC.xml.includes('<mergeCell ref="A9:D9"/>') && tresC.ps.get('xl/workbook.xml').includes('$D$9'), tresC.xml.match(/<mergeCells[\s\S]*?<\/mergeCells>/)?.[0])
+  const sinC = await llenarRep(0, ['Ana'])
+  comprobar('Sin condiciones: una sola fila que dice «Sin observaciones»', sinC.textos(2).some((t) => t.includes('Sin observaciones')) && !sinC.xml.includes('Peligro'))
+  const largo = await llenarRep(1, ['Ana'], { largo: 30 })
+  comprobar('Si el texto no cabe, la fila crece y la celda ajusta el texto', Number(largo.xml.match(/<row r="2"[^>]*\sht="([\d.]+)"/)?.[1]) > 20 && /wrapText="1"/.test(largo.ps.get('xl/styles.xml')), `${largo.xml.match(/<row r="2"[^>]*>/)?.[0]} ${largo.ps.get('xl/styles.xml').match(/<cellXfs[\s\S]*<\/cellXfs>/)?.[0]}`)
+  const corto = await llenarRep(1, ['Ana'])
+  comprobar('Si el texto cabe, la altura de la fila no cambia', Number(corto.xml.match(/<row r="2"[^>]*\sht="([\d.]+)"/)?.[1]) <= 40)
+}
 
 const r = resumen()
 const lineas = [

@@ -5,9 +5,11 @@ import { Administradores } from './Administradores'
 import { Aviso, Dato, Seccion } from './campos'
 import { Contactos } from './Contactos'
 import { type Contactos as TContactos, type Empresa, type Sede, actualizarEmpresa, cambiarEstadoEmpresa, leerEmpresa } from './datos'
+import { FormatosIncompletos } from './FormatosIncompletos'
 import { FormFicha } from './FormFicha'
 import { Logos } from './Logos'
 import { Sedes } from './Sedes'
+import { Trabajadores } from './Trabajadores'
 
 /**
  * Ficha completa de una empresa.
@@ -113,6 +115,8 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
         {!esDueno && <p className="nota">Para cambiar estos datos o las sedes, escribe a Integrax.</p>}
       </Seccion>
 
+      <Trabajadores empresaId={empresa.id} modo={empresa.trabajadores_modo ?? 'automatico'} manual={empresa.trabajadores_manual ?? null} editable onCambio={cargar} />
+
       <Seccion titulo="Personas">
         <p className="nota">Cuentas de la empresa (crear, cesar, reactivar y dar contraseñas nuevas) y la estructura (gerencias, áreas y subáreas) y los puestos.</p>
         <div className="acciones">
@@ -127,6 +131,7 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
 
       <Seccion titulo="Inspecciones">
         <p className="nota">Formatos de inspección de la empresa (copiados de las plantillas base de CRC y adaptados) y sus activos, ubicaciones y listas.</p>
+        <FormatosIncompletos empresaId={empresaId} rutaFormatos={esDueno ? `${base}/formatos` : '/formatos'} />
         <div className="acciones">
           <button className="btn" type="button" onClick={() => ir(esDueno ? `${base}/formatos` : '/formatos')}>
             <ClipboardCheck size={20} aria-hidden="true" /> Formatos de inspección

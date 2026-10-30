@@ -67,6 +67,8 @@ export type Punto = {
   max?: number | null
   lista?: string | null // código de una lista de la empresa (tipo «lista»)
   opciones?: string[] | null // opciones fijas (tipo «lista» sin lista de la empresa)
+  valor_defecto?: string | null // respuesta ya escrita al empezar la inspección (texto, lista); se puede cambiar
+  mostrar_si?: { clave: string; valor: string } | null // el punto solo aparece si el punto «clave» tiene esa respuesta (IPF: «Otros (detallar)»)
   formula?: Formula | null // tipo «calculo»
   campo?: string | null // dato del activo que usa el cálculo «antiguedad»
   solo_subtipos?: string[] | null // vacío = todos los subtipos

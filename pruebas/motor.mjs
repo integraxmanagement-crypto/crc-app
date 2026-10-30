@@ -1,9 +1,9 @@
 // Prueba del motor de reglas de los formatos (tarea 3.4-B). No usa la base de datos ni cuentas.
-// Revisa que las 6 plantillas base estén bien armadas y que los resultados, el puntaje y los hallazgos
+// Revisa que las 8 plantillas base estén bien armadas y que los resultados, el puntaje y los hallazgos
 // salgan como se espera en casos conocidos (todos ficticios). Guarda un informe en pruebas/resultados/.
 // Uso: node pruebas/motor.mjs   (Node 24 entiende los archivos .ts de src/formatos sin compilar)
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { PLANTILLAS_BASE } from '../src/formatos/base.ts'
+import { PLANTILLAS_BASE, TIPOS_ACTIVO_BASE } from '../src/formatos/base.ts'
 import { evaluar, seccionesVisibles } from '../src/formatos/motor.ts'
 import { validarReceta } from '../src/formatos/receta.ts'
 
@@ -23,16 +23,60 @@ function todas(receta, valor, subtipo = null) {
   return r
 }
 
-console.log('\n── 1. Las 6 plantillas base están bien armadas')
-comprobar('Hay 6 plantillas base', PLANTILLAS_BASE.length === 6)
+console.log('\n── 1. Las 7 plantillas base están bien armadas')
+comprobar('Hay 8 plantillas base', PLANTILLAS_BASE.length === 8)
 for (const p of PLANTILLAS_BASE) {
   const problemas = validarReceta(p.receta, true)
   comprobar(`${p.nombre}: sin problemas para publicar`, problemas.length === 0, problemas.join(' | '))
 }
 const claves = PLANTILLAS_BASE.flatMap((p) => p.receta.secciones.flatMap((s) => s.puntos.map((x) => x.clave)))
-comprobar('Ninguna clave de punto se repite entre las 6', new Set(claves).size === claves.length, `${claves.length} puntos`)
+comprobar('Ninguna clave de punto se repite entre las 8', new Set(claves).size === claves.length, `${claves.length} puntos`)
+const criticos = PLANTILLAS_BASE.flatMap((x) => x.receta.secciones.flatMap((sc) => sc.puntos.filter((pt) => pt.critico).map((pt) => `${x.codigo}/${pt.clave}`)))
+const sinAccion = PLANTILLAS_BASE.flatMap((x) => x.receta.secciones.flatMap((sc) => sc.puntos.filter((pt) => pt.critico && !(pt.hallazgo === 'no_cumple' && pt.pide_accion)).map((pt) => pt.clave)))
+comprobar('Todo punto crítico de todos los formatos genera hallazgo y pide acción, responsable y plazo', criticos.length > 0 && sinAccion.length === 0, `${criticos.length} críticos; sin acción: ${sinAccion.join(', ')}`)
+comprobar('Electrobomba: la hora de inicio (antes y final) es de tipo hora', ['EB-P02A', 'EB-P02F'].every((k) => PLANTILLAS_BASE.find((x) => x.codigo === 'electrobomba').receta.secciones.flatMap((sc) => sc.puntos).find((pt) => pt.clave === k)?.tipo === 'hora'))
 comprobar('Ningún punto trae severidad (queda para la v1.1)', PLANTILLAS_BASE.every((p) => p.receta.secciones.every((s) => s.puntos.every((x) => x.severidad == null))))
 comprobar('Ningún texto de la base menciona un código de formato tipo «SO.R.G.»', !JSON.stringify(PLANTILLAS_BASE).includes('SO.R.G'))
+
+console.log('\n── 1b. Motobomba (paquete MOTOBOMBA.md del dueño)')
+{
+  const m = PLANTILLAS_BASE.find((x) => x.codigo === 'motobomba')
+  const puntos = m.receta.secciones.flatMap((x) => x.puntos)
+  const sn = puntos.filter((x) => x.tipo === 'si_no')
+  comprobar('Motobomba: 22 puntos Sí / No (16 antes y 6 durante la prueba), todos con observación obligatoria si es No',
+    sn.length === 22 && m.receta.secciones[0].puntos.length === 16 && m.receta.secciones[1].puntos.length === 6 && sn.every((x) => x.obs_si_no_cumple), `${sn.length}`)
+  comprobar('Motobomba: 4 datos de la prueba funcional obligatorios, con observaciones opcionales',
+    ['MB-P01', 'MB-P02', 'MB-P03', 'MB-P04'].every((k) => puntos.find((x) => x.clave === k)?.obligatorio) && ['MB-P01O', 'MB-P02O', 'MB-P03O', 'MB-P04O'].every((k) => puntos.find((x) => x.clave === k)?.obligatorio === false))
+  comprobar('Motobomba: dos firmas (inspector y custodia del registro) y frecuencia semanal', m.receta.firmas.map((f) => f.clave).join() === 'inspector,custodia' && m.frecuencia === 'semanal')
+  const todo = { ...todas(R.motobomba, 'si'), 'MB-P01': { valor: '10:00' }, 'MB-P02': { valor: '10' }, 'MB-P03': { valor: '150' }, 'MB-P04': { valor: 'Auto' } }
+  const ok = evaluar(R.motobomba, { respuestas: todo, activo: { datos: {} }, fecha: FECHA })
+  comprobar('Motobomba: todo en Sí → Conforme y nada falta', ok.resultado === 'Conforme' && ok.faltan.length === 0, `${ok.resultado} ${ok.faltan.join(' | ')}`)
+  const mal = evaluar(R.motobomba, { respuestas: { ...todo, 'MB-B03': { valor: 'no', obs: 'Sin lectura' } }, activo: { datos: {} }, fecha: FECHA })
+  comprobar('Motobomba: un No en la prueba → No conforme y 1 hallazgo', mal.resultado === 'No conforme' && mal.hallazgos.length === 1, `${mal.resultado} ${mal.hallazgos.length}`)
+  const sinObs = evaluar(R.motobomba, { respuestas: { ...todo, 'MB-A01': { valor: 'no' } }, activo: { datos: {} }, fecha: FECHA })
+  comprobar('Motobomba: un No sin observación no deja cerrar', sinObs.faltan.some((f) => f.includes('observación')), sinObs.faltan.join(' | '))
+}
+
+console.log('\n── 1c. Electrobomba (paquete ELECTROBOMBA.md del dueño)')
+{
+  const m = PLANTILLAS_BASE.find((x) => x.codigo === 'electrobomba')
+  const puntos = m.receta.secciones.flatMap((x) => x.puntos)
+  const sn = puntos.filter((x) => x.tipo === 'si_no')
+  comprobar('Electrobomba: 29 puntos Sí / No (13 antes, 9 durante y 7 después), todos con observación obligatoria si es No',
+    sn.length === 29 && m.receta.secciones.slice(0, 3).map((x) => x.puntos.length).join() === '13,9,7' && sn.every((x) => x.obs_si_no_cumple), `${sn.length}`)
+  comprobar('Electrobomba: prueba funcional con «Antes» y «Final» obligatorios y observaciones opcionales (presión y hora de inicio)',
+    ['EB-P01A', 'EB-P01F', 'EB-P02A', 'EB-P02F'].every((k) => puntos.find((x) => x.clave === k)?.obligatorio) && ['EB-P01O', 'EB-P02O'].every((k) => puntos.find((x) => x.clave === k)?.obligatorio === false))
+  comprobar('Electrobomba: dos firmas y frecuencia semanal', m.receta.firmas.map((f) => f.clave).join() === 'inspector,custodia' && m.frecuencia === 'semanal')
+  const tipo = TIPOS_ACTIVO_BASE.find((t) => t.codigo === 'electrobomba')
+  comprobar('Electrobomba: la ficha del equipo pide las 12 fichas técnicas (principal y jockey), todas obligatorias', tipo.campos.length === 12 && tipo.campos.every((c) => c.obligatorio && c.tipo === 'texto'))
+  const todo = { ...todas(R.electrobomba, 'si'), 'EB-P01A': { valor: '110' }, 'EB-P01F': { valor: '100' }, 'EB-P02A': { valor: '09:00' }, 'EB-P02F': { valor: '09:30' } }
+  const ok = evaluar(R.electrobomba, { respuestas: todo, activo: { datos: {} }, fecha: FECHA })
+  comprobar('Electrobomba: todo en Sí → Conforme y nada falta', ok.resultado === 'Conforme' && ok.faltan.length === 0, `${ok.resultado} ${ok.faltan.join(' | ')}`)
+  const mal = evaluar(R.electrobomba, { respuestas: { ...todo, 'EB-B04': { valor: 'no', obs: 'Ruido' } }, activo: { datos: {} }, fecha: FECHA })
+  comprobar('Electrobomba: un No en la prueba → No conforme y 1 hallazgo', mal.resultado === 'No conforme' && mal.hallazgos.length === 1, `${mal.resultado} ${mal.hallazgos.length}`)
+  const sinFinal = evaluar(R.electrobomba, { respuestas: { ...todo, 'EB-P01F': { valor: '' } }, activo: { datos: {} }, fecha: FECHA })
+  comprobar('Electrobomba: sin el «Final» de la presión no deja cerrar', sinFinal.faltan.some((f) => f.includes('EB-P01F')), sinFinal.faltan.join(' | '))
+}
 
 console.log('\n── 2. Extintores')
 {
@@ -40,9 +84,9 @@ console.log('\n── 2. Extintores')
   let e = evaluar(R.extintores, { respuestas: todas(R.extintores, 'si'), activo: { datos: al_dia }, fecha: FECHA })
   comprobar('Todo √ y al día → Conforme, sin hallazgos', e.resultado === 'Conforme' && e.hallazgos.length === 0 && e.faltan.length === 0, `${e.resultado}`)
   const r = todas(R.extintores, 'si')
-  r['EXT-07'] = { valor: 'no' }
+  r['EXT-09'] = { valor: 'no' }
   e = evaluar(R.extintores, { respuestas: r, activo: { datos: al_dia }, fecha: FECHA })
-  comprobar('X en un crítico (EXT-07) → No conforme y 1 hallazgo', e.resultado === 'No conforme' && e.hallazgos.length === 1 && e.hallazgos[0].clave === 'EXT-07', e.resultado)
+  comprobar('X en un crítico (EXT-09) → No conforme y 1 hallazgo', e.resultado === 'No conforme' && e.hallazgos.length === 1 && e.hallazgos[0].clave === 'EXT-09', e.resultado)
   const r2 = todas(R.extintores, 'si')
   r2['EXT-04'] = { valor: 'no' }
   e = evaluar(R.extintores, { respuestas: r2, activo: { datos: al_dia }, fecha: FECHA })
@@ -56,7 +100,32 @@ console.log('\n── 2. Extintores')
   e = evaluar(R.extintores, { respuestas: todas(R.extintores, 'si'), activo: { datos: { ...al_dia, proximo_mantenimiento: '2026-11' } }, fecha: FECHA })
   comprobar('Vence este mismo mes → todavía no está vencido', e.resultado === 'Conforme')
   e = evaluar(R.extintores, { respuestas: todas(R.extintores, 'si'), activo: { datos: { ...al_dia, anio_fabricacion: 1990 } }, fecha: FECHA })
-  comprobar('Fabricado en 1990: sin plazo de vida útil definido, la regla no se aplica', e.resultado === 'Conforme')
+  comprobar('Fabricado en 1990 (más de 20 años) → No conforme: vencido', e.resultado === 'No conforme: vencido', e.resultado)
+  e = evaluar(R.extintores, { respuestas: todas(R.extintores, 'si'), activo: { datos: { ...al_dia, anio_fabricacion: 2006 } }, fecha: FECHA })
+  comprobar('Fabricado hace exactamente 20 años → todavía vigente', e.resultado === 'Conforme', e.resultado)
+  e = evaluar(R.extintores, { respuestas: todas(R.extintores, 'si'), activo: { datos: { ...al_dia, anio_prueba_hidrostatica: 2020 } }, fecha: FECHA })
+  comprobar('PH de hace 6 años → No conforme: vencido; de hace 5 → vigente',
+    e.resultado === 'No conforme: vencido' && evaluar(R.extintores, { respuestas: todas(R.extintores, 'si'), activo: { datos: { ...al_dia, anio_prueba_hidrostatica: 2021 } }, fecha: FECHA }).resultado === 'Conforme')
+  e = evaluar(R.extintores, { respuestas: todas(R.extintores, 'si'), observacion: 'Falta señal', activo: { datos: al_dia }, fecha: FECHA })
+  comprobar('Cualquier observación escrita → No conforme', e.resultado === 'No conforme: con observaciones', e.resultado)
+  comprobar('Al abrir, los no críticos vienen con √ y los críticos sin marcar; sin firmas en la inspección',
+    R.extintores.secciones[0].puntos.every((x) => (x.critico ? !x.valor_defecto : x.valor_defecto === 'si')) && R.extintores.firmas.length === 0)
+  // Un crítico en X genera hallazgo y pide responsable y fecha de levantamiento (pedido del dueño, 29/10/2026).
+  const rx = todas(R.extintores, 'si')
+  rx['EXT-10'] = { valor: 'no' }
+  let ex = evaluar(R.extintores, { respuestas: rx, activo: { datos: al_dia }, fecha: FECHA })
+  comprobar('Extintores: un crítico en X sin responsable ni fecha → no se puede cerrar', ex.faltan.length === 1 && /acción correctiva, el responsable y el plazo/.test(ex.faltan[0]), ex.faltan.join(' | '))
+  rx['EXT-10'] = { valor: 'no', accion: { texto: 'Cambiar manómetro', responsable: 'p-1', plazo: '2026-11-30' } }
+  ex = evaluar(R.extintores, { respuestas: rx, activo: { datos: al_dia }, fecha: FECHA })
+  comprobar('Extintores: con responsable y fecha, nace el hallazgo con ese acuerdo', ex.faltan.length === 0 && ex.hallazgos.length === 1 && ex.hallazgos[0].accion?.responsable === 'p-1' && ex.hallazgos[0].accion?.plazo === '2026-11-30', JSON.stringify(ex.hallazgos))
+  const dsi = Object.fromEntries(R.daci.secciones.filter((x) => x.clave === 'detector').flatMap((x) => x.puntos).map((x) => [x.clave, { valor: 'si' }]))
+  dsi['DACI-D01'] = { valor: 'no' }
+  let ed = evaluar(R.daci, { respuestas: dsi, activo: { subtipo: 'detector', datos: {} }, fecha: FECHA })
+  comprobar('DACI: un crítico en X sin responsable ni fecha → no se puede cerrar', ed.faltan.length === 1 && /responsable y el plazo/.test(ed.faltan[0]), ed.faltan.join(' | '))
+  dsi['DACI-D01'] = { valor: 'no', accion: { texto: 'Limpiar detector', responsable: 'p-1', plazo: '2026-11-15' } }
+  ed = evaluar(R.daci, { respuestas: dsi, activo: { subtipo: 'detector', datos: {} }, fecha: FECHA })
+  comprobar('DACI: con responsable y fecha, nace el hallazgo y el resultado es «Inoperativo»', ed.faltan.length === 0 && ed.hallazgos.length === 1 && ed.resultado === 'Inoperativo', JSON.stringify([ed.resultado, ed.hallazgos]))
+  comprobar('Los 16 puntos del paquete, 6 críticos, semanal', R.extintores.secciones[0].puntos.length === 16 && R.extintores.secciones[0].puntos.filter((x) => x.critico).map((x) => x.clave).join() === 'EXT-09,EXT-10,EXT-11,EXT-12,EXT-13,EXT-15' && PLANTILLAS_BASE.find((x) => x.codigo === 'extintores').frecuencia === 'semanal')
   const conPlazo = structuredClone(R.extintores)
   conPlazo.reglas[0].controles[2].anios = 20
   e = evaluar(conPlazo, { respuestas: todas(R.extintores, 'si'), activo: { datos: { ...al_dia, anio_fabricacion: 1990 } }, fecha: FECHA })
@@ -99,7 +168,7 @@ console.log('\n── 4. Bombas')
   r['BCI-B05'] = { valor: 'no' }
   e = evaluar(R.bombas, { respuestas: r, activo: { subtipo: 'electrobomba' }, fecha: FECHA })
   comprobar('Un «No» sin observación → falta la observación', e.faltan.some((f) => f.startsWith('BCI-B05')))
-  r['BCI-B05'] = { valor: 'no', obs: 'Vibración en el acople (ficticio)' }
+  r['BCI-B05'] = { valor: 'no', obs: 'Vibración en el acople (ficticio)', accion: { texto: 'Revisar el acople', responsable: 'persona-ficticia', plazo: '2026-12-01' } } // los críticos piden acción, responsable y plazo
   e = evaluar(R.bombas, { respuestas: r, activo: { subtipo: 'electrobomba' }, fecha: FECHA })
   comprobar('«No» en la sección B con observación → 1 hallazgo con la observación', e.faltan.length === 0 && e.hallazgos.length === 1 && e.hallazgos[0].texto.includes('Vibración'))
   const r2 = todas(R.bombas, 'si', 'electrobomba')
@@ -154,7 +223,10 @@ console.log('\n── 6. LOTO')
 
 console.log('\n── 7. IPF')
 {
-  const base = { 'IPF-R01': { valor: 'Recorrido completo (ficticio)' }, 'IPF-R02': { valor: 'No aplica' }, 'IPF-R03': { valor: 'Mantener el orden (ficticio)' } }
+  const base = { 'IPF-A01': { valor: 'persona-ficticia' }, 'IPF-A02': { valor: 'Programada' }, 'IPF-A03': { valor: R.ipf.secciones[0].puntos.find((x) => x.clave === 'IPF-A03').valor_defecto }, 'IPF-R01': { valor: 'Recorrido completo (ficticio)' }, 'IPF-R02': { valor: 'No aplica' }, 'IPF-R03': { valor: 'Mantener el orden (ficticio)' } }
+  const punto = (c) => R.ipf.secciones[0].puntos.find((x) => x.clave === c)
+  comprobar('IPF: el tipo de inspección tiene tres opciones (Programada, No programada, Otros) y el objetivo viene escrito', JSON.stringify(punto('IPF-A02').opciones) === JSON.stringify(['Programada', 'No programada', 'Otros'])
+    && punto('IPF-A03').valor_defecto === 'Identificar condiciones y actos inseguros en el área' && punto('IPF-A04').obligatorio === false)
   let e = evaluar(R.ipf, { respuestas: { ...base, 'IPF-01': { valor: 'no' } }, fecha: FECHA })
   comprobar('Sin condiciones inseguras → Conforme, sin hallazgos', e.resultado === 'Conforme' && e.hallazgos.length === 0 && e.faltan.length === 0, e.faltan.join(' | '))
   e = evaluar(R.ipf, { respuestas: { ...base, 'IPF-01': { valor: 'si' } }, filas: { condiciones: [] }, fecha: FECHA })

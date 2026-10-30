@@ -15,7 +15,7 @@ export function semanaActual(anio: number, hoy: string) {
 }
 
 /** Estado de cada semana de cada actividad. Vencida = programada, ya pasó y no se ejecutó. */
-export function estadosPorActividad(semanas: SemanaGuardada[], ejecucion: Ejecutada[], anio: number, hoy: string) {
+export function estadosPorActividad(semanas: SemanaGuardada[], ejecucion: Ejecutada[], anio: number, hoy: string, seguimiento: 'semana' | 'mes' = 'semana') {
   const actual = semanaActual(anio, hoy)
   const mapa = new Map<string, Map<number, EstadoSemana>>()
   const de = (a: string, w: number) => {
@@ -37,7 +37,37 @@ export function estadosPorActividad(semanas: SemanaGuardada[], ejecucion: Ejecut
     if (x.inspecciones > 0) e.ejecutada = true
   }
   for (const m of mapa.values()) for (const [w, e] of m) e.vencida = e.programada && !e.ejecutada && w < actual
-  return mapa
+  return seguimiento === 'mes' ? agruparPorMes(mapa, anio, actual) : mapa
+}
+
+/**
+ * Seguimiento por mes (pedido del dueño, 29/10/2026): una casilla por mes, guardada en la primera semana de ese mes.
+ * El mes queda programado si lo está su casilla; ejecutado si hubo una inspección (o marca a mano) en cualquiera de sus
+ * semanas; vencido cuando ya terminó el mes y no se ejecutó. Cada semana cuenta en el mes de su jueves.
+ */
+function agruparPorMes(porSemana: Map<string, Map<number, EstadoSemana>>, anio: number, actual: number) {
+  const meses = new Map<number, number[]>()
+  for (const s of semanasConMes(anio)) meses.set(s.mes, [...(meses.get(s.mes) ?? []), s.semana])
+  const salida = new Map<string, Map<number, EstadoSemana>>()
+  for (const [actividad, m] of porSemana) {
+    const nuevo = new Map<number, EstadoSemana>()
+    for (const semanasDelMes of meses.values()) {
+      const e: EstadoSemana = { programada: false, ejecutada: false, manual: false, inspecciones: 0, vencida: false }
+      for (const w of semanasDelMes) {
+        const x = m.get(w)
+        if (!x) continue
+        e.programada ||= x.programada
+        e.ejecutada ||= x.ejecutada
+        e.manual ||= x.manual
+        e.inspecciones += x.inspecciones
+      }
+      if (!e.programada && !e.ejecutada) continue
+      e.vencida = e.programada && !e.ejecutada && Math.max(...semanasDelMes) < actual
+      nuevo.set(semanasDelMes[0], e)
+    }
+    salida.set(actividad, nuevo)
+  }
+  return salida
 }
 
 /** Mes en que cuenta la semana de hoy (el de su jueves); fuera del año del programa, enero o diciembre. */
@@ -55,6 +85,14 @@ const sumar = (estados: EstadoSemana[]): Totales => {
   return { programadas, ejecutadas, fuera, pct: programadas ? Math.round((1000 * ejecutadas) / programadas) / 10 : null }
 }
 
+/** Total general del programa: la suma de los meses. */
+export function totalGeneral(meses: Totales[]): Totales {
+  const programadas = meses.reduce((s, m) => s + m.programadas, 0)
+  const ejecutadas = meses.reduce((s, m) => s + m.ejecutadas, 0)
+  const fuera = meses.reduce((s, m) => s + m.fuera, 0)
+  return { programadas, ejecutadas, fuera, pct: programadas ? Math.round((1000 * ejecutadas) / programadas) / 10 : null }
+}
+
 /** Totales de una actividad en el año (o hasta la semana dada). */
 export function totalesActividad(estados: Map<number, EstadoSemana> | undefined, hasta = 99): Totales {
   return sumar([...(estados ?? new Map<number, EstadoSemana>()).entries()].filter(([w]) => w <= hasta).map(([, e]) => e))
@@ -66,6 +104,23 @@ export function totalesPorMes(mapa: Map<string, Map<number, EstadoSemana>>, acti
   return Array.from({ length: 12 }, (_, k) =>
     sumar(actividades.flatMap((a) => [...(mapa.get(a) ?? new Map<number, EstadoSemana>()).entries()].filter(([w]) => mesDe.get(w) === k + 1).map(([, e]) => e))),
   )
+}
+
+/**
+ * % y meta de un objetivo específico o de una estrategia (pedido del dueño, 29/10/2026): el promedio de sus actividades.
+ * El % promedia las actividades que ya tienen algo programado; la meta, la de todas sus actividades.
+ * `arbol` va en el orden del programa con el nivel de cada nodo; `i` es la posición del objetivo o la estrategia.
+ */
+export function promedioDe(
+  arbol: { id: string; tipo: string; nivel: number; meta_pct?: number | string | null }[],
+  i: number,
+  estados: Map<string, Map<number, EstadoSemana>>,
+): { pct: number | null; meta: number | null } {
+  const hijas: typeof arbol = []
+  for (let j = i + 1; j < arbol.length && arbol[j].nivel > arbol[i].nivel; j++) if (arbol[j].tipo === 'actividad') hijas.push(arbol[j])
+  const pcts = hijas.map((a) => totalesActividad(estados.get(a.id)).pct).filter((x): x is number => x != null)
+  const promedio = (xs: number[]) => (xs.length ? Math.round((10 * xs.reduce((s, x) => s + x, 0)) / xs.length) / 10 : null)
+  return { pct: promedio(pcts), meta: promedio(hijas.map((a) => Number(a.meta_pct ?? 100))) }
 }
 
 export const textoPct = (t: Totales) => (t.pct == null ? '—' : `${t.pct} %`)

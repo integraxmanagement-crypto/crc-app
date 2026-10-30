@@ -1,6 +1,6 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 29/10/2026, 9:40:31 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 29/10/2026, 10:47:06 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 105 de 105 pruebas pasaron.**
 

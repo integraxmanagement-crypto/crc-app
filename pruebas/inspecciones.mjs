@@ -64,7 +64,7 @@ const rutaFirma = `${A}/${insp}/firma-${ID.GESTOR_A}-inspector.png`
 const cuerpo = {
   modo: 'registrar', id: insp, version_id: extVersion.id, sede_id: SEDE_A, activo_id: activo.id,
   activo_foto: { codigo: activo.codigo, numero: activo.numero, subtipo: activo.subtipo, datos: activo.datos, dotacion: activo.dotacion },
-  respuestas: { ...todasSi(extVersion.receta), 'EXT-07': { valor: 'no' }, 'EXT-02': { valor: 'si', fotos: 9 } },
+  respuestas: { ...todasSi(extVersion.receta), 'EXT-09': { valor: 'no' }, 'EXT-02': { valor: 'si', fotos: 9 } },
   observacion: null, fecha: HOY, iniciada_en_equipo: new Date(Date.now() - 600000).toISOString(), cerrada_en_equipo: new Date().toISOString(),
   dispositivo: 'Prueba automática', resultado: 'Conforme (lo que diga el equipo no cuenta)',
   archivos: [{ id: foto, punto_clave: 'EXT-02', fila: null, ruta: rutaFoto, bytes: PNG_FICTICIO.length, tipo_mime: 'image/png', sha256: sha(PNG_FICTICIO) }],
@@ -88,7 +88,7 @@ const cuerpo = {
   comprobar('Queda una sola inspección con ese identificador', cuenta.count === 1)
   const i = (await s.ADMIN_A.from('inspecciones').select('*').eq('id', insp).single()).data
   comprobar('El resultado lo calcula el servidor: X en un crítico → «No conforme»', i.resultado === 'No conforme', i.resultado)
-  comprobar('…y nace el hallazgo de EXT-07', i.hallazgos.some((h) => h.clave === 'EXT-07'))
+  comprobar('…y nace el hallazgo de EXT-09', i.hallazgos.some((h) => h.clave === 'EXT-09'))
   comprobar('Las fotos se cuentan con lo que llegó, no con lo que dice el equipo', i.respuestas['EXT-02'].fotos === 1, `${i.respuestas['EXT-02'].fotos}`)
   comprobar('Guarda quién, cuándo (equipo y servidor) y la huella', i.inspector_id === ID.GESTOR_A && Boolean(i.cerrada_en_equipo) && Boolean(i.recibida_en) && /^[0-9a-f]{64}$/.test(i.huella))
   const fir = (await s.ADMIN_A.from('firmas').select('*').eq('inspeccion_id', insp)).data
@@ -173,7 +173,7 @@ const insp2 = randomUUID()
     cerrada_en_equipo: new Date().toISOString(), archivos: [],
     firmantes: [
       { rol_clave: 'observado', rol_titulo: 'Trabajador observado', externo_nombre: 'Trabajador Externo Ficticio', externo_documento: '00000000' },
-      { rol_clave: 'responsable_area', rol_titulo: 'Responsable del área', persona_id: ID.USUARIO_A2 },
+      { rol_clave: 'responsable_area', rol_titulo: 'Responsable del área', persona_id: ID.USUARIO_A2, cargo: 'Jefa de planta (escrito a mano)' },
       { rol_clave: 'responsable_registro', rol_titulo: 'Responsable del registro', persona_id: ID.ADMIN_A },
     ],
     mi_firma: { rol_clave: 'responsable_registro', ruta: firma, bytes: PNG_FICTICIO.length },
@@ -186,6 +186,8 @@ const insp2 = randomUUID()
   const ext = (await s.ADMIN_A.from('firmas').select('externo_nombre, externo_documento, persona_id').eq('inspeccion_id', insp2).eq('rol_clave', 'observado').single()).data
   comprobar('Del externo quedan su nombre y documento, sin cuenta de CRC', ext?.externo_nombre === 'Trabajador Externo Ficticio' && ext?.externo_documento === '00000000' && ext?.persona_id === null)
   comprobar('El externo queda «en papel», el de Admin A firmado y el del área pendiente', est.observado === 'en_papel' && est.responsable_registro === 'firmada' && est.responsable_area === 'pendiente', JSON.stringify(est))
+  const cargos = Object.fromEntries((await s.ADMIN_A.from('firmas').select('rol_clave, cargo').eq('inspeccion_id', insp2)).data.map((x) => [x.rol_clave, x.cargo]))
+  comprobar('El cargo escrito a mano se guarda y, si no se escribe, queda vacío (no se toma el puesto de la persona)', cargos.responsable_area === 'Jefa de planta (escrito a mano)' && cargos.responsable_registro === null, JSON.stringify(cargos))
   const vista = await s.USUARIO_A2.from('inspecciones').select('id').eq('id', insp2)
   comprobar('Usuario A2 (firmante) sí ve la inspección que debe firmar', vista.data?.length === 1)
   const pendiente = f.find((x) => x.rol_clave === 'responsable_area')
@@ -206,7 +208,7 @@ const insp2 = randomUUID()
 seccion('5. Corregir (con historial) y anular')
 {
   const antes = (await s.ADMIN_A.from('inspecciones').select('edicion, huella, respuestas').eq('id', insp).single()).data
-  const nuevas = { ...antes.respuestas, 'EXT-07': { valor: 'si' } }
+  const nuevas = { ...antes.respuestas, 'EXT-09': { valor: 'si' } }
   const g = await llamarFuncion(s.GESTOR_A, 'registrar-inspeccion', { modo: 'corregir', id: insp, edicion: antes.edicion, motivo: 'Prueba', respuestas: nuevas })
   comprobar('Gestor A no puede corregir una inspección cerrada (solo el administrador)', g.estado === 403, `${g.estado}`)
   const c = await llamarFuncion(s.ADMIN_A, 'registrar-inspeccion', { modo: 'corregir', id: insp, edicion: antes.edicion, motivo: 'Se marcó mal el precinto (ficticio)', respuestas: nuevas })

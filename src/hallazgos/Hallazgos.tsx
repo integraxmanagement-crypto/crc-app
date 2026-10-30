@@ -1,4 +1,4 @@
-import { AlertTriangle, Camera, CheckCircle2, ChevronDown, ChevronUp, Eye, RotateCcw } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, ChevronDown, ChevronUp, Eye, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { type PersonaLista, listarPersonas } from '../formatos/datos'
@@ -22,13 +22,17 @@ const CLASE: Record<EstadoHallazgo, string> = { abierto: 'chip-aviso', en_proces
  * responsable, plazo y acción, cierran y reabren. El usuario ve solo los suyos y los cierra con un comentario y una
  * foto opcional. Necesita señal en la v1 (decisión del dueño, 28/10/2026).
  */
-export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean; inspeccionId?: string }) {
+export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId, fuenteFija, fuentes }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean; inspeccionId?: string; fuenteFija?: string; fuentes?: string[] }) {
+  // «fuentes»: varios formatos juntos con el acumulado (bomba contra incendio: motobomba y electrobomba).
+  const fijo = Boolean(fuenteFija || fuentes)
   const [lista, setLista] = useState<Hallazgo[] | null>(null)
   const [personas, setPersonas] = useState<PersonaLista[]>([])
   const [error, setError] = useState<string | null>(null)
   const [filtro, setFiltro] = useState<Filtro>(inspeccionId ? 'todos' : 'pendientes')
   const [responsable, setResponsable] = useState('')
   const [abierto, setAbierto] = useState<string | null>(null)
+  // Primero las tarjetas por fuente (formato); al elegir una, el detalle de sus hallazgos (pedido del dueño, 29/10/2026).
+  const [fuente, setFuente] = useState<string | 'todas' | null>(inspeccionId || fuentes ? 'todas' : (fuenteFija ?? null))
   const hoy = hoyLocal()
 
   const cargar = useCallback(() => {
@@ -48,6 +52,8 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId }:
 
   const visibles = (lista ?? []).filter((h) => {
     if (inspeccionId && h.inspeccion_id !== inspeccionId) return false
+    if (fuentes && !fuentes.includes(h.plantillas?.nombre ?? '')) return false
+    if (fuente && fuente !== 'todas' && h.plantillas?.nombre !== fuente) return false
     if (responsable && (responsable === '-' ? h.responsable_id : h.responsable_id !== responsable)) return false
     if (filtro === 'pendientes') return h.estado === 'abierto' || h.estado === 'en_proceso'
     if (filtro === 'vencidos') return vencido(h, hoy)
@@ -55,19 +61,19 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId }:
     if (filtro === 'anulados') return h.estado === 'anulado'
     return true
   })
-  const cuenta_ = (f: Filtro) => (lista ?? []).filter((h) => (inspeccionId ? h.inspeccion_id === inspeccionId : true) && (
+  const cuenta_ = (f: Filtro) => (lista ?? []).filter((h) => (inspeccionId ? h.inspeccion_id === inspeccionId : true) && (!fuentes || fuentes.includes(h.plantillas?.nombre ?? '')) && (fuente && fuente !== 'todas' ? h.plantillas?.nombre === fuente : true) && (
     f === 'pendientes' ? h.estado === 'abierto' || h.estado === 'en_proceso' : f === 'vencidos' ? vencido(h, hoy) : f === 'cerrados' ? h.estado === 'cerrado' : f === 'anulados' ? h.estado === 'anulado' : true)).length
 
   return (
     <div className="detalle">
-      <header className="detalle-cab">
+      {!fijo && <header className="detalle-cab">
         <h1>{gestiona ? 'Hallazgos' : 'Mis hallazgos'}</h1>
         <p>
           {gestiona
             ? 'Nacen solos de las inspecciones. Asigna responsable, plazo y acción, y sigue su cierre.'
             : 'Los hallazgos que tienes asignados. Ciérralos contando qué se hizo; puedes agregar una foto.'}
         </p>
-      </header>
+      </header>}
       {inspeccionId && (
         <p className="nota">
           Solo los de una inspección.{' '}
@@ -80,7 +86,19 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId }:
       ) : !lista ? (
         !error && <p className="nota">Cargando…</p>
       ) : (
+        fuente === null ? (
+          <Fuentes lista={lista} onElegir={setFuente} />
+        ) : (
         <>
+          {!inspeccionId && !fijo && (
+            <p className="nota">
+              <button className="btn-link" type="button" onClick={() => (setFuente(null), setFiltro('pendientes'), setAbierto(null))}>
+                <ArrowLeft size={16} aria-hidden="true" /> Todas las fuentes
+              </button>
+              {' · '}
+              <b>{fuente === 'todas' ? 'Todos los hallazgos' : fuente}</b>
+            </p>
+          )}
           <div className="filtros" role="group" aria-label="Filtrar">
             {FILTROS.map(([f, t]) => (
               <button key={f} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)}>
@@ -139,6 +157,7 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId }:
             </ul>
           )}
         </>
+        )
       )}
     </div>
   )
@@ -289,3 +308,43 @@ function PanelHallazgo({ h, gestiona, cuenta, personas, nombre, onCambio }: {
     </div>
   )
 }
+
+/** Tarjetas por fuente: de qué formato nacieron los hallazgos, con los abiertos (y en proceso) frente al total. */
+function Fuentes({ lista, onElegir }: { lista: Hallazgo[]; onElegir: (f: string) => void }) {
+  const noAnulados = lista.filter((h) => h.estado !== 'anulado')
+  const abiertos = (xs: Hallazgo[]) => xs.filter((h) => h.estado === 'abierto' || h.estado === 'en_proceso').length
+  const porFuente = new Map<string, { nombre: string; items: Hallazgo[] }>()
+  for (const h of noAnulados) {
+    // Una fuente es un tipo de inspección (el nombre del formato): las copias del mismo formato cuentan juntas.
+    const nombre = h.plantillas?.nombre ?? 'Otra fuente'
+    const g = porFuente.get(nombre) ?? { nombre, items: [] }
+    g.items.push(h)
+    porFuente.set(nombre, g)
+  }
+  const fuentes = [...porFuente.entries()].sort((a, b) => abiertos(b[1].items) - abiertos(a[1].items) || a[1].nombre.localeCompare(b[1].nombre, 'es'))
+  return (
+    <>
+      <p className="nota">Elige una fuente para ver sus hallazgos. Cada tarjeta muestra los abiertos y en proceso frente al total.</p>
+      <ul className="tarjetas-tipos">
+        <li>
+          <button type="button" onClick={() => onElegir('todas')}>
+            <ListChecksIcon />
+            <b>Todos los hallazgos</b>
+            <small>{abiertos(noAnulados)} abiertos de {noAnulados.length} en total</small>
+          </button>
+        </li>
+        {fuentes.map(([id, g]) => (
+          <li key={id}>
+            <button type="button" onClick={() => onElegir(g.nombre)}>
+              <ListChecksIcon />
+              <b>{g.nombre}</b>
+              <small>{abiertos(g.items)} abiertos de {g.items.length} en total</small>
+              {abiertos(g.items) > 0 && <span className="chip chip-aviso">{abiertos(g.items)} por cerrar</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+const ListChecksIcon = () => <CheckCircle2 aria-hidden="true" />

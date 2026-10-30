@@ -32,8 +32,8 @@ const SEDE_B = (await s.DUENO.from('sedes').select('id').eq('empresa_id', B).eq(
 seccion('1. Frecuencias de las plantillas base')
 const { data: bases } = await s.ADMIN_A.from('plantillas').select('codigo, frecuencia').is('empresa_id', null)
 const frec = Object.fromEntries(bases.map((b) => [b.codigo, b.frecuencia]))
-comprobar('Valores iniciales aprobados: extintores, caseta, DACI e IPF mensual; bombas semanal; LOTO trimestral',
-  frec.extintores === 'mensual' && frec.car === 'mensual' && frec.daci === 'mensual' && frec.ipf === 'mensual' && frec.bombas === 'semanal' && frec.loto === 'trimestral', JSON.stringify(frec))
+comprobar('Valores iniciales aprobados: caseta, DACI e IPF mensual; extintores y bombas semanal; LOTO trimestral',
+  frec.extintores === 'semanal' && frec.car === 'mensual' && frec.daci === 'mensual' && frec.ipf === 'mensual' && frec.bombas === 'semanal' && frec.loto === 'trimestral', JSON.stringify(frec))
 
 seccion('2. Formato propio y quién cambia la frecuencia')
 const tipo = await s.ADMIN_A.rpc('guardar_tipo_activo', { p_empresa: A, p_id: null, p_datos: { nombre: `Luces de emergencia ficticias ${SUFIJO}`, subtipos: [] } })

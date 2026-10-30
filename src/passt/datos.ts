@@ -14,6 +14,7 @@ export type Programa = {
   fecha_aprobacion: string | null
   meta_cumplimiento: number
   estado: 'borrador' | 'aprobado'
+  seguimiento: 'semana' | 'mes' // una casilla por semana o por mes (se elige al crear el programa)
   aprobado_por: string | null
   aprobado_en: string | null
   vigente: boolean
@@ -29,6 +30,12 @@ export type Nodo = NodoBase & {
   observaciones: string | null
   plantilla_id: string | null
   unidad_id: string | null // área de la actividad (revisión LOTO, 29/10/2026)
+  frecuencia: FrecuenciaActividad | null // vacía = manual (semanas o meses elegidos a mano)
+}
+/** Frecuencia de una actividad (pedido del dueño, 29/10/2026): periódica, o vacía = manual. */
+export type FrecuenciaActividad = 'semanal' | 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'
+export const NOMBRE_FRECUENCIA_ACTIVIDAD: Record<FrecuenciaActividad, string> = {
+  semanal: 'Semanal', mensual: 'Mensual', bimestral: 'Bimestral', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual',
 }
 export type Meta = { id: string; nodo_id: string; orden: number; texto: string; indicador: string | null }
 export type Semana = {
@@ -43,7 +50,6 @@ export type Semana = {
   manual_en: string | null
 }
 export type Ejecucion = { actividad_id: string; semana: number; inspecciones: number; ultima: string }
-export type HallazgosActividad = { actividad_id: string; abiertos: number; vencidos: number }
 export type Responsable = { persona_id: string; apellidos_nombres: string; rol: string }
 export type Cambio = { id: number; nodo_id: string | null; cambio: string; detalle: Record<string, unknown> | null; motivo: string | null; hecho_por: string | null; hecho_en: string }
 
@@ -58,16 +64,15 @@ export const listarProgramas = (empresaId: string) =>
 
 /** Todo lo de un programa de una vez: encabezado, árbol, metas, semanas, ejecución por inspecciones e historial. */
 export async function leerPrograma(id: string) {
-  const [programa, nodos, metas, semanas, ejecucion, hallazgos, historial] = await Promise.all([
+  const [programa, nodos, metas, semanas, ejecucion, historial] = await Promise.all([
     leer<Programa>(db().from('passt_programas').select('*, sedes(nombre)').eq('id', id).single()),
     leer<Nodo[]>(db().from('passt_nodos').select('*').eq('programa_id', id)),
     leer<Meta[]>(db().from('passt_metas').select('id, nodo_id, orden, texto, indicador, passt_nodos!inner(programa_id)').eq('passt_nodos.programa_id', id).order('orden')),
     leer<Semana[]>(db().from('passt_semanas').select('*, passt_nodos!inner(programa_id)').eq('passt_nodos.programa_id', id)),
     rpc<Ejecucion[]>('passt_ejecucion', { p_programa: id }),
-    rpc<HallazgosActividad[]>('passt_hallazgos', { p_programa: id }),
     leer<Cambio[]>(db().from('passt_historial').select('id, nodo_id, cambio, detalle, motivo, hecho_por, hecho_en').eq('programa_id', id).order('id', { ascending: false }).limit(200)),
   ])
-  return { programa, nodos, metas, semanas, ejecucion, hallazgos, historial }
+  return { programa, nodos, metas, semanas, ejecucion, historial }
 }
 export type DatosPrograma = Awaited<ReturnType<typeof leerPrograma>>
 
@@ -81,7 +86,7 @@ export const trabajadores = (empresaId: string) => rpc<number | null>('passt_tra
 export const formatosDeEmpresa = (empresaId: string) =>
   leer<{ id: string; nombre: string; vigente: boolean }[]>(db().from('plantillas').select('id, nombre, vigente').eq('empresa_id', empresaId).order('nombre'))
 
-export const crearPrograma = (empresaId: string, datos: { anio: number; sede_id: string | null; nombre: string }) =>
+export const crearPrograma = (empresaId: string, datos: { anio: number; sede_id: string | null; nombre: string; seguimiento: 'semana' | 'mes' }) =>
   rpc<string>('crear_programa', { p_empresa: empresaId, p_datos: datos })
 export const duplicarPrograma = (id: string, datos: { anio: number; sede_id: string | null; nombre: string }) =>
   rpc<string>('duplicar_programa', { p_id: id, p_datos: datos })
