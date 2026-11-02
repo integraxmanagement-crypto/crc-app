@@ -4,6 +4,7 @@
 //  · modo «grabar»: vuelve a revisar todo y graba todo o nada (paso 5).
 // Quién puede: el administrador de la empresa (solo la suya) y el dueño de la plataforma (cualquier empresa).
 // Lo decide la base de datos (puedo_crear_cuenta), no este archivo.
+// Sedes (etapa 1 del punto 2): la carga es de una o varias sedes elegidas (deben ser de quien carga); todas las cuentas nuevas reciben esas sedes.
 import { MENSAJE_MANTENIMIENTO, candadoListo, claveParaSupabase } from '../_compartido/candado.ts'
 import { generarContrasenaInicial } from '../_compartido/contrasenas.ts'
 import { clienteAdmin, clienteComo, correoInterno, leerJson, quienLlama, responder } from '../_compartido/http.ts'
@@ -30,12 +31,26 @@ Deno.serve(async (req) => {
   if (!filas.length) return responder(req, 400, { error: 'El Excel no tiene personas' })
   if (filas.length > FILAS_MAXIMAS) return responder(req, 400, { error: `Máximo ${FILAS_MAXIMAS} personas por archivo` })
 
-  // ¿Puede quien llama cargar personal en esta empresa? (administrador de esa empresa o dueño de la plataforma)
-  const permiso = await clienteComo(llamada.token).rpc('puedo_crear_cuenta', { p_empresa: empresaId, p_rol: 'usuario' })
-  if (permiso.error || permiso.data !== true) return responder(req, 403, { error: 'No autorizado' })
-
   const admin = clienteAdmin()
-  const resultado = await revisar(admin, empresaId, filas)
+  const comoLlamada = clienteComo(llamada.token)
+  // Sedes de la carga: las elegidas; si no, la única sede de la empresa o la única sede de quien carga.
+  let sedes = Array.isArray(d.sedes) ? d.sedes.filter((x): x is string => typeof x === 'string') : []
+  if (!sedes.length) {
+    const { data: todas } = await admin.from('sedes').select('id').eq('empresa_id', empresaId).eq('activa', true)
+    if (todas?.length === 1) sedes = [todas[0].id as string]
+    else {
+      const { data: yo } = await comoLlamada.from('vinculos').select('id').eq('persona_id', llamada.usuario.id).eq('estado', 'activo').maybeSingle()
+      const { data: mias } = yo ? await comoLlamada.from('vinculos_sedes').select('sede_id').eq('vinculo_id', yo.id) : { data: [] }
+      if (mias?.length === 1) sedes = [mias[0].sede_id as string]
+    }
+  }
+
+  // ¿Puede quien llama cargar personal en esta empresa y en estas sedes? (administrador de esa empresa, administrador de sede o dueño de la plataforma)
+  const permiso = await comoLlamada.rpc('puedo_crear_cuenta', { p_empresa: empresaId, p_rol: 'usuario', p_sedes: sedes })
+  if (permiso.error || permiso.data !== true) return responder(req, 403, { error: 'No autorizado' })
+  if (d.modo === 'grabar' && !sedes.length) return responder(req, 400, { error: 'Elige la sede de esta carga' })
+
+  const resultado = await revisar(admin, empresaId, filas, sedes)
 
   if (d.modo === 'revisar') return responder(req, 200, resultado)
   if (d.modo !== 'grabar') return responder(req, 400, { error: 'Modo no válido' })
@@ -87,6 +102,7 @@ Deno.serve(async (req) => {
       filas: resultado.filas.length,
       sin_cambios: resultado.filas.filter((f) => f.estado === 'sin_cambios').length,
       lista_completa: listaCompleta,
+      sedes,
       presentes: resultado.filas.filter((f) => f.vinculo_id && f.estado !== 'reactivar').map((f) => f.vinculo_id),
       por_revisar: porRevisar,
       nuevas: creadas.map((c) => ({ ...datosVinculo(c.fila), persona_id: c.id, tipo: TIPO_INTERNO[c.fila.tipo], numero: c.fila.numero, nombres: c.fila.nombres })),

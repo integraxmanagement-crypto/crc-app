@@ -2,6 +2,8 @@
 // Quién puede: el dueño de la plataforma (cualquier rol) o el administrador de la empresa (gestores y usuarios
 // de SU empresa). La regla la decide la base de datos (puedo_crear_cuenta), no este archivo.
 // Si la persona ya existe sin vínculo activo (cambió de empresa), solo se crea el vínculo nuevo.
+// Sedes (etapa 1 del punto 2): toda cuenta que no es administrador general nace con al menos una sede, y quien crea solo puede dar sedes que son suyas.
+// Los administradores (general o de sede) solo los crea el dueño de la plataforma.
 import { MENSAJE_MANTENIMIENTO, candadoListo, claveParaSupabase } from '../_compartido/candado.ts'
 import { generarContrasenaInicial } from '../_compartido/contrasenas.ts'
 import {
@@ -35,11 +37,26 @@ Deno.serve(async (req) => {
     return responder(req, 400, { error: 'Faltan datos: empresa, rol, documento, apellidos y nombres, fecha de ingreso' })
   }
 
-  // 1. ¿Puede quien llama crear este rol en esta empresa? Lo responde la base de datos, como esa persona.
-  const permiso = await clienteComo(llamada.token).rpc('puedo_crear_cuenta', { p_empresa: empresaId, p_rol: rol })
+  const admin = clienteAdmin()
+  const comoLlamada = clienteComo(llamada.token)
+
+  // Sedes de la cuenta: las elegidas; si no se eligió ninguna, la única sede de la empresa o la única sede de quien crea.
+  let sedes = Array.isArray(d.sedes) ? d.sedes.filter((x): x is string => typeof x === 'string') : []
+  if (!sedes.length && rol !== 'admin_empresa') {
+    const { data: todas } = await admin.from('sedes').select('id').eq('empresa_id', empresaId).eq('activa', true)
+    if (todas?.length === 1) sedes = [todas[0].id as string]
+    else {
+      const { data: yo } = await comoLlamada.from('vinculos').select('id').eq('persona_id', llamada.usuario.id).eq('estado', 'activo').maybeSingle()
+      const { data: mias } = yo ? await comoLlamada.from('vinculos_sedes').select('sede_id').eq('vinculo_id', yo.id) : { data: [] }
+      if (mias?.length === 1) sedes = [mias[0].sede_id as string]
+    }
+  }
+  if (!sedes.length && rol !== 'admin_empresa') return responder(req, 400, { error: 'Elige las sedes de la cuenta' })
+
+  // 1. ¿Puede quien llama crear este rol en esta empresa y con estas sedes? Lo responde la base de datos, como esa persona.
+  const permiso = await comoLlamada.rpc('puedo_crear_cuenta', { p_empresa: empresaId, p_rol: rol, p_sedes: sedes })
   if (permiso.error || permiso.data !== true) return responder(req, 403, { error: 'No autorizado' })
 
-  const admin = clienteAdmin()
   const { data: tipoDoc } = await admin.from('tipos_documento').select('patron').eq('codigo', tipo).maybeSingle()
   if (!tipoDoc || !new RegExp(tipoDoc.patron).test(numero)) {
     return responder(req, 400, { error: 'Número de documento no válido para ese tipo' })
@@ -59,9 +76,9 @@ Deno.serve(async (req) => {
     const { data: activo } = await admin.from('vinculos').select('id')
       .eq('persona_id', existente.id).eq('estado', 'activo').maybeSingle()
     if (activo) return responder(req, 409, { error: 'Esta persona ya tiene un vínculo activo. Primero debe ser cesada allí.' })
-    const nuevo = await admin.from('vinculos').insert({ ...vinculo, persona_id: existente.id }).select('id').single()
+    const nuevo = await admin.rpc('alta_vinculo', { p_datos: { ...vinculo, persona_id: existente.id, sedes } })
     if (nuevo.error) return responder(req, 400, { error: motivo(nuevo.error, 'No se pudo crear el vínculo') })
-    return responder(req, 200, { persona_id: existente.id, vinculo_id: nuevo.data.id, cuenta_nueva: false })
+    return responder(req, 200, { persona_id: existente.id, vinculo_id: nuevo.data, cuenta_nueva: false })
   }
 
   // 3. Persona nueva: cuenta con contraseña inicial al azar, que se devuelve UNA sola vez.
@@ -76,7 +93,7 @@ Deno.serve(async (req) => {
     id: personaId, tipo_documento: tipo, numero_documento: numero, apellidos_nombres: nombres,
     creado_por: llamada.usuario.id, clave_con_candado: true,
   })
-  const nuevo = persona.error ? null : await admin.from('vinculos').insert({ ...vinculo, persona_id: personaId }).select('id').single()
+  const nuevo = persona.error ? null : await admin.rpc('alta_vinculo', { p_datos: { ...vinculo, persona_id: personaId, sedes } })
 
   if (persona.error || !nuevo || nuevo.error) {
     // Deshace todo para no dejar cuentas a medias.
@@ -86,6 +103,6 @@ Deno.serve(async (req) => {
   }
 
   return responder(req, 200, {
-    persona_id: personaId, vinculo_id: nuevo.data.id, cuenta_nueva: true, contrasena_inicial: contrasena,
+    persona_id: personaId, vinculo_id: nuevo.data, cuenta_nueva: true, contrasena_inicial: contrasena,
   })
 })

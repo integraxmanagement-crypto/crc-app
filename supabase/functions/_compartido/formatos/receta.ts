@@ -45,7 +45,7 @@ export const NOMBRE_FORMULA: Record<Formula, string> = {
 
 export type CuandoHallazgo = 'nunca' | 'no_cumple' | 'fuera_rango'
 export const NOMBRE_HALLAZGO: Record<CuandoHallazgo, string> = {
-  nunca: 'No genera hallazgo',
+  nunca: 'No genera plan de acción',
   no_cumple: 'Si no cumple (X o No)',
   fuera_rango: 'Si el número sale del rango',
 }

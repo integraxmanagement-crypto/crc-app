@@ -1,6 +1,6 @@
 # Pruebas de los períodos (tarea 3.4-D)
 
-Fecha: 2026-10-30T14:10:09.650Z · Sin base de datos · **undefined de undefined correctas**
+Fecha: 2026-11-02T15:42:49.332Z · Sin base de datos · **undefined de undefined correctas**
 
 ## Semanas ISO
 

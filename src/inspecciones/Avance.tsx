@@ -314,7 +314,7 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
                         {f.codigo ? `${f.codigo} · ` : ''}N.º {f.inspeccion_numero}
                       </b>
                       {f.resultado && <span className={`chip ${f.hallazgos ? 'chip-aviso' : 'chip-ok'}`}>{f.resultado}</span>}
-                      {f.hallazgos > 0 && <span className="chip chip-mal">{f.hallazgos} hallazgo(s)</span>}
+                      {f.hallazgos > 0 && <span className="chip chip-mal">{f.hallazgos} plan(es) de acción</span>}
                       <small>
                         {fechaCorta(f.fecha!)}
                         {nombreUbicacion(f.ubicacion_id) ? ` · ${nombreUbicacion(f.ubicacion_id)}` : ''}

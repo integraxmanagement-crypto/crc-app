@@ -84,7 +84,7 @@ const fechaReal = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && !Number.is
 type Unidad = { id: string; nivel: string; padre_id: string | null; nombre: string; vigente: boolean }
 
 /** Revisa todas las filas para una empresa. `admin` es el cliente con permisos del servidor. */
-export async function revisar(admin: SupabaseClient, empresaId: string, entrada: Fila[]): Promise<Resultado> {
+export async function revisar(admin: SupabaseClient, empresaId: string, entrada: Fila[], sedes: string[] = []): Promise<Resultado> {
   const [{ data: tiposDoc }, { data: puestos }, { data: unidades }] = await Promise.all([
     admin.from('tipos_documento').select('codigo, patron'),
     admin.from('puestos').select('id, nombre, vigente').eq('empresa_id', empresaId),
@@ -209,7 +209,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
         } else if (activo) {
           r.vinculo_id = activo.id as string
           if (activo.por_revisar_desde) r.porRevisar = true
-          if (activo.rol === 'admin_empresa') r.estado = 'administrador'
+          if (activo.rol === 'admin_empresa' || activo.rol === 'admin_sede') r.estado = 'administrador'
           else {
             const cambios = r.cambios
             if (comparable(persona.apellidos_nombres as string) !== comparable(nombres) && nombres.length >= 3) cambios.push(`Nombre: «${persona.apellidos_nombres}» → «${nombres}»`)
@@ -225,7 +225,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
             .sort((x, y) => String(y.actualizado_en).localeCompare(String(x.actualizado_en)))[0]
           if (cesadoAqui) {
             r.vinculo_id = cesadoAqui.id as string
-            if (cesadoAqui.rol === 'admin_empresa') motivos.push('Era administrador de esta empresa: solo Integrax puede reactivarlo.')
+            if (cesadoAqui.rol === 'admin_empresa' || cesadoAqui.rol === 'admin_sede') motivos.push('Era administrador de esta empresa: solo Integrax puede reactivarlo.')
             r.estado = 'reactivar'
             r.cambios.push('Estaba cesada en esta empresa: se reactivará si lo marcas')
           } else r.estado = 'alta_cuenta_existente'
@@ -245,10 +245,12 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
   // Gestores y usuarios activos de la empresa que no aparecen en el Excel (decisión 9: «por revisar» si es la lista completa).
   const enExcel = new Set(filas.filter((x) => x.persona_id).map((x) => x.persona_id))
   const { data: activos } = await admin.from('vinculos')
-    .select('id, rol, persona_id, personas!inner(tipo_documento, numero_documento, apellidos_nombres)')
+    .select('id, rol, persona_id, vinculos_sedes(sede_id), personas!inner(tipo_documento, numero_documento, apellidos_nombres)')
     .eq('empresa_id', empresaId).eq('estado', 'activo').in('rol', ['gestor', 'usuario'])
   const noAparecen = (activos ?? [])
     .filter((v) => !enExcel.has(v.persona_id as string))
+    // Solo cuentan las personas de las sedes de esta carga (quien carga una sede no revisa a las de otra).
+    .filter((v) => !sedes.length || (v.vinculos_sedes as unknown as { sede_id: string }[]).some((x) => sedes.includes(x.sede_id)))
     .map((v) => {
       const p = v.personas as unknown as { tipo_documento: string; numero_documento: string; apellidos_nombres: string }
       return { vinculo_id: v.id as string, rol: v.rol as string, apellidos_nombres: p.apellidos_nombres, tipo_documento: NOMBRE_TIPO[p.tipo_documento] ?? p.tipo_documento, numero_documento: p.numero_documento }

@@ -1,6 +1,7 @@
 // Datos de formatos de inspección, activos, ubicaciones y listas (tarea 3.4-B). Se lee con las reglas RLS de cada
 // persona; se escribe solo con las acciones de la base de datos, que revisan los permisos por dentro.
 import { conLimite, db, mensaje, rpc } from '../empresas/datos'
+import { conSede } from '../sedeActiva'
 import type { CampoFicha, Frecuencia, Subtipo } from './base'
 import type { Receta } from './receta'
 
@@ -155,7 +156,7 @@ export const cambiarVigenciaUbicacion = (id: string, vigente: boolean) => rpc<vo
 
 // ───── Activos ─────
 export const listarActivos = (empresaId: string, tipoId: string) =>
-  leer<Activo[]>(db().from('activos').select('*').eq('empresa_id', empresaId).eq('tipo_id', tipoId).order('numero'))
+  leer<Activo[]>(conSede(db().from('activos').select('*').eq('empresa_id', empresaId).eq('tipo_id', tipoId)).order('numero'))
 export type DatosActivo = {
   tipo_id: string
   codigo: string

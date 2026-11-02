@@ -170,7 +170,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           <FileSpreadsheet size={18} aria-hidden="true" /> Generar registro
         </button>
         <button className="btn-sec" type="button" aria-pressed={vista === 'hallazgos'} onClick={() => alternar('hallazgos')}>
-          <ListChecks size={18} aria-hidden="true" /> Ver hallazgos
+          <ListChecks size={18} aria-hidden="true" /> Ver planes de acción
         </button>
       </div>
 

@@ -55,7 +55,7 @@ export function Campana({ firmas, cuenta, online }: { firmas: number; cuenta: st
           </p>
           {hallazgos > 0 && (
             <button type="button" role="menuitem" onClick={elegir('/hallazgos')}>
-              <ListChecks size={18} aria-hidden="true" /> Tienes {hallazgos} hallazgo(s) asignado(s) por cerrar
+              <ListChecks size={18} aria-hidden="true" /> Tienes {hallazgos} plan(es) de acción asignado(s) por cerrar
             </button>
           )}
           {firmas > 0 && (

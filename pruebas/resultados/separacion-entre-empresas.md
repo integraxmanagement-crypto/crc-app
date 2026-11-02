@@ -1,6 +1,6 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 29/10/2026, 10:47:06 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 2/11/2026, 11:28:47 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 105 de 105 pruebas pasaron.**
 
@@ -32,11 +32,11 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 |---|---|---|
 | ✅ Pasa | Usuario A2: solo ve su propia ficha | 1 ficha(s) |
 | ✅ Pasa | Usuario A2: NO recibe la lista de personas de su empresa |  |
-| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 19 personas |
+| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 27 personas |
 | ✅ Pasa | Gestor A: la lista trae solo nombres, puesto y área (sin documento) | apellidos_nombres, area, persona_id, puesto |
 | ✅ Pasa | Gestor A: la lista no incluye a nadie de B |  |
 | ✅ Pasa | Gestor A: no puede leer los documentos de otras personas |  |
-| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 22 fichas |
+| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 32 fichas |
 | ✅ Pasa | Administrador A: ninguna ficha es de B |  |
 
 ## 3. Un administrador de A no puede crear ni leer cuentas de B
@@ -87,7 +87,7 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve A y B (y las demás empresas de prueba) | 3 empresas |
+| ✅ Pasa | El dueño ve A y B (y las demás empresas de prueba) | 4 empresas |
 
 ## 8. Ampliación 3.2: sedes, contactos y logos tampoco cruzan entre empresas
 
@@ -139,8 +139,8 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | Hay cargas registradas en A para probar | 20 cargas en total |
-| ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 18 |
+| ✅ Pasa | Hay cargas registradas en A para probar | 32 cargas en total |
+| ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 30 |
 | ✅ Pasa | ADMIN_B: no ve cargas de A | 0 visibles |
 | ✅ Pasa | GESTOR_A: no ve cargas de A | 0 visibles |
 | ✅ Pasa | USUARIO_A2: no ve cargas de A | 0 visibles |

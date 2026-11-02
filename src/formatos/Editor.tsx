@@ -470,7 +470,7 @@ function TarjetaSeccion({
         {s.solo_subtipos?.length ? <span className="chip">Solo: {s.solo_subtipos.map((c) => subtipos.find((x) => x.codigo === c)?.nombre ?? c).join(', ')}</span> : null}
         {s.repetible && (
           <span className="chip chip-aviso">
-            Repetible (mín. {s.repetible.minimo}){s.repetible.genera_hallazgo ? ' · cada fila genera un hallazgo' : ''}
+            Repetible (mín. {s.repetible.minimo}){s.repetible.genera_hallazgo ? ' · cada fila genera un plan de acción' : ''}
           </span>
         )}
       </div>
@@ -500,7 +500,7 @@ function TarjetaSeccion({
                 onChange={(e) => enSeccion((sec) => void (sec.repetible!.minimo = Math.max(0, Math.round(Number(e.target.value) || 0))))} />
               <label className="check-linea">
                 <input type="checkbox" checked={s.repetible.genera_hallazgo} onChange={(e) => enSeccion((sec) => void (sec.repetible!.genera_hallazgo = e.target.checked))} />
-                Cada fila genera un hallazgo
+                Cada fila genera un plan de acción
               </label>
             </div>
           )}
@@ -516,7 +516,7 @@ function TarjetaSeccion({
               <span className="chips">
                 <span className="chip">{NOMBRE_TIPO[p.tipo]}</span>
                 {p.critico && <span className="chip chip-mal">Crítico</span>}
-                {p.hallazgo !== 'nunca' && <span className="chip chip-aviso">Hallazgo</span>}
+                {p.hallazgo !== 'nunca' && <span className="chip chip-aviso">Plan de acción</span>}
                 {p.pide_accion && <span className="chip">Pide acción</span>}
                 {p.cantidad != null && <span className="chip">Cantidad: {p.cantidad}</span>}
                 {p.unidad && <span className="chip">{p.unidad}</span>}
@@ -608,7 +608,7 @@ function FormPunto({
           </select>
         </label>
         <label className="field">
-          <span>Genera hallazgo</span>
+          <span>Genera plan de acción</span>
           <select value={p.hallazgo} onChange={(e) => set('hallazgo', e.target.value as CuandoHallazgo)}>
             {(Object.keys(NOMBRE_HALLAZGO) as CuandoHallazgo[])
               .filter((h) => h === 'nunca' || (h === 'no_cumple' ? evaluable : p.tipo === 'numero'))
@@ -902,7 +902,7 @@ function EditorReglas({ receta, editable, campos, cambiar }: { receta: Receta; e
         <div className="marcas">
           <Marca etiqueta="Calcular puntaje (% de favorables)" valor={receta.puntaje} disabled={!editable} onCambio={(v) => cambiar((r) => void (r.puntaje = v))} />
           <Marca etiqueta="N/A cuenta como favorable" valor={receta.na_favorable} disabled={!editable} onCambio={(v) => cambiar((r) => void (r.na_favorable = v))} />
-          <Marca etiqueta="Cada vencimiento genera un hallazgo" valor={receta.hallazgo_vencimiento} disabled={!editable} onCambio={(v) => cambiar((r) => void (r.hallazgo_vencimiento = v))} />
+          <Marca etiqueta="Cada vencimiento genera un plan de acción" valor={receta.hallazgo_vencimiento} disabled={!editable} onCambio={(v) => cambiar((r) => void (r.hallazgo_vencimiento = v))} />
           <Marca etiqueta="Observación general al cerrar" valor={receta.observacion_general} disabled={!editable} onCambio={(v) => cambiar((r) => void (r.observacion_general = v))} />
         </div>
       </fieldset>

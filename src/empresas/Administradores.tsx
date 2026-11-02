@@ -3,14 +3,20 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
 import { type Listas, leerListas, unidadesAsignables } from '../usuarios/datos'
 import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from './campos'
-import { type Administrador, crearAdministrador, listarAdministradores } from './datos'
+import { type Administrador, type Sede, crearAdministrador, listarAdministradores } from './datos'
 
 const hoy = () => new Date().toLocaleDateString('en-CA')
 
-/** Administradores de la empresa. Solo el dueño de la plataforma los crea (con la función crear-cuenta de la 3.1). */
-export function Administradores({ empresaId, puedeCrear }: { empresaId: string; puedeCrear: boolean }) {
+/**
+ * Administradores de la empresa: el general (ve todas las sedes) y los de cada sede. Solo el dueño de la plataforma los crea
+ * (con la función crear-cuenta de la 3.1); al de sede se le eligen las sedes que administra.
+ */
+export function Administradores({ empresaId, puedeCrear, sedes }: { empresaId: string; puedeCrear: boolean; sedes: Sede[] }) {
   const [lista, setLista] = useState<Administrador[] | null>(null)
   const [abierto, setAbierto] = useState(false)
+  const [rol, setRol] = useState<'admin_empresa' | 'admin_sede'>('admin_empresa')
+  const [sedeIds, setSedeIds] = useState<string[]>([])
+  const activas = sedes.filter((s) => s.activa)
   const [tipo, setTipo] = useState<TipoDocumento>('dni')
   const [numero, setNumero] = useState('')
   const [nombres, setNombres] = useState('')
@@ -37,19 +43,21 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
     const n = normalizarDocumento(numero)
     if (!tipoDoc.patron.test(n)) return setError(`Revisa el número de documento (${tipoDoc.ayuda}).`)
     if (nombres.trim().length < 3) return setError('Escribe apellidos y nombres.')
+    if (rol === 'admin_sede' && !sedeIds.length) return setError('Elige al menos una sede que administrará.')
     setOcupado(true)
     try {
       const r = await crearAdministrador(empresaId, {
         tipo_documento: tipo, numero_documento: n, apellidos_nombres: nombres, fecha_ingreso: fecha,
         puesto: listas.puestos.find((i) => i.id === puestoId)?.nombre ?? null,
         unidad_id: unidadId || null,
-      })
+      }, rol, sedeIds)
       setResultado({ nombre: nombres.trim(), clave: r.contrasena_inicial })
       setAbierto(false)
       setNumero('')
       setNombres('')
       setPuestoId('')
       setUnidadId('')
+      setSedeIds([])
       cargar()
     } catch (err) {
       setError((err as Error).message)
@@ -60,7 +68,7 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
 
   return (
     <Seccion
-      titulo="Administrador de la empresa"
+      titulo="Administradores de la empresa"
       accion={
         puedeCrear && !abierto ? (
           <button className="btn-sec" type="button" onClick={() => { setResultado(null); setError(null); setAbierto(true) }}>
@@ -79,10 +87,12 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
             <li key={a.id} className={a.estado === 'activo' ? '' : 'inactiva'}>
               <div>
                 <b>{a.personas?.apellidos_nombres}</b>
+                <span className="chip chip-gris">{a.rol === 'admin_sede' ? 'De sede' : 'General'}</span>
                 {a.estado !== 'activo' && <span className="chip chip-gris">Cesado</span>}
                 <small>
                   {a.personas?.tipo_documento.toUpperCase()} {a.personas?.numero_documento}
                   {a.puesto ? ` · ${a.puesto}` : ''}
+                  {a.rol === 'admin_sede' ? ` · ${a.vinculos_sedes.map((x) => x.sedes?.nombre).filter(Boolean).join(', ') || 'sin sede'}` : ' · todas las sedes'}
                 </small>
               </div>
             </li>
@@ -109,6 +119,23 @@ export function Administradores({ empresaId, puedeCrear }: { empresaId: string; 
 
       {abierto && (
         <form className="form subform" onSubmit={crear} noValidate>
+        <label className="field">
+          <span>Tipo de administrador</span>
+          <select value={rol} onChange={(e) => setRol(e.target.value as 'admin_empresa' | 'admin_sede')}>
+            <option value="admin_empresa">General (ve todas las sedes)</option>
+            <option value="admin_sede">De sede (solo las sedes que elijas)</option>
+          </select>
+        </label>
+        {rol === 'admin_sede' && (
+          <fieldset className="field">
+            <legend>Sedes que administra</legend>
+            {activas.map((s) => (
+              <label key={s.id} className="check-linea">
+                <input type="checkbox" checked={sedeIds.includes(s.id)} onChange={(e) => setSedeIds(e.target.checked ? [...sedeIds, s.id] : sedeIds.filter((x) => x !== s.id))} /> {s.nombre}
+              </label>
+            ))}
+          </fieldset>
+        )}
           <div className="fila2">
             <label className="field">
               <span>Tipo de documento</span>

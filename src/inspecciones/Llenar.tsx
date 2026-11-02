@@ -326,7 +326,7 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
       <div className={`resultado-prueba cierre ${faltan.length ? 'incompleta' : ''}`} role="status">
         <p>
           Resultado: <b>{ev.resultado ?? 'Sin resultado (solo «Realizado»)'}</b>
-          {ev.puntaje != null && <> · Puntaje: <b>{ev.puntaje} %</b></>} · Hallazgos: <b>{ev.hallazgos.length}</b> · Fotos: <b>{b.fotos.length}</b>
+          {ev.puntaje != null && <> · Puntaje: <b>{ev.puntaje} %</b></>} · Planes de acción: <b>{ev.hallazgos.length}</b> · Fotos: <b>{b.fotos.length}</b>
         </p>
         {/* La lista de lo que falta solo sale si se intenta cerrar con cosas pendientes (pedido del dueño, 29/10/2026). */}
         {intentoCierre && faltan.length > 0 && (

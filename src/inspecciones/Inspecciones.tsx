@@ -4,6 +4,7 @@ import { Aviso, Seccion } from '../empresas/campos'
 import { todosLosPuntos } from '../formatos/receta'
 import { NOMBRE_FRECUENCIA } from '../formatos/datos'
 import { ir } from '../ruta'
+import { sedeActiva } from '../sedeActiva'
 import { NOMBRE_NIVEL, type Nivel } from '../usuarios/datos'
 import { type Borrador, type CopiaLocal, type EnCola, type FormatoLocal, bajarCopia, descartarBorrador, guardarBorrador, leerCopia, sincronizar, useCampo, volverABorrador } from './campo'
 import { type ResumenInspeccion, conFrecuencias, frecuenciasActuales, listarInspecciones } from './datos'
@@ -172,7 +173,7 @@ export function ListaRecibidas({ recibidas, error, online }: { recibidas: Resume
             </b>
             {i.estado === 'anulada' && <span className="chip chip-gris">Anulada</span>}
             {i.resultado && <span className={`chip ${i.hallazgos.length ? 'chip-aviso' : 'chip-ok'}`}>{i.resultado}</span>}
-            {i.hallazgos.length > 0 && <span className="chip chip-mal">{i.hallazgos.length} hallazgo(s)</span>}
+            {i.hallazgos.length > 0 && <span className="chip chip-mal">{i.hallazgos.length} plan(es) de acción</span>}
             <small>
               {fechaCorta(i.fecha)} · {i.activo_foto ? i.activo_foto.codigo : (i.sedes?.nombre ?? '')}
               {i.puntaje != null ? ` · ${i.puntaje} %` : ''}
@@ -271,7 +272,8 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
   )
   const [activoId, setActivoId] = useState(preset?.activo ?? '')
   const [buscar, setBuscar] = useState('')
-  const [sede, setSede] = useState(copia.sedes.length === 1 ? copia.sedes[0].id : '')
+  // La sede sale sola: la única de la cuenta, o la que se eligió en el selector de la barra.
+  const [sede, setSede] = useState(copia.sedes.length === 1 ? copia.sedes[0].id : copia.sedes.some((x) => x.id === sedeActiva()) ? sedeActiva() : '')
   const [unidad, setUnidad] = useState(preset?.unidad && copia.unidades.some((u) => u.id === preset.unidad) ? preset.unidad : '')
   const [ubicacion, setUbicacion] = useState('')
   const [error, setError] = useState<string | null>(null)

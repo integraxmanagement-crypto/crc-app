@@ -26,8 +26,8 @@ export type NoAparece = { vinculo_id: string; apellidos_nombres: string; tipo_do
 
 export type Revision = { filas: Revisada[]; faltantes: Faltante[]; noAparecen: NoAparece[] }
 
-export const revisarCarga = (empresaId: string, filas: Registro[]) =>
-  invocar<Revision>('carga-personal', { modo: 'revisar', empresa_id: empresaId, filas })
+export const revisarCarga = (empresaId: string, filas: Registro[], sedes: string[]) =>
+  invocar<Revision>('carga-personal', { modo: 'revisar', empresa_id: empresaId, filas, sedes })
 
 /** Una persona nueva con su contraseña inicial. Solo existe en la pantalla, una vez: no se guarda en ningún lado. */
 export type Entrega = { fila: number; tipo: string; numero: string; apellidos_nombres: string; rol: string; contrasena: string }
@@ -39,8 +39,8 @@ export type Grabado = {
 }
 
 /** Graba todo o nada. El servidor vuelve a revisar todas las filas antes de grabar. */
-export const grabarCarga = (empresaId: string, filas: Registro[], reactivar: number[], listaCompleta: boolean) =>
-  invocar<Grabado>('carga-personal', { modo: 'grabar', empresa_id: empresaId, filas, reactivar, lista_completa: listaCompleta })
+export const grabarCarga = (empresaId: string, filas: Registro[], reactivar: number[], listaCompleta: boolean, sedes: string[]) =>
+  invocar<Grabado>('carga-personal', { modo: 'grabar', empresa_id: empresaId, filas, reactivar, lista_completa: listaCompleta, sedes })
 
 export const ESTADOS: Record<Estado, { texto: string; clase: string }> = {
   nueva: { texto: 'Nueva', clase: 'chip-ok' },

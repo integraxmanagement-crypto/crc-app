@@ -1,4 +1,4 @@
-import { ArrowLeft, Building2, ChevronDown, Database, LogOut, UserRound, Users, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronDown, Database, LogOut, UserRound, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Aviso, Dato, Seccion } from '../empresas/campos'
 import { DetalleEmpresa } from '../empresas/DetalleEmpresa'
@@ -36,12 +36,6 @@ export function MenuPerfil({ perfil }: { perfil: Perfil }) {
           {perfil.empresaId && (
             <button type="button" role="menuitem" onClick={elegir(() => ir('/perfil/empresa'))}>
               <Building2 size={18} aria-hidden="true" /> Información de la empresa
-            </button>
-          )}
-          {/* Configuración de usuarios (revisión de diseño, obs. 10): solo quien administra las cuentas de la empresa. */}
-          {perfil.empresaId && perfil.rolCodigo === 'admin_empresa' && (
-            <button type="button" role="menuitem" onClick={elegir(() => ir('/mi-empresa/usuarios'))}>
-              <Users size={18} aria-hidden="true" /> Configuración de usuarios
             </button>
           )}
           <button type="button" role="menuitem" onClick={elegir(() => void salir())}>
@@ -131,12 +125,12 @@ type DatosEmpresa = {
  * inspecciones, contactos, logos, sedes y administradores; revisión de diseño, obs. 11). Los demás, la ficha y las
  * sedes activas, solo para leer.
  */
-export function InfoEmpresa({ empresaId, online, esAdmin = false }: { empresaId: string; online: boolean; esAdmin?: boolean }) {
-  if (esAdmin)
+export function InfoEmpresa({ empresaId, online, esAdmin = false, esAdminSede = false }: { empresaId: string; online: boolean; esAdmin?: boolean; esAdminSede?: boolean }) {
+  if (esAdmin || esAdminSede)
     return (
       <>
         <Volver />
-        <DetalleEmpresa empresaId={empresaId} modo="admin" />
+        <DetalleEmpresa empresaId={empresaId} modo={esAdmin ? 'admin' : 'admin_sede'} />
       </>
     )
   return <FichaEmpresa empresaId={empresaId} online={online} />

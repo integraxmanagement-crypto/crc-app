@@ -16,6 +16,7 @@ import { ProgramaAnual } from './passt/Programa'
 import { Programas } from './passt/Programas'
 import { AvancePasst } from './inicio/AvancePasst'
 import { Campana } from './inicio/Campana'
+import { Emergencias } from './inicio/Emergencias'
 import { MisHallazgos } from './inicio/MisHallazgos'
 import { PendientesMes } from './inicio/PendientesMes'
 import { Ingreso } from './Ingreso'
@@ -34,7 +35,8 @@ import { MenuLateral } from './MenuLateral'
 import { LogoBarra } from './marca/LogoBarra'
 import { InfoEmpresa, MenuPerfil, MiInformacion } from './perfil/Perfil'
 import { ir, useRuta } from './ruta'
-import { type Perfil, useSesion } from './sesion'
+import { elegirSede, useSedeActiva, validarSede } from './sedeActiva'
+import { type Perfil, esAdminDeEmpresa, useSesion } from './sesion'
 import { Intentos } from './usuarios/Intentos'
 import { Listas } from './usuarios/Listas'
 import { Usuarios } from './usuarios/Usuarios'
@@ -130,16 +132,42 @@ function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; onl
             <ShieldCheck size={18} aria-hidden="true" /> <span>Intentos</span>
           </button>
         )}
+        <SelectorSede perfil={perfil} />
         {perfil.empresaId && <Campana firmas={firmas} cuenta={perfil.id} online={online} />}
+        <Emergencias />
         <MenuPerfil perfil={perfil} />
       </nav>
     </header>
   )
 }
 
+/**
+ * Selector de sede de la barra: solo sale si la cuenta tiene más de una sede. El administrador general elige «Todas las sedes» o una;
+ * las demás cuentas con varias sedes, «Todas mis sedes» o una de las suyas. Lo elegido filtra las listas de la pantalla.
+ */
+function SelectorSede({ perfil }: { perfil: Perfil }) {
+  const elegida = useSedeActiva()
+  const ids = perfil.sedes.map((s) => s.id).join(',')
+  useEffect(() => validarSede(ids ? ids.split(',') : []), [ids])
+  if (perfil.sedes.length < 2) return null
+  return (
+    <label className="selector-sede">
+      <span className="solo-lectores">Sede</span>
+      <select value={elegida} onChange={(e) => elegirSede(e.target.value)} aria-label="Sede">
+        <option value="">{perfil.rolCodigo === 'admin_empresa' ? 'Todas las sedes' : 'Todas mis sedes'}</option>
+        {perfil.sedes.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.nombre}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 /** Administrador y gestor (equipo SSO) de una empresa: trabajan con los formatos y los activos (tarea 3.4-B). */
 function esEquipoSso(perfil: Perfil) {
-  return Boolean(perfil.empresaId) && (perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'gestor')
+  return Boolean(perfil.empresaId) && (esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor')
 }
 
 /**
@@ -147,7 +175,7 @@ function esEquipoSso(perfil: Perfil) {
  * qué se puede hacer es la base de datos (permisos plantillas.editar, plantillas.publicar y activos.editar).
  */
 function PantallasFormatos({ empresaId, partes, rutas, perfil }: { empresaId: string; partes: string[]; rutas: Rutas; perfil: Perfil }): ReactNode {
-  const puedeEditar = perfil.esDueno || perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'gestor'
+  const puedeEditar = perfil.esDueno || esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor'
   const puedePublicar = perfil.esDueno || perfil.rolCodigo === 'admin_empresa'
   if (partes[0] === 'activos') return <Activos key={empresaId} empresaId={empresaId} rutas={rutas} puedeEditar={puedeEditar} esDueno={perfil.esDueno} />
   if (partes[1])
@@ -175,9 +203,9 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
         />
       )
     const volver = () => ir(`/empresas/${ruta[1]}`)
-    if (ruta[2] === 'usuarios') return <Usuarios key={ruta[1]} empresaId={ruta[1]} esDueno miId={perfil.id} onVolver={volver} />
+    if (ruta[2] === 'usuarios') return <Usuarios key={ruta[1]} empresaId={ruta[1]} esDueno miId={perfil.id} sedesPropias={null} onVolver={volver} />
     if (ruta[2] === 'listas') return <Listas key={ruta[1]} empresaId={ruta[1]} onVolver={volver} />
-    if (ruta[2] === 'carga') return <Carga key={ruta[1]} empresaId={ruta[1]} onVolver={() => ir(`/empresas/${ruta[1]}/usuarios`)} />
+    if (ruta[2] === 'carga') return <Carga key={ruta[1]} empresaId={ruta[1]} sedesPropias={null} onVolver={() => ir(`/empresas/${ruta[1]}/usuarios`)} />
     if (ruta[2] === 'formatos' || ruta[2] === 'activos') {
       const rutas: Rutas = { formatos: `/empresas/${ruta[1]}/formatos`, activos: `/empresas/${ruta[1]}/activos`, volver: `/empresas/${ruta[1]}` }
       return PantallasFormatos({ empresaId: ruta[1], partes: ruta.slice(2), rutas, perfil })
@@ -185,7 +213,7 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     return <DetalleEmpresa key={ruta[1]} empresaId={ruta[1]} modo="dueno" />
   }
   if (ruta[0] === 'perfil') {
-    if (ruta[1] === 'empresa' && perfil.empresaId) return <InfoEmpresa empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
+    if (ruta[1] === 'empresa' && perfil.empresaId) return <InfoEmpresa empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} esAdminSede={perfil.rolCodigo === 'admin_sede'} />
     return <MiInformacion perfil={perfil} online={online} />
   }
   if (ruta[0] === 'intentos' && perfil.esDueno) return <Intentos />
@@ -200,7 +228,7 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
       return <TipoInspeccion key={ruta[2]} id={ruta[2]} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
     // El detalle también lo abre cada firmante (la base de datos decide qué puede ver).
     if (ruta[1])
-      return <DetalleInspeccion key={`${ruta[1]}${ruta[2] ?? ''}`} auto={ruta[2] === 'excel' || ruta[2] === 'pdf' ? ruta[2] : undefined} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={perfil.rolCodigo === 'admin_empresa'} />
+      return <DetalleInspeccion key={`${ruta[1]}${ruta[2] ?? ''}`} auto={ruta[2] === 'excel' || ruta[2] === 'pdf' ? ruta[2] : undefined} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={esAdminDeEmpresa(perfil)} />
     if (esEquipoSso(perfil)) return <Inspecciones empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
   }
   if (ruta[0] === 'firmas' && perfil.empresaId) return <MisFirmas cuenta={perfil.id} online={online} />
@@ -208,8 +236,8 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     if (ruta[1] === 'mis-actividades') return <MisActividades empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
     if (ruta[1])
       return <ProgramaAnual key={ruta[1]} id={ruta[1]} empresaId={perfil.empresaId} online={online}
-        permisos={{ editar: true, admin: perfil.rolCodigo === 'admin_empresa', cuenta: perfil.id }} />
-    return <Programas empresaId={perfil.empresaId} online={online} />
+        permisos={{ editar: true, admin: esAdminDeEmpresa(perfil), general: perfil.rolCodigo === 'admin_empresa', cuenta: perfil.id }} />
+    return <Programas empresaId={perfil.empresaId} online={online} sedesPropias={perfil.rolCodigo === 'admin_empresa' ? null : perfil.sedes} />
   }
   if (ruta[0] === 'hallazgos' && perfil.empresaId)
     return <Hallazgos key={ruta[1] ?? 'todos'} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} inspeccionId={ruta[1]} />
@@ -217,13 +245,15 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     const rutas: Rutas = { formatos: '/formatos', activos: '/activos', volver: null }
     return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
   }
-  if (ruta[0] === 'mi-empresa' && perfil.rolCodigo === 'admin_empresa' && perfil.empresaId) {
+  if (ruta[0] === 'mi-empresa' && esAdminDeEmpresa(perfil) && perfil.empresaId) {
     // «Mi empresa» vive ahora en Perfil → Información de la empresa (revisión de diseño, obs. 11).
+    // El administrador de sede maneja las personas de sus sedes; las listas, los contactos y los logos son del administrador general.
+    const general = perfil.rolCodigo === 'admin_empresa'
     const volver = () => ir('/perfil/empresa')
-    if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} onVolver={volver} />
-    if (ruta[1] === 'listas') return <Listas empresaId={perfil.empresaId} onVolver={volver} />
-    if (ruta[1] === 'carga') return <Carga empresaId={perfil.empresaId} onVolver={() => ir('/mi-empresa/usuarios')} />
-    return <InfoEmpresa empresaId={perfil.empresaId} online={online} esAdmin />
+    if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} sedesPropias={general ? null : perfil.sedes} onVolver={volver} />
+    if (ruta[1] === 'listas' && general) return <Listas empresaId={perfil.empresaId} onVolver={volver} />
+    if (ruta[1] === 'carga') return <Carga empresaId={perfil.empresaId} sedesPropias={general ? null : perfil.sedes} onVolver={() => ir('/mi-empresa/usuarios')} />
+    return <InfoEmpresa empresaId={perfil.empresaId} online={online} esAdmin={general} esAdminSede={!general} />
   }
   return null
 }
@@ -240,6 +270,8 @@ export default function App() {
   useEffect(() => void pedirPersistencia(), [])
   useSincronizacion(perfil?.id ?? null, perfil?.empresaId ?? null, online, perfil ? esEquipoSso(perfil) : false)
   const firmas = useFirmasPendientes(perfil?.empresaId ? perfil.id : null, online)
+  // Al cambiar la sede activa, las pantallas se arman de nuevo con los datos de esa sede.
+  const sedeElegida = useSedeActiva()
 
   let contenido: ReactNode
   if (sesion.fase === 'cargando') {
@@ -264,9 +296,9 @@ export default function App() {
       <main className="screen gestion">
         <Barra perfil={sesion.perfil} firmas={firmas} online={online} />
         {gestion ? (
-          <section className="panel panel-ancho">{gestion}</section>
+          <section key={sedeElegida} className="panel panel-ancho">{gestion}</section>
         ) : (
-          <section className="panel panel-inicio">
+          <section key={sedeElegida} className="panel panel-inicio">
             <Inicio perfil={sesion.perfil} online={online} />
           </section>
         )}

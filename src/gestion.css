@@ -3177,3 +3177,60 @@ button.tarjeta-ext {
   margin-left: auto;
   white-space: nowrap;
 }
+
+/* Teléfono rojo de emergencias, junto a la campana */
+.barra nav .emergencias > button {
+  color: #ff4d4d;
+}
+
+.barra nav .emergencias > button:hover {
+  background: rgb(255 77 77 / 18%);
+}
+
+.emergencia-fila {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.65rem 0.8rem;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+}
+
+.emergencia-fila span {
+  flex: 1;
+}
+
+.emergencia-fila b {
+  font-size: 1.1rem;
+  color: #d62828;
+}
+
+.emergencia-fila:hover {
+  background: rgb(0 0 0 / 6%);
+}
+
+/* Selector de sede de la barra (etapa 1 del punto 2): solo aparece si la cuenta tiene más de una sede. */
+.selector-sede select {
+  max-width: 11rem;
+  min-height: 2.25rem;
+  padding: 0 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--on-blue);
+  font: inherit;
+  font-size: 0.875rem;
+}
+.selector-sede select option {
+  color: var(--ink);
+  background: var(--surface);
+}
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

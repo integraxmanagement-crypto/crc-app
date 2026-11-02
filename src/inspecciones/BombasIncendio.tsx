@@ -155,7 +155,7 @@ function Panel({ empresaId, cuenta, gestiona, online, copia, formatos }: { empre
           <span>{hechos} de {total} bombas inspeccionadas ({grupos.map((g) => `${g.filas.filter((f) => f.inspeccion_id).length}/${g.filas.length} ${g.nombre.toLowerCase()}s`).join(' · ')})</span>
         </div>
         <button type="button" className={`tarjeta-ext ${hallazgos ? 'mal' : ''}`} aria-pressed={vista === 'hallazgos'} onClick={() => alternar('hallazgos')}>
-          <small>Hallazgos de la semana</small>
+          <small>Planes de acción de la semana</small>
           <b>{hallazgos}</b>
           <span>encontrados en las inspecciones de la semana elegida</span>
         </button>
@@ -174,7 +174,7 @@ function Panel({ empresaId, cuenta, gestiona, online, copia, formatos }: { empre
           <FileSpreadsheet size={18} aria-hidden="true" /> Generar registro
         </button>
         <button className="btn-sec" type="button" aria-pressed={vista === 'hallazgos'} onClick={() => alternar('hallazgos')}>
-          <ListChecks size={18} aria-hidden="true" /> Ver hallazgos
+          <ListChecks size={18} aria-hidden="true" /> Ver planes de acción
         </button>
       </div>
 

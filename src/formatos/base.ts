@@ -511,7 +511,7 @@ const loto: PlantillaBase = {
 const ipf: PlantillaBase = {
   codigo: 'ipf',
   nombre: 'Inspección de seguridad ocupacional (IPF)',
-  descripcion: 'Se aplica a un área. Se registran las condiciones inseguras encontradas; cada una genera un hallazgo.',
+  descripcion: 'Se aplica a un área. Se registran las condiciones inseguras encontradas; cada una genera un plan de acción.',
   aplica_a: 'area',
   tipo_activo: null,
   frecuencia: 'mensual', // valor inicial aprobado por el dueño (27/10/2026)

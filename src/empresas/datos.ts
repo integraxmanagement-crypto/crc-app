@@ -42,7 +42,9 @@ export type Contactos = Partial<Record<TipoContacto, Contacto>>
 export type Administrador = {
   id: string
   estado: string
+  rol: 'admin_empresa' | 'admin_sede'
   puesto: string | null
+  vinculos_sedes: { sedes: { nombre: string } | null }[]
   personas: { apellidos_nombres: string; tipo_documento: string; numero_documento: string } | null
 }
 
@@ -135,9 +137,9 @@ export async function leerEmpresa(id: string) {
 export async function listarAdministradores(empresaId: string): Promise<Administrador[]> {
   const { data, error } = await db()
     .from('vinculos')
-    .select('id, estado, puesto, personas(apellidos_nombres, tipo_documento, numero_documento)')
+    .select('id, estado, rol, puesto, vinculos_sedes(sedes(nombre)), personas(apellidos_nombres, tipo_documento, numero_documento)')
     .eq('empresa_id', empresaId)
-    .eq('rol', 'admin_empresa')
+    .in('rol', ['admin_empresa', 'admin_sede'])
     .order('creado_en')
   if (error) throw new Error(mensaje(error))
   return data as unknown as Administrador[]
@@ -216,8 +218,8 @@ export type DatosAdministrador = {
   unidad_id: string | null // área o subárea de la estructura de la empresa (tarea 3.6)
 }
 
-export const crearAdministrador = (empresaId: string, datos: DatosAdministrador) =>
-  invocar<{ cuenta_nueva: boolean; contrasena_inicial?: string }>('crear-cuenta', { ...datos, empresa_id: empresaId, rol: 'admin_empresa' })
+export const crearAdministrador = (empresaId: string, datos: DatosAdministrador, rol: 'admin_empresa' | 'admin_sede' = 'admin_empresa', sedes: string[] = []) =>
+  invocar<{ cuenta_nueva: boolean; contrasena_inicial?: string }>('crear-cuenta', { ...datos, empresa_id: empresaId, rol, ...(rol === 'admin_sede' ? { sedes } : {}) })
 
 /** Llama a una función del servidor y traduce su error a lenguaje simple. */
 export async function invocar<T>(nombre: string, cuerpo: Record<string, unknown>): Promise<T> {

@@ -17,11 +17,18 @@ type Filtro = 'todas' | 'problemas' | 'nuevas' | 'existentes'
  * El archivo se lee en este equipo y se olvida al salir de la pantalla; nunca se sube ni se guarda (Ley 29733).
  * Nada se graba hasta confirmar, y se graba todo o nada.
  */
-export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: () => void }) {
+export function Carga({ empresaId, sedesPropias, onVolver }: { empresaId: string; sedesPropias: { id: string; nombre: string }[] | null; onVolver: () => void }) {
   const [empresaNombre, setEmpresaNombre] = useState('')
+  const [sedesEmpresa, setSedesEmpresa] = useState<{ id: string; nombre: string }[]>([])
+  // La carga es de una o varias sedes: quien administra una sede solo carga en las suyas; las cuentas nuevas reciben esas sedes.
+  const posibles = sedesPropias ?? sedesEmpresa
+  const [sedeIds, setSedeIds] = useState<string[]>([])
+  const sedesCarga = posibles.length === 1 ? [posibles[0].id] : sedeIds
   useEffect(() => {
     db().from('empresas').select('razon_social').eq('id', empresaId).maybeSingle()
       .then(({ data }) => setEmpresaNombre(data?.razon_social ?? ''))
+    db().from('sedes').select('id, nombre').eq('empresa_id', empresaId).eq('activa', true).order('creado_en')
+      .then(({ data }) => setSedesEmpresa(data ?? []))
   }, [empresaId])
   const [archivo, setArchivo] = useState<string | null>(null)
   const [lectura, setLectura] = useState<Lectura | null>(null)
@@ -39,7 +46,7 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
   async function revisar(l: Lectura) {
     setOcupado('Revisando las filas…')
     try {
-      const r = await conLimite(revisarCarga(empresaId, l.registros), 60_000)
+      const r = await conLimite(revisarCarga(empresaId, l.registros, sedesCarga), 60_000)
       setRevision(r)
       setCrear(new Set(r.faltantes.flatMap((f, i) => (f.necesario ? [i] : []))))
       setReactivar(new Set())
@@ -144,7 +151,7 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
     setError(null)
     setOcupado('Grabando… no cierres esta pantalla.')
     try {
-      const g = await conLimite(grabarCarga(empresaId, lectura.registros, [...reactivar], listaCompleta), 150_000).catch((e: Error) => {
+      const g = await conLimite(grabarCarga(empresaId, lectura.registros, [...reactivar], listaCompleta, sedesCarga), 150_000).catch((e: Error) => {
         throw new Error(e.message.startsWith('La respuesta tarda') || e.message.startsWith('No hubo respuesta')
           ? 'No llegó la respuesta del servidor. Antes de reintentar, pulsa «Revisar de nuevo»: si las personas aparecen como «Ya existe», la carga sí se grabó y sus contraseñas se dan desde Usuarios.'
           : e.message)
@@ -222,11 +229,22 @@ export function Carga({ empresaId, onVolver }: { empresaId: string; onVolver: ()
         </div>
       </Seccion>
 
+      {posibles.length > 1 && (
+        <Seccion titulo="Sede de esta carga">
+          <p className="nota">Las cuentas nuevas de este Excel quedarán en las sedes que marques, y solo se revisa a las personas de esas sedes.</p>
+          {posibles.map((x) => (
+            <label key={x.id} className="check-linea">
+              <input type="checkbox" checked={sedeIds.includes(x.id)} disabled={Boolean(ocupado)} onChange={(e) => setSedeIds(e.target.checked ? [...sedeIds, x.id] : sedeIds.filter((y) => y !== x.id))} /> {x.nombre}
+            </label>
+          ))}
+        </Seccion>
+      )}
+
       <Seccion titulo="2. Elegir el Excel">
         <p className="nota">El archivo se lee en este equipo: no se sube ni se guarda. Nada se graba hasta que confirmes.</p>
         <label className="btn subir-excel">
           <FileSpreadsheet size={20} aria-hidden="true" /> {archivo ? 'Elegir otro archivo' : 'Elegir archivo .xlsx'}
-          <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => void elegir(e)} disabled={Boolean(ocupado)} />
+          <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => void elegir(e)} disabled={Boolean(ocupado) || !sedesCarga.length} />
         </label>
         {archivo && <p className="nota">Archivo: {archivo}{lectura ? ` · hoja «${lectura.hoja}» · ${lectura.registros.length} personas` : ''}</p>}
         {ocupado && <p className="nota" role="status">{ocupado}</p>}

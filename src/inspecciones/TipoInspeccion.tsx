@@ -99,7 +99,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
               <div className="fila-entre">
                 <div className="filtros" role="group" aria-label="Secciones">
                   <button type="button" aria-pressed={pestana === 'resultados'} onClick={() => setPestana('resultados')}>Resultados</button>
-                  <button type="button" aria-pressed={pestana === 'hallazgos'} onClick={() => setPestana('hallazgos')}>Hallazgos</button>
+                  <button type="button" aria-pressed={pestana === 'hallazgos'} onClick={() => setPestana('hallazgos')}>Planes de acción</button>
                 </div>
                 <button className="btn" type="button" onClick={() => ir(`/inspecciones/nueva/${id}`)}>
                   <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
@@ -118,7 +118,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
                 <div className="filtros" role="group" aria-label="Secciones">
                   <button type="button" aria-pressed={pestana === 'resultados'} onClick={() => setPestana('resultados')}>Resultados</button>
                   <button type="button" aria-pressed={pestana === 'registros'} onClick={() => setPestana('registros')}>Registros</button>
-                  <button type="button" aria-pressed={pestana === 'hallazgos'} onClick={() => setPestana('hallazgos')}>Hallazgos</button>
+                  <button type="button" aria-pressed={pestana === 'hallazgos'} onClick={() => setPestana('hallazgos')}>Planes de acción</button>
                 </div>
                 <button className="btn" type="button" onClick={() => ir(`/inspecciones/nueva/${id}`)}>
                   <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
@@ -338,7 +338,7 @@ function ResultadosEficacia({ nombre, copia, online }: { nombre: string; copia: 
 
 /**
  * Resultados del IPF (pedido del dueño, 29/10/2026): % de hallazgos cerrados, hallazgos abiertos o en proceso, hallazgos levantados (cerrados)
- * y un gráfico del % cerrado por mes. Cada mes cuenta los hallazgos que nacieron en él y cuántos de esos ya están cerrados.
+ * y un gráfico del % cerrado por mes. Cada mes cuenta los planes de acción que nacieron en él y cuántos de esos ya están cerrados.
  */
 function ResultadosHallazgos({ empresaId, nombre, online }: { empresaId: string; nombre: string; online: boolean }) {
   const [lista, setLista] = useState<Hallazgo[] | null>(null)
@@ -365,7 +365,7 @@ function ResultadosHallazgos({ empresaId, nombre, online }: { empresaId: string;
     <>
       <div className="tarjetas-ext">
         <div className="tarjeta-ext">
-          <small>Hallazgos cerrados</small>
+          <small>Planes de acción cerrados</small>
           <b>{pct == null ? '—' : `${pct} %`}</b>
           <span>{cerrados} cerrados de {todos.length} en total</span>
         </div>
@@ -375,12 +375,12 @@ function ResultadosHallazgos({ empresaId, nombre, online }: { empresaId: string;
           <span>por cerrar</span>
         </div>
         <div className="tarjeta-ext">
-          <small>Hallazgos levantados</small>
+          <small>Planes de acción levantados</small>
           <b>{cerrados}</b>
           <span>ya cerrados</span>
         </div>
       </div>
-      <Seccion titulo="% de hallazgos cerrados por mes">
+      <Seccion titulo="% de planes de acción cerrados por mes">
         <label className="field campo-fecha">
           <span>Año</span>
           <select value={anio} onChange={(e) => setAnio(e.target.value)}>
@@ -388,7 +388,7 @@ function ResultadosHallazgos({ empresaId, nombre, online }: { empresaId: string;
           </select>
         </label>
         <GraficoBarras datos={meses} />
-        <p className="nota">Cada mes cuenta los hallazgos que nacieron en él y qué porcentaje de ellos ya está cerrado. Un mes sin hallazgos queda vacío.</p>
+        <p className="nota">Cada mes cuenta los planes de acción que nacieron en él y qué porcentaje de ellos ya está cerrado. Un mes sin planes de acción queda vacío.</p>
       </Seccion>
     </>
   )
@@ -399,7 +399,7 @@ function GraficoBarras({ datos }: { datos: { mes: string; total: number; cer: nu
   const ancho = 720, alto = 240, izq = 36, base = 200, tope = 20
   const paso = (ancho - izq - 8) / datos.length
   return (
-    <svg viewBox={`0 0 ${ancho} ${alto}`} role="img" aria-label="Porcentaje de hallazgos cerrados por mes" className="grafico-barras">
+    <svg viewBox={`0 0 ${ancho} ${alto}`} role="img" aria-label="Porcentaje de planes de acción cerrados por mes" className="grafico-barras">
       {[0, 25, 50, 75, 100].map((v) => {
         const y = base - ((base - tope) * v) / 100
         return (
@@ -414,7 +414,7 @@ function GraficoBarras({ datos }: { datos: { mes: string; total: number; cer: nu
         const x = izq + k * paso + paso * 0.15
         return (
           <g key={d.mes}>
-            <title>{`${d.mes}: ${d.pct == null ? 'sin hallazgos' : `${d.pct} % (${d.cer} de ${d.total})`}`}</title>
+            <title>{`${d.mes}: ${d.pct == null ? 'sin planes de acción' : `${d.pct} % (${d.cer} de ${d.total})`}`}</title>
             <rect x={x} y={base - h} width={paso * 0.7} height={h} rx="3" fill="#3b82a0" />
             <text x={x + paso * 0.35} y={base - h - 5} textAnchor="middle" fontSize="11" fill="currentColor">{d.pct == null ? '' : `${d.pct}%`}</text>
             <text x={x + paso * 0.35} y={base + 16} textAnchor="middle" fontSize="11" fill="currentColor" opacity="0.8">{d.mes.slice(0, 3)}</text>

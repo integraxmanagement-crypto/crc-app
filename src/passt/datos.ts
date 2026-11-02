@@ -1,6 +1,7 @@
 // Programa anual de SST (tarea 3.4-E). Se lee con las reglas RLS (lo ven el administrador y el gestor) y se escribe
 // solo con las acciones de la base de datos, que revisan los permisos por dentro.
 import { conLimite, db, mensaje, rpc } from '../empresas/datos'
+import { sedeActiva } from '../sedeActiva'
 import type { NodoBase } from './numeracion'
 
 export type Programa = {
@@ -59,8 +60,12 @@ async function leer<T>(q: PromiseLike<{ data: unknown; error: { message: string;
   return data as T
 }
 
-export const listarProgramas = (empresaId: string) =>
-  leer<Programa[]>(conLimite(db().from('passt_programas').select('*, sedes(nombre)').eq('empresa_id', empresaId).order('anio', { ascending: false }).order('nombre')))
+// Con una sede activa se ven los programas de esa sede y el general (de todas las sedes).
+export const listarProgramas = (empresaId: string) => {
+  const q = db().from('passt_programas').select('*, sedes(nombre)').eq('empresa_id', empresaId)
+  const sede = sedeActiva()
+  return leer<Programa[]>(conLimite((sede ? q.or(`sede_id.eq.${sede},sede_id.is.null`) : q).order('anio', { ascending: false }).order('nombre')))
+}
 
 /** Todo lo de un programa de una vez: encabezado, árbol, metas, semanas, ejecución por inspecciones e historial. */
 export async function leerPrograma(id: string) {

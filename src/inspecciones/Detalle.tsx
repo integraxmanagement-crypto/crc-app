@@ -213,7 +213,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto
       )}
 
       {i.hallazgos.length > 0 && (
-        <Seccion titulo={`Hallazgos (${i.hallazgos.length})`}>
+        <Seccion titulo={`Planes de acción (${i.hallazgos.length})`}>
           <ul className="hallazgos">
             {i.hallazgos.map((h, k) => (
               <li key={k}>
@@ -223,7 +223,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto
             ))}
           </ul>
           <button className="btn-link no-imprimir" type="button" onClick={() => ir(`/hallazgos/${i.id}`)}>
-            Ver el seguimiento de estos hallazgos
+            Ver el seguimiento de estos planes de acción
           </button>
         </Seccion>
       )}

@@ -72,7 +72,7 @@ export function Prueba({ receta, subtipos, campos, listas }: { receta: Receta; s
       <div className={`resultado-prueba ${ev.faltan.length ? 'incompleta' : ''}`} role="status">
         <p>
           Resultado: <b>{ev.resultado ?? 'Sin resultado (solo «Realizado»)'}</b>
-          {ev.puntaje != null && <> · Puntaje: <b>{ev.puntaje} %</b></>} · Hallazgos que nacerían: <b>{ev.hallazgos.length}</b>
+          {ev.puntaje != null && <> · Puntaje: <b>{ev.puntaje} %</b></>} · Planes de acción que nacerían: <b>{ev.hallazgos.length}</b>
         </p>
         {ev.vencidos.length > 0 && <p>Vencido: {ev.vencidos.map((c) => campos.find((x) => x.clave === c)?.etiqueta ?? c).join(', ')}</p>}
         {ev.faltan.length > 0 && (

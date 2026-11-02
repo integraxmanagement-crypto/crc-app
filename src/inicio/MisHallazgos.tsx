@@ -8,7 +8,7 @@ import { ir } from '../ruta'
 const fechaCorta = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
 
 /**
- * «Mis hallazgos abiertos y en proceso» del inicio (pedido del dueño, 29/10/2026): los hallazgos que tengo a mi cargo y todavía
+ * «Mis planes de acción abiertos y en proceso» del inicio (pedido del dueño, 29/10/2026): los hallazgos que tengo a mi cargo y todavía
  * debo cerrar, con su número al lado. Al tocar la sección se abre una ventana con la lista.
  */
 export function MisHallazgos({ empresaId, cuenta, online }: { empresaId: string; cuenta: string; online: boolean }) {
@@ -22,8 +22,8 @@ export function MisHallazgos({ empresaId, cuenta, online }: { empresaId: string;
   }, [empresaId, cuenta, online])
 
   return (
-    <SeccionResumen icono={<ListChecks size={18} />} titulo="Mis hallazgos abiertos y en proceso" etiqueta="Mis hallazgos abiertos y en proceso" cantidad={lista ? lista.length : null} tono={lista?.length ? 'aviso' : 'ok'}
-      vacio="No tienes hallazgos por cerrar." online={online} sinSenal="Tus hallazgos se ven con señal." cargando={!lista} error={error} tituloDetalle={`Mis hallazgos por cerrar (${lista?.length ?? 0})`}>
+    <SeccionResumen icono={<ListChecks size={18} />} titulo="Mis planes de acción abiertos y en proceso" etiqueta="Mis planes de acción abiertos y en proceso" cantidad={lista ? lista.length : null} tono={lista?.length ? 'aviso' : 'ok'}
+      vacio="No tienes planes de acción por cerrar." online={online} sinSenal="Tus planes de acción se ven con señal." cargando={!lista} error={error} tituloDetalle={`Mis planes de acción por cerrar (${lista?.length ?? 0})`}>
       <ul className="lista">
         {(lista ?? []).map((h) => (
           <li key={h.id}>

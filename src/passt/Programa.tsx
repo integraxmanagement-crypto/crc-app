@@ -2,6 +2,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileSpreadsheet, FileText,
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
+import { db } from '../empresas/datos'
 import { hoyLocal, ordenarUnidades } from '../inspecciones/ayudas'
 import { type CopiaLocal, leerCopia } from '../inspecciones/campo'
 import { llenarExcel, partes } from '../inspecciones/excel'
@@ -26,7 +27,9 @@ const fechaHora = (iso: string) => new Date(iso).toLocaleString('es-PE', { dateS
 type Pestana = 'estructura' | 'calendario' | 'historial'
 type Area = { id: string; nombre: string; nivel: string; padre_id: string | null; vigente: boolean; profundidad: number }
 
-export type PermisosPasst = { editar: boolean; admin: boolean; cuenta: string }
+// `general`: administrador general (ve todas las sedes). En una empresa con varias sedes, el programa general (de todas las sedes)
+// solo lo edita y aprueba el administrador general; el de una sede, el administrador de esa sede (decisión del dueño, 02/11/2026).
+export type PermisosPasst = { editar: boolean; admin: boolean; general: boolean; cuenta: string }
 
 /**
  * Un programa anual de SST (tarea 3.4-E, D-41 y decisiones del dueño del 28/10/2026). Tres partes: la estructura
@@ -49,6 +52,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
   const [copiaEmpresa, setCopiaEmpresa] = useState<CopiaLocal | null>(null)
   const [vistaPdf, setVistaPdf] = useState<ReturnType<typeof vistaDeExcel> | null>(null)
   const [verEncabezado, setVerEncabezado] = useState(false)
+  const [variasSedes, setVariasSedes] = useState(false)
 
   const cargar = useCallback(() => {
     leerPrograma(id).then(setD, (e) => setError((e as Error).message))
@@ -60,6 +64,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
     formatosDeEmpresa(empresaId).then(setFormatos, () => {})
     areasDeEmpresa(empresaId).then((a) => setAreas(ordenarUnidades(a)), () => {})
     trabajadores(empresaId).then(setNTrabajadores, () => {})
+    void db().from('sedes').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('activa', true).then(({ count }) => setVariasSedes((count ?? 0) > 1))
     void leerCopia(permisos.cuenta, empresaId).then((c) => c && (setEmpresa(c.empresa), setCopiaEmpresa(c)))
   }, [online, cargar, empresaId, permisos.cuenta])
 
@@ -84,6 +89,8 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
   if (!d) return error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>
 
   const p = d.programa
+  const generalDeVarias = !p.sede_id && variasSedes
+  const perm: PermisosPasst = generalDeVarias ? { ...permisos, editar: permisos.editar && permisos.general, admin: permisos.admin && permisos.general } : permisos
   const faltan = [!p.codigo_formato?.trim() && 'el código', !p.version_formato?.trim() && 'la versión', !p.fecha_aprobacion && 'la fecha de aprobación'].filter((x): x is string => Boolean(x))
   /** Excel o PDF con el diseño del modelo del dueño (src/passt/excelPasst.ts); el logo de la empresa va arriba a la izquierda. */
   async function descargar(como: 'excel' | 'pdf') {
@@ -99,7 +106,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
     }
   }
   const aprobado = p.estado === 'aprobado'
-  const puedeCambiar = permisos.editar && (!aprobado || permisos.admin)
+  const puedeCambiar = perm.editar && (!aprobado || perm.admin)
   const arbol = numerar(d.nodos)
 
   // Hace una acción y vuelve a leer. Si el programa está aprobado y falta el motivo, lo pide en una ventana (antes salía un aviso
@@ -144,7 +151,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
           </p>
         </div>
         <span className="acciones no-imprimir">
-          {!aprobado && permisos.admin && (
+          {!aprobado && perm.admin && (
             <button className="btn" type="button" onClick={() => void hacer(() => aprobarPrograma(p.id), true)}>
               <CheckCircle2 size={18} aria-hidden="true" /> Aprobar
             </button>
@@ -178,7 +185,8 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
           </div>
         </Ventana>
       )}
-      {aprobado && !permisos.admin && <p className="nota">El programa está aprobado: solo el administrador lo cambia. Puedes marcar tus actividades sin formato vinculado.</p>}
+      {generalDeVarias && !permisos.general && <p className="nota">Este programa es de todas las sedes: lo edita y aprueba solo el administrador general.</p>}
+      {aprobado && !perm.admin && <p className="nota">El programa está aprobado: solo el administrador lo cambia. Puedes marcar tus actividades sin formato vinculado.</p>}
 
       {/* El encabezado queda oculto; solo sale, con una alerta, si falta el código, la versión o la fecha de aprobación. */}
       {faltan.length > 0 && (
@@ -198,8 +206,8 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
         ))}
       </div>
 
-      {pestana === 'estructura' && <Estructura d={d} arbol={arbol} puedeCambiar={puedeCambiar} esAdmin={permisos.admin} personas={personas} formatos={formatos} areas={areas} nombre={nombre} hacer={hacer} />}
-      {pestana === 'calendario' && <Calendario d={d} arbol={arbol} puedeCambiar={puedeCambiar} permisos={permisos} nombre={nombre} formatos={formatos} areas={areas} hacer={hacer} />}
+      {pestana === 'estructura' && <Estructura d={d} arbol={arbol} puedeCambiar={puedeCambiar} esAdmin={perm.admin} personas={personas} formatos={formatos} areas={areas} nombre={nombre} hacer={hacer} />}
+      {pestana === 'calendario' && <Calendario d={d} arbol={arbol} puedeCambiar={puedeCambiar} permisos={perm} nombre={nombre} formatos={formatos} areas={areas} hacer={hacer} />}
       {pestana === 'historial' && (
         <Seccion titulo="Historial">
           <ul className="historial">

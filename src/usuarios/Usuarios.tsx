@@ -3,12 +3,31 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from '../empresas/campos'
 import { normalizar } from '../empresas/datos'
 import { ir } from '../ruta'
+import { sedeActiva } from '../sedeActiva'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
 import { EnBloque } from './EnBloque'
 import {
-  type ContrasenaDada, type Cuenta, type Listas, NOMBRE_ROL, type Rol, actualizarPersona, cesarCuenta, confirmarSigue, crearCuenta,
-  darContrasena, leerListas, listarContrasenasDadas, listarCuentas, reactivarCuenta, unidadesAsignables,
+  type ContrasenaDada, type Cuenta, ES_ADMIN, type Listas, NOMBRE_ROL, type Rol, actualizarPersona, asignarSedes, cesarCuenta, confirmarSigue,
+  crearCuenta, darContrasena, leerListas, leerSedesActivas, listarContrasenasDadas, listarCuentas, reactivarCuenta, unidadesAsignables,
 } from './datos'
+
+type SedeLista = { id: string; nombre: string }
+
+/** Elegir las sedes de una cuenta (casillas). Con una sola sede posible no se pregunta. */
+function SelectorSedes({ sedes, valor, onCambio }: { sedes: SedeLista[]; valor: string[]; onCambio: (v: string[]) => void }) {
+  if (sedes.length <= 1) return null
+  return (
+    <fieldset className="field">
+      <legend>Sedes de la cuenta</legend>
+      {sedes.map((s) => (
+        <label key={s.id} className="check-linea">
+          <input type="checkbox" checked={valor.includes(s.id)} onChange={(e) => onCambio(e.target.checked ? [...valor, s.id] : valor.filter((x) => x !== s.id))} /> {s.nombre}
+        </label>
+      ))}
+      <small className="ayuda">Toda cuenta tiene al menos una sede. Solo ve y trabaja con lo de esas sedes.</small>
+    </fieldset>
+  )
+}
 
 const hoy = () => new Date().toLocaleDateString('en-CA')
 const fecha = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-PE')
@@ -23,10 +42,16 @@ const autor = (d: ContrasenaDada) => (d.dado_por ? (d.autor?.apellidos_nombres ?
  * Usuarios de una empresa (tarea 3.3). La usa el administrador para su empresa y el dueño dentro de cada empresa.
  * Los botones son solo comodidad: quien decide qué se puede hacer es la base de datos.
  */
-export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: string; esDueno: boolean; miId: string; onVolver: () => void }) {
+export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver }: {
+  empresaId: string; esDueno: boolean; miId: string; sedesPropias: SedeLista[] | null; onVolver: () => void
+}) {
   const [cuentas, setCuentas] = useState<Cuenta[] | null>(null)
   const [listas, setListas] = useState<Listas>({ puestos: [], unidades: [] })
   const [dadas, setDadas] = useState<ContrasenaDada[]>([])
+  const [sedes, setSedes] = useState<SedeLista[]>([])
+  // Quien administra una o varias sedes solo da y quita sedes que son suyas; el general y el dueño, cualquiera de la empresa.
+  const asignables = sedesPropias ?? sedes
+  const nombreSede = (id: string) => sedes.find((x) => x.id === id)?.nombre ?? ''
   const [error, setError] = useState<string | null>(null)
   const [filtro, setFiltro] = useState('')
   const [estado, setEstado] = useState<'activo' | 'cesado' | 'todos' | 'por_revisar'>('activo')
@@ -36,11 +61,12 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
   const [aviso, setAviso] = useState<string | null>(null)
 
   const cargar = useCallback(() => {
-    Promise.all([listarCuentas(empresaId), leerListas(empresaId), listarContrasenasDadas(empresaId)])
-      .then(([c, l, d]) => {
+    Promise.all([listarCuentas(empresaId), leerListas(empresaId), listarContrasenasDadas(empresaId), leerSedesActivas(empresaId)])
+      .then(([c, l, d, s]) => {
         setCuentas(c)
         setListas(l)
         setDadas(d)
+        setSedes(s)
         setError(null)
       })
       .catch((e) => setError((e as Error).message))
@@ -52,6 +78,8 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
   const filtroActual = estado === 'por_revisar' && !porRevisar ? 'activo' : estado
   const visibles = (cuentas ?? []).filter(
     (c) =>
+      // Con una sede activa se ven las cuentas de esa sede (y los administradores generales, que son de todas).
+      (!sedeActiva() || !c.vinculos_sedes.length || c.vinculos_sedes.some((x) => x.sede_id === sedeActiva())) &&
       (filtroActual === 'todos' || c.estado === filtroActual || (filtroActual === 'por_revisar' && Boolean(c.por_revisar_desde))) &&
       (!f || normalizar(`${c.personas?.apellidos_nombres} ${c.personas?.numero_documento} ${c.puesto ?? ''} ${c.area ?? ''}`).includes(f)),
   )
@@ -112,7 +140,7 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
           </button>
         </div>
       )}
-      {creando && <NuevaCuenta empresaId={empresaId} esDueno={esDueno} listas={listas} onCancelar={() => setCreando(false)} onListo={listo} />}
+      {creando && <NuevaCuenta empresaId={empresaId} esDueno={esDueno} listas={listas} sedes={asignables} onCancelar={() => setCreando(false)} onListo={listo} />}
 
       <div className="filtros">
         <span className="buscador">
@@ -132,7 +160,7 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
       <ul className="lista lista-usuarios">
         {visibles.map((c) => {
           const propia = c.persona_id === miId
-          const gestionable = !propia && (esDueno || c.rol !== 'admin_empresa')
+          const gestionable = !propia && (esDueno || !ES_ADMIN.includes(c.rol))
           return (
             <li key={c.id} className={c.estado === 'activo' ? '' : 'inactiva'}>
               <div>
@@ -148,9 +176,10 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
                   {c.personas?.tipo_documento.toUpperCase()} {c.personas?.numero_documento}
                   {c.puesto ? ` · ${c.puesto}` : ''}
                   {c.area ? ` · ${c.area}` : ''}
+                  {sedes.length > 1 && (c.vinculos_sedes.length ? ` · ${c.vinculos_sedes.map((x) => nombreSede(x.sede_id)).filter(Boolean).join(', ')}` : ' · todas las sedes')}
                   {c.estado === 'cesado' && c.motivo_cese ? ` · Motivo: ${c.motivo_cese}` : ''}
                 </small>
-                {abierta === c.id && <PanelCuenta cuenta={c} esDueno={esDueno} listas={listas} onCerrar={() => setAbierta(null)} onListo={listo} />}
+                {abierta === c.id && <PanelCuenta cuenta={c} esDueno={esDueno} listas={listas} sedes={asignables} todasLasSedes={sedes} onCerrar={() => setAbierta(null)} onListo={listo} />}
               </div>
               {gestionable && abierta !== c.id && (
                 <span className="lista-acciones">
@@ -164,7 +193,7 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
         })}
         {cuentas && !visibles.length && <li className="vacio">Nadie coincide con la búsqueda.</li>}
       </ul>
-      {!esDueno && <p className="nota">Los administradores los crea y gestiona Integrax. Tu propia contraseña la cambias desde tu cuenta.</p>}
+      {!esDueno && <p className="nota">Los administradores (general y de sede) los crea y gestiona Integrax. Tu propia contraseña la cambias desde tu cuenta.</p>}
 
       <Seccion titulo="Últimas contraseñas nuevas dadas">
         {dadas.length === 0 ? (
@@ -192,8 +221,8 @@ export function Usuarios({ empresaId, esDueno, miId, onVolver }: { empresaId: st
 
 /** Formulario para crear una cuenta nueva (función crear-cuenta de la 3.1). */
 function NuevaCuenta({
-  empresaId, esDueno, listas, onCancelar, onListo,
-}: { empresaId: string; esDueno: boolean; listas: Listas; onCancelar: () => void; onListo: (c?: Clave, texto?: string) => void }) {
+  empresaId, esDueno, listas, sedes, onCancelar, onListo,
+}: { empresaId: string; esDueno: boolean; listas: Listas; sedes: SedeLista[]; onCancelar: () => void; onListo: (c?: Clave, texto?: string) => void }) {
   const [rol, setRol] = useState<Rol>('usuario')
   const [tipo, setTipo] = useState<TipoDocumento>('dni')
   const [numero, setNumero] = useState('')
@@ -201,6 +230,7 @@ function NuevaCuenta({
   const [ingreso, setIngreso] = useState(hoy)
   const [puestoId, setPuestoId] = useState('')
   const [unidadId, setUnidadId] = useState('')
+  const [sedeIds, setSedeIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const tipoDoc = TIPOS_DOCUMENTO.find((t) => t.codigo === tipo)!
@@ -212,11 +242,14 @@ function NuevaCuenta({
     const n = normalizarDocumento(numero)
     if (!tipoDoc.patron.test(n)) return setError(`Revisa el número de documento (${tipoDoc.ayuda}).`)
     if (nombres.trim().length < 3) return setError('Escribe apellidos y nombres.')
+    // Con varias sedes posibles hay que elegir; con una sola, esa es la sede de la cuenta.
+    const elegidas = sedes.length === 1 ? [sedes[0].id] : sedeIds
+    if (rol !== 'admin_empresa' && !elegidas.length) return setError('Elige al menos una sede para la cuenta.')
     setOcupado(true)
     try {
       const r = await crearCuenta(empresaId, {
         rol, tipo_documento: tipo, numero_documento: n, apellidos_nombres: nombres, fecha_ingreso: ingreso,
-        puesto: nombrePuesto(puestoId), unidad_id: unidadId || null,
+        puesto: nombrePuesto(puestoId), unidad_id: unidadId || null, ...(rol !== 'admin_empresa' ? { sedes: elegidas } : {}),
       })
       if (r.contrasena_inicial) onListo({ nombre: nombres.trim(), clave: r.contrasena_inicial, nueva: true })
       else onListo(undefined, `${nombres.trim()} ya tenía cuenta en CRC (cambió de empresa): se le dio de alta aquí y sigue usando su contraseña de siempre.`)
@@ -235,10 +268,12 @@ function NuevaCuenta({
         <select value={rol} onChange={(e) => setRol(e.target.value as Rol)}>
           <option value="usuario">{NOMBRE_ROL.usuario}</option>
           <option value="gestor">{NOMBRE_ROL.gestor}</option>
+          {esDueno && <option value="admin_sede">{NOMBRE_ROL.admin_sede}</option>}
           {esDueno && <option value="admin_empresa">{NOMBRE_ROL.admin_empresa}</option>}
         </select>
         <small className="ayuda">El rol decide qué puede hacer la persona. El puesto es solo un dato de su ficha.</small>
       </label>
+      {rol !== 'admin_empresa' && <SelectorSedes sedes={sedes} valor={sedeIds} onCambio={setSedeIds} />}
       <div className="fila2">
         <label className="field">
           <span>Tipo de documento</span>
@@ -281,14 +316,16 @@ function NuevaCuenta({
 
 /** Acciones sobre una cuenta: corregir datos, contraseña nueva, cesar o reactivar. */
 function PanelCuenta({
-  cuenta: c, esDueno, listas, onCerrar, onListo,
-}: { cuenta: Cuenta; esDueno: boolean; listas: Listas; onCerrar: () => void; onListo: (c?: Clave) => void }) {
+  cuenta: c, esDueno, listas, sedes, todasLasSedes, onCerrar, onListo,
+}: { cuenta: Cuenta; esDueno: boolean; listas: Listas; sedes: SedeLista[]; todasLasSedes: SedeLista[]; onCerrar: () => void; onListo: (c?: Clave) => void }) {
   const [accion, setAccion] = useState<'menu' | 'corregir' | 'clave' | 'cesar'>('menu')
   const [nombres, setNombres] = useState(c.personas?.apellidos_nombres ?? '')
   const [ingreso, setIngreso] = useState(c.fecha_ingreso)
   const [rol, setRol] = useState<Rol>(c.rol)
   const [puestoId, setPuestoId] = useState(c.puesto_id ?? '')
   const [unidadId, setUnidadId] = useState(c.unidad_id ?? '')
+  const sedesActuales = c.vinculos_sedes.map((x) => x.sede_id)
+  const [sedeIds, setSedeIds] = useState<string[]>(sedesActuales)
   const [fechaCese, setFechaCese] = useState(hoy)
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -317,8 +354,13 @@ function PanelCuenta({
     if (rol !== c.rol) cambios.rol = rol
     if (puestoId !== (c.puesto_id ?? '')) cambios.puesto_id = puestoId || null
     if (unidadId !== (c.unidad_id ?? '')) cambios.unidad_id = unidadId || null
-    if (!Object.keys(cambios).length) return setError('No cambiaste ningún dato.')
-    void hacer(() => actualizarPersona(c.id, cambios))
+    const cambiaronSedes = c.rol !== 'admin_empresa' && (sedeIds.length !== sedesActuales.length || sedeIds.some((x) => !sedesActuales.includes(x)))
+    if (!Object.keys(cambios).length && !cambiaronSedes) return setError('No cambiaste ningún dato.')
+    if (cambiaronSedes && !sedeIds.length) return setError('La cuenta debe tener al menos una sede.')
+    void hacer(async () => {
+      if (Object.keys(cambios).length) await actualizarPersona(c.id, cambios)
+      if (cambiaronSedes) await asignarSedes(c.id, sedeIds)
+    })
   }
 
   function cesar(e: FormEvent) {
@@ -379,6 +421,7 @@ function PanelCuenta({
               <select value={rol} onChange={(e) => setRol(e.target.value as Rol)}>
                 <option value="usuario">{NOMBRE_ROL.usuario}</option>
                 <option value="gestor">{NOMBRE_ROL.gestor}</option>
+                {(esDueno || c.rol === 'admin_sede') && <option value="admin_sede">{NOMBRE_ROL.admin_sede}</option>}
                 {(esDueno || c.rol === 'admin_empresa') && <option value="admin_empresa">{NOMBRE_ROL.admin_empresa}</option>}
               </select>
             </label>
@@ -387,6 +430,14 @@ function PanelCuenta({
             <SelectorLista etiqueta="Puesto" items={listas.puestos} valor={puestoId} onCambio={setPuestoId} />
             <SelectorLista etiqueta="Área o subárea" items={unidadesAsignables(listas.unidades)} valor={unidadId} onCambio={setUnidadId} />
           </div>
+          {c.rol !== 'admin_empresa' && (
+            // Quien administra una sede solo mueve las suyas: las demás sedes de la cuenta se conservan tal cual.
+            <SelectorSedes
+              sedes={esDueno || sedes.length === todasLasSedes.length ? sedes : todasLasSedes.filter((x) => sedes.some((m) => m.id === x.id))}
+              valor={sedeIds}
+              onCambio={(nuevo) => setSedeIds(esDueno ? nuevo : [...nuevo.filter((id) => sedes.some((m) => m.id === id)), ...sedesActuales.filter((id) => !sedes.some((m) => m.id === id))])}
+            />
+          )}
           <p className="nota">El número de documento no se corrige: es con lo que la persona ingresa. Si está mal, cesa esta cuenta y crea una nueva.</p>
           <Aviso>{error}</Aviso>
           <div className="acciones">

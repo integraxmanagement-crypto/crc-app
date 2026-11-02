@@ -1,6 +1,7 @@
 // Seguimiento de hallazgos (tarea 3.4-D, parte 2). Se leen con las reglas RLS: el administrador y el gestor ven todos
 // los de su empresa; el usuario, solo los que tiene asignados. Se escribe solo con las acciones de la base de datos.
 import { conLimite, db, mensaje, rpc } from '../empresas/datos'
+import { conSede } from '../sedeActiva'
 
 export type EstadoHallazgo = 'abierto' | 'en_proceso' | 'cerrado' | 'anulado'
 export type Hallazgo = {
@@ -50,7 +51,7 @@ async function leer<T>(q: PromiseLike<{ data: unknown; error: { message: string;
 // El usuario no ve la inspección: el número y el código del equipo vienen en el propio hallazgo.
 const CAMPOS = '*, plantillas(nombre), sedes(nombre)'
 export const listarHallazgos = (empresaId: string) =>
-  leer<Hallazgo[]>(conLimite(db().from('hallazgos').select(CAMPOS).eq('empresa_id', empresaId).order('creado_en', { ascending: false }).limit(500)))
+  leer<Hallazgo[]>(conLimite(conSede(db().from('hallazgos').select(CAMPOS).eq('empresa_id', empresaId)).order('creado_en', { ascending: false }).limit(500)))
 /** Los hallazgos abiertos o en proceso que tiene a su cargo una persona (para «Mis hallazgos» del inicio). */
 export const misHallazgosPendientes = (empresaId: string, cuenta: string) =>
   leer<Hallazgo[]>(conLimite(db().from('hallazgos').select(CAMPOS).eq('empresa_id', empresaId).eq('responsable_id', cuenta).in('estado', ['abierto', 'en_proceso']).order('plazo', { ascending: true, nullsFirst: false }).limit(200)))

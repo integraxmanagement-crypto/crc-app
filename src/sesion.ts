@@ -26,7 +26,12 @@ export type Perfil = {
   rolCodigo: string | null // p. ej. 'admin_empresa'; decide qué pantallas se muestran (los permisos reales los da la base de datos)
   puesto: string | null
   area: string | null
+  // Sedes de la cuenta (etapa 1 del punto 2). El administrador general ve todas las sedes de la empresa; las demás cuentas, las suyas.
+  sedes: { id: string; nombre: string }[]
 }
+
+/** Administrador general (ve todas las sedes) o de una sede: ambos manejan personas y programas, cada uno en su alcance. */
+export const esAdminDeEmpresa = (perfil: Perfil) => perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'admin_sede'
 
 export type Sesion =
   | { fase: 'cargando' }
@@ -47,7 +52,7 @@ function guardarPerfil(perfil: Perfil | null) {
 function perfilGuardado(id: string): Perfil | null {
   try {
     const p = JSON.parse(localStorage.getItem(CLAVE_PERFIL) ?? 'null') as Perfil | null
-    return p?.id === id ? p : null
+    return p?.id === id ? { ...p, sedes: p.sedes ?? [] } : null
   } catch {
     return null
   }
@@ -55,7 +60,7 @@ function perfilGuardado(id: string): Perfil | null {
 
 async function leerPerfil(id: string): Promise<Perfil | null> {
   if (!supabase) return null
-  const [persona, vinculo, dueno] = await Promise.all([
+  const [persona, vinculo, dueno, misSedes] = await Promise.all([
     supabase.from('personas').select('apellidos_nombres, numero_documento, debe_cambiar_contrasena').eq('id', id).maybeSingle(),
     supabase
       .from('vinculos')
@@ -64,8 +69,9 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
       .eq('estado', 'activo')
       .maybeSingle(),
     supabase.from('duenos_plataforma').select('persona_id').eq('persona_id', id).maybeSingle(),
+    supabase.from('vinculos_sedes').select('sedes(id, nombre, activa), vinculos!inner(persona_id, estado)').eq('vinculos.persona_id', id).eq('vinculos.estado', 'activo'),
   ])
-  if (persona.error || vinculo.error || dueno.error) throw new Error('sin respuesta')
+  if (persona.error || vinculo.error || dueno.error || misSedes.error) throw new Error('sin respuesta')
   if (!persona.data) return null
   const v = vinculo.data as unknown as {
     puesto: string | null
@@ -76,6 +82,15 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
     roles: { nombre: string } | null
   } | null
   if (!v && !dueno.data) return null
+  let sedes = ((misSedes.data ?? []) as unknown as { sedes: { id: string; nombre: string; activa: boolean } | null }[])
+    .flatMap((x) => (x.sedes?.activa ? [{ id: x.sedes.id, nombre: x.sedes.nombre }] : []))
+  if (v?.rol === 'admin_empresa') {
+    // El administrador general no tiene filas de sedes: ve todas las de su empresa.
+    const todas = await supabase.from('sedes').select('id, nombre').eq('empresa_id', v.empresa_id).eq('activa', true).order('creado_en')
+    if (todas.error) throw new Error('sin respuesta')
+    sedes = todas.data
+  }
+  sedes.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
   return {
     id,
     apellidosNombres: persona.data.apellidos_nombres,
@@ -88,6 +103,7 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
     rolCodigo: v?.rol ?? null,
     puesto: v?.puesto ?? null,
     area: v?.area ?? null,
+    sedes,
   }
 }
 

@@ -6,6 +6,7 @@ import { conLimite, db, mensaje, rpc } from '../empresas/datos'
 import type { Frecuencia } from '../formatos/base'
 import type { Fila, Hallazgo, Respuesta } from '../formatos/motor'
 import type { Receta } from '../formatos/receta'
+import { conSede } from '../sedeActiva'
 import type { CopiaLocal } from './campo'
 
 export type Inspeccion = {
@@ -69,7 +70,7 @@ const RESUMEN = 'id, numero, plantilla_id, fecha, resultado, puntaje, hallazgos,
 export type ResumenInspeccion = Pick<Inspeccion, 'id' | 'numero' | 'plantilla_id' | 'fecha' | 'resultado' | 'puntaje' | 'hallazgos' | 'estado' | 'recibida_en' | 'activo_foto' | 'inspector_id' | 'avisos' | 'plantillas' | 'sedes'>
 
 export const listarInspecciones = (empresaId: string) =>
-  leer<ResumenInspeccion[]>(conLimite(db().from('inspecciones').select(RESUMEN).eq('empresa_id', empresaId).order('numero', { ascending: false }).limit(200)))
+  leer<ResumenInspeccion[]>(conLimite(conSede(db().from('inspecciones').select(RESUMEN).eq('empresa_id', empresaId)).order('numero', { ascending: false }).limit(200)))
 
 export async function detalleInspeccion(id: string) {
   const [i, firmas, archivos, ediciones] = await Promise.all([

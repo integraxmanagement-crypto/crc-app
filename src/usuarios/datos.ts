@@ -2,8 +2,9 @@
 // se escribe solo con las acciones de la base de datos y las funciones del servidor, que revisan los permisos.
 import { conLimite, db, invocar, mensaje, rpc } from '../empresas/datos'
 
-export type Rol = 'admin_empresa' | 'gestor' | 'usuario'
-export const NOMBRE_ROL: Record<Rol, string> = { admin_empresa: 'Administrador', gestor: 'Gestor (equipo SSO)', usuario: 'Usuario' }
+export type Rol = 'admin_empresa' | 'admin_sede' | 'gestor' | 'usuario'
+export const NOMBRE_ROL: Record<Rol, string> = { admin_empresa: 'Administrador general', admin_sede: 'Administrador de sede', gestor: 'Gestor (equipo SSO)', usuario: 'Usuario' }
+export const ES_ADMIN: Rol[] = ['admin_empresa', 'admin_sede']
 
 export type Cuenta = {
   id: string // vínculo
@@ -18,6 +19,7 @@ export type Cuenta = {
   area: string | null // camino completo de su unidad, por ejemplo «Operaciones › Producción › Línea 1»
   puesto: string | null
   por_revisar_desde: string | null // no apareció en una carga con «lista completa» (tarea 3.6): confirmar cese o que sigue
+  vinculos_sedes: { sede_id: string }[] // vacío en el administrador general (ve todas las sedes)
   personas: { tipo_documento: string; numero_documento: string; apellidos_nombres: string; debe_cambiar_contrasena: boolean } | null
 }
 
@@ -85,7 +87,7 @@ export async function listarCuentas(empresaId: string): Promise<Cuenta[]> {
     db()
       .from('vinculos')
       .select(
-        'id, persona_id, rol, estado, fecha_ingreso, fecha_cese, motivo_cese, unidad_id, puesto_id, area, puesto, por_revisar_desde, ' +
+        'id, persona_id, rol, estado, fecha_ingreso, fecha_cese, motivo_cese, unidad_id, puesto_id, area, puesto, por_revisar_desde, vinculos_sedes(sede_id), ' +
           'personas(tipo_documento, numero_documento, apellidos_nombres, debe_cambiar_contrasena)',
       )
       .eq('empresa_id', empresaId),
@@ -104,10 +106,20 @@ export type DatosCuenta = {
   fecha_ingreso: string
   puesto: string | null // nombre tal como está en la lista (crear-cuenta lo busca en la lista de la empresa)
   unidad_id: string | null // área o subárea elegida en la estructura de la empresa
+  sedes?: string[] // sedes de la cuenta; si se omite, la única sede que corresponda (ver crear-cuenta)
 }
 
 export const crearCuenta = (empresaId: string, datos: DatosCuenta) =>
   invocar<{ cuenta_nueva: boolean; contrasena_inicial?: string }>('crear-cuenta', { ...datos, empresa_id: empresaId })
+
+export const asignarSedes = (vinculoId: string, sedes: string[]) => rpc<void>('asignar_sedes', { p_vinculo: vinculoId, p_sedes: sedes })
+
+/** Sedes activas de la empresa (nombre y identificador), de la más antigua a la más nueva. */
+export async function leerSedesActivas(empresaId: string): Promise<{ id: string; nombre: string }[]> {
+  const { data, error } = await conLimite(db().from('sedes').select('id, nombre').eq('empresa_id', empresaId).eq('activa', true).order('creado_en'))
+  if (error) throw new Error(mensaje(error))
+  return data
+}
 
 export const actualizarPersona = (vinculoId: string, datos: Record<string, string | null>) =>
   rpc<void>('actualizar_persona', { p_vinculo: vinculoId, p_datos: datos })

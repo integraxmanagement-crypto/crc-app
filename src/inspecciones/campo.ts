@@ -55,7 +55,7 @@ export async function bajarCopia(cuenta: string, empresa: string): Promise<Copia
       if (r.error) throw new Error(r.error.message)
       return r.data as never
     })
-  const [emp, plantillas, excel, tipos, activos, sedes, unidades, ubicaciones, listas, personas, trabajadores] = await Promise.all([
+  const [emp, plantillas, excel, tipos, activos, sedes, unidades, ubicaciones, listas, personas, mias, trabajadores] = await Promise.all([
     sel(c.from('empresas').select('razon_social, ruc, domicilio_direccion, domicilio_distrito, domicilio_provincia, domicilio_departamento, actividad_texto, logo_positivo, logo_negativo').eq('id', empresa).single()),
     sel(c.from('plantillas').select('id, nombre, aplica_a, tipo_activo_id, frecuencia, vigente, versiones:plantillas_versiones(id, numero, estado, codigo_formato, version_formato, fecha_aprobacion, logo, receta)').eq('empresa_id', empresa).eq('vigente', true)),
     sel(c.from('plantillas_excel').select('plantilla_id, ruta, nombre_archivo, marcas').eq('empresa_id', empresa)),
@@ -66,6 +66,8 @@ export async function bajarCopia(cuenta: string, empresa: string): Promise<Copia
     sel(c.from('ubicaciones').select('id, sede_id, unidad_id, nombre').eq('empresa_id', empresa).eq('vigente', true).order('nombre')),
     sel(c.from('listas').select('codigo, valores:listas_valores(nombre, orden, vigente)').eq('empresa_id', empresa)),
     sel(c.rpc('personas_de_mi_empresa')),
+    // Sedes de esta cuenta (etapa 1 del punto 2): la sede de cada registro sale de aquí. El administrador general no tiene filas: ve todas.
+    sel(c.from('vinculos_sedes').select('sede_id, vinculos!inner(persona_id, estado)').eq('empresa_id', empresa).eq('vinculos.persona_id', cuenta).eq('vinculos.estado', 'activo')),
     // N.º de trabajadores de la empresa (automático o manual): va solo en todos los formatos que lo piden.
     c.rpc('numero_trabajadores', { p_empresa: empresa }).then((r) => (r.error ? null : (r.data as number | null)), () => null),
   ])
@@ -98,7 +100,7 @@ export async function bajarCopia(cuenta: string, empresa: string): Promise<Copia
     }).sort((a, b) => a.plantilla.nombre.localeCompare(b.plantilla.nombre, 'es')),
     tipos: tipos as CopiaLocal['tipos'],
     activos: activos as ActivoLocal[],
-    sedes: sedes as CopiaLocal['sedes'],
+    sedes: (mias as { sede_id: string }[]).length ? (sedes as CopiaLocal['sedes']).filter((x) => (mias as { sede_id: string }[]).some((m) => m.sede_id === x.id)) : (sedes as CopiaLocal['sedes']),
     unidades: unidades as CopiaLocal['unidades'],
     ubicaciones: ubicaciones as CopiaLocal['ubicaciones'],
     listas: (listas as { codigo: string; valores: { nombre: string; orden: number; vigente: boolean }[] }[]).map((l) => ({

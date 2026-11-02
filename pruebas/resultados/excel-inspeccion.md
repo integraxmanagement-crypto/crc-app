@@ -1,6 +1,6 @@
 # Pruebas del Excel de la organización (tarea 3.4-C)
 
-Fecha: 2026-10-30T14:10:09.884Z · Datos: FICTICIOS, sin base de datos · **undefined de undefined correctas**
+Fecha: 2026-11-02T15:43:50.396Z · Datos: FICTICIOS, sin base de datos · **undefined de undefined correctas**
 
 Ejemplo ficticio generado: `pruebas/excel/CRC_formato_extintores_FICTICIO_v01.xlsx` (diseño inventado; no copia formatos reales).
 

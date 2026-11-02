@@ -67,11 +67,11 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId, f
   return (
     <div className="detalle">
       {!fijo && <header className="detalle-cab">
-        <h1>{gestiona ? 'Hallazgos' : 'Mis hallazgos'}</h1>
+        <h1>{gestiona ? 'Planes de acción' : 'Mis planes de acción'}</h1>
         <p>
           {gestiona
             ? 'Nacen solos de las inspecciones. Asigna responsable, plazo y acción, y sigue su cierre.'
-            : 'Los hallazgos que tienes asignados. Ciérralos contando qué se hizo; puedes agregar una foto.'}
+            : 'Los planes de acción que tienes asignados. Ciérralos contando qué se hizo; puedes agregar una foto.'}
         </p>
       </header>}
       {inspeccionId && (
@@ -82,7 +82,7 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId, f
       )}
       <Aviso>{error}</Aviso>
       {!online ? (
-        <p className="aviso-suave">Los hallazgos se ven y se cierran con señal (v1).</p>
+        <p className="aviso-suave">Los planes de acción se ven y se cierran con señal (v1).</p>
       ) : !lista ? (
         !error && <p className="nota">Cargando…</p>
       ) : (
@@ -96,7 +96,7 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId, f
                 <ArrowLeft size={16} aria-hidden="true" /> Todas las fuentes
               </button>
               {' · '}
-              <b>{fuente === 'todas' ? 'Todos los hallazgos' : fuente}</b>
+              <b>{fuente === 'todas' ? 'Todos los planes de acción' : fuente}</b>
             </p>
           )}
           <div className="filtros" role="group" aria-label="Filtrar">
@@ -118,7 +118,7 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId, f
             )}
           </div>
           {!visibles.length ? (
-            <p className="nota">No hay hallazgos en esta lista.</p>
+            <p className="nota">No hay planes de acción en esta lista.</p>
           ) : (
             <ul className="lista lista-hallazgos">
               {visibles.map((h) => (
@@ -248,7 +248,7 @@ function PanelHallazgo({ h, gestiona, cuenta, personas, nombre, onCambio }: {
       )}
 
       {puedeCerrar && (
-        <Seccion titulo="Cerrar el hallazgo">
+        <Seccion titulo="Cerrar el plan de acción">
           {h.estado === 'abierto' && (
             <button className="btn-link" type="button" disabled={ocupado} onClick={() => void hacer(() => hallazgoEnProceso(h.id), 'Marcado «en proceso».')}>
               Marcar «en proceso»
@@ -269,8 +269,8 @@ function PanelHallazgo({ h, gestiona, cuenta, personas, nombre, onCambio }: {
                 }} />
             </label>
             <button className="btn" type="button" disabled={ocupado || comentario.trim().length < 3}
-              onClick={() => void hacer(() => cerrarHallazgo(h, comentario, foto), 'Hallazgo cerrado.')}>
-              {ocupado ? 'Cerrando…' : 'Cerrar hallazgo'}
+              onClick={() => void hacer(() => cerrarHallazgo(h, comentario, foto), 'Plan de acción cerrado.')}>
+              {ocupado ? 'Cerrando…' : 'Cerrar plan de acción'}
             </button>
           </div>
         </Seccion>
@@ -324,12 +324,12 @@ function Fuentes({ lista, onElegir }: { lista: Hallazgo[]; onElegir: (f: string)
   const fuentes = [...porFuente.entries()].sort((a, b) => abiertos(b[1].items) - abiertos(a[1].items) || a[1].nombre.localeCompare(b[1].nombre, 'es'))
   return (
     <>
-      <p className="nota">Elige una fuente para ver sus hallazgos. Cada tarjeta muestra los abiertos y en proceso frente al total.</p>
+      <p className="nota">Elige una fuente para ver sus planes de acción. Cada tarjeta muestra los abiertos y en proceso frente al total.</p>
       <ul className="tarjetas-tipos">
         <li>
           <button type="button" onClick={() => onElegir('todas')}>
             <ListChecksIcon />
-            <b>Todos los hallazgos</b>
+            <b>Todos los planes de acción</b>
             <small>{abiertos(noAnulados)} abiertos de {noAnulados.length} en total</small>
           </button>
         </li>

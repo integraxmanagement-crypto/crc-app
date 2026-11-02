@@ -3,6 +3,7 @@
 // Guarda un informe en pruebas/resultados/registro-de-empresas.md
 // Uso: node pruebas/empresas.mjs
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { revisarPermisosTablas } from './permisos-tablas.mjs'
 import { PNG_FICTICIO, cliente, comprobar, ingresarComo, resultados, resumen } from './comun.mjs'
 
 const grupos = []
@@ -190,6 +191,8 @@ seccion('7. Empresa suspendida: nadie de ella puede ingresar')
   comprobar('Al reactivar B, ADMIN_B vuelve a ingresar', !r.error && !vuelve.error, vuelve.error?.message)
 }
 
+seccion('Permisos de las tablas: nadie escribe directo')
+await revisarPermisosTablas()
 const fallas = resumen()
 const fecha = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' })
 let md = `# Pruebas del registro de empresas · CRC tarea 3.2\n\nEjecutadas: ${fecha} (hora de Lima) · Proyecto Supabase \`crc-dev\` · Solo datos ficticios.\n\n`

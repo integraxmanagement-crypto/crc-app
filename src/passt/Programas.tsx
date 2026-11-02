@@ -11,7 +11,7 @@ const ANIO = new Date().getFullYear()
  * Programas anuales de SST de la empresa (tarea 3.4-E, D-41): uno general para todas las sedes o uno por sede.
  * Se crea desde cero o duplicando otro (copia el árbol y las semanas programadas, no lo ejecutado).
  */
-export function Programas({ empresaId, online }: { empresaId: string; online: boolean }) {
+export function Programas({ empresaId, online, sedesPropias }: { empresaId: string; online: boolean; sedesPropias: { id: string; nombre: string }[] | null }) {
   const [lista, setLista] = useState<Programa[] | null>(null)
   const [sedes, setSedes] = useState<{ id: string; nombre: string }[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +66,7 @@ export function Programas({ empresaId, online }: { empresaId: string; online: bo
       </header>
       <Aviso>{error}</Aviso>
       {!online && <p className="aviso-suave">El programa anual se ve y se edita con señal.</p>}
-      {form && <FormPrograma empresaId={empresaId} sedes={sedes} origen={form.modo === 'duplicar' ? form.origen : null} onCancelar={() => setForm(null)} />}
+      {form && <FormPrograma empresaId={empresaId} sedes={sedesPropias ?? sedes} puedeGeneral={sedesPropias === null} origen={form.modo === 'duplicar' ? form.origen : null} onCancelar={() => setForm(null)} />}
       <Seccion titulo="Programas">
         {!lista ? (
           online && !error && <p className="nota">Cargando…</p>
@@ -88,9 +88,10 @@ export function Programas({ empresaId, online }: { empresaId: string; online: bo
   )
 }
 
-function FormPrograma({ empresaId, sedes, origen, onCancelar }: { empresaId: string; sedes: { id: string; nombre: string }[]; origen: Programa | null; onCancelar: () => void }) {
+function FormPrograma({ empresaId, sedes, puedeGeneral, origen, onCancelar }: { empresaId: string; sedes: { id: string; nombre: string }[]; puedeGeneral: boolean; origen: Programa | null; onCancelar: () => void }) {
   const [anio, setAnio] = useState(origen ? origen.anio + 1 : ANIO)
-  const [sede, setSede] = useState(origen?.sede_id ?? '')
+  // El programa general (todas las sedes) es del administrador general; los demás eligen una de sus sedes.
+  const [sede, setSede] = useState(origen?.sede_id ?? (puedeGeneral ? '' : (sedes[0]?.id ?? '')))
   const [nombre, setNombre] = useState('')
   const [seguimiento, setSeguimiento] = useState<'semana' | 'mes'>(origen?.seguimiento ?? 'semana')
   const [error, setError] = useState<string | null>(null)
@@ -123,7 +124,7 @@ function FormPrograma({ empresaId, sedes, origen, onCancelar }: { empresaId: str
         <label className="field">
           <span>Alcance</span>
           <select value={sede} onChange={(e) => setSede(e.target.value)}>
-            <option value="">General (todas las sedes)</option>
+            {puedeGeneral && <option value="">General (todas las sedes)</option>}
             {sedes.map((s) => (
               <option key={s.id} value={s.id}>
                 Sede {s.nombre}
