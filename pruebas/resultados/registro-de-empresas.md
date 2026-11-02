@@ -1,8 +1,8 @@
 # Pruebas del registro de empresas · CRC tarea 3.2
 
-Ejecutadas: 2/11/2026, 11:27:32 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutadas: 2/11/2026, 4:42:42 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 71 de 73 pruebas pasaron.**
+**Resultado: 74 de 74 pruebas pasaron.**
 
 Cada prueba ingresa con una persona ficticia por la misma puerta que usa la app (clave pública + reglas RLS de la base de datos y del almacén de logos).
 
@@ -74,14 +74,15 @@ Cada prueba ingresa con una persona ficticia por la misma puerta que usa la app 
 | ✅ Pasa | ADMIN_A SÍ puede editar los contactos de su empresa |  |
 | ✅ Pasa | ADMIN_A ve los 3 contactos de su empresa |  |
 | ✅ Pasa | ADMIN_A SÍ puede cambiar los logos de su empresa |  |
+| ✅ Pasa | Al terminar, el logo negativo original de la empresa A se devuelve a su lugar |  |
 | ✅ Pasa | GESTOR_A ve la ficha básica de su empresa (para encabezados) |  |
 | ✅ Pasa | GESTOR_A NO ve los contactos (datos personales) de su empresa |  |
-| ❌ Falla | GESTOR_A SÍ puede ver el logo de su empresa | Object not found |
+| ✅ Pasa | GESTOR_A SÍ puede ver el logo de su empresa |  |
 | ✅ Pasa | GESTOR_A NO puede editar contactos | No autorizado |
 | ✅ Pasa | GESTOR_A NO puede cambiar logos | new row violates row-level security policy |
 | ✅ Pasa | USUARIO_A2 ve la ficha básica de su empresa (para encabezados) |  |
 | ✅ Pasa | USUARIO_A2 NO ve los contactos (datos personales) de su empresa |  |
-| ❌ Falla | USUARIO_A2 SÍ puede ver el logo de su empresa | Object not found |
+| ✅ Pasa | USUARIO_A2 SÍ puede ver el logo de su empresa |  |
 | ✅ Pasa | USUARIO_A2 NO puede editar contactos | No autorizado |
 | ✅ Pasa | USUARIO_A2 NO puede cambiar logos | new row violates row-level security policy |
 
