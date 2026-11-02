@@ -126,9 +126,19 @@ seccion('5. Vista de la empresa: qué puede hacer cada rol de A con su propia em
   comprobar('ADMIN_A SÍ puede editar los contactos de su empresa', !g.error, g.error?.message)
   const vistos = await a.from('empresas_contactos').select('tipo').eq('empresa_id', A.id)
   comprobar('ADMIN_A ve los 3 contactos de su empresa', vistos.data?.length === 3)
+  // Se guarda el logo negativo que ya tiene la empresa para devolverlo al terminar: la prueba no debe dejar la imagen de prueba en su lugar.
+  const antes = (await a.from('empresas').select('logo_negativo').eq('id', A.id).single()).data?.logo_negativo
+  const copiaNegativo = antes ? (await a.storage.from('logos').download(antes)).data : null
   const up = await a.storage.from('logos').upload(`${A.id}/negativo.png`, PNG_FICTICIO, { contentType: 'image/png', upsert: true })
   const reg = up.error ? up : await a.rpc('registrar_logo', { p_empresa: A.id, p_tipo: 'negativo', p_ruta: `${A.id}/negativo.png` })
   comprobar('ADMIN_A SÍ puede cambiar los logos de su empresa', !reg.error, reg.error?.message)
+  if (copiaNegativo && antes) {
+    const ext = antes.split('.').pop()
+    const tipo = { webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg' }[ext] ?? 'image/png'
+    const devuelto = await a.storage.from('logos').upload(antes, copiaNegativo, { contentType: tipo, upsert: true })
+    const anotado = devuelto.error ? devuelto : await a.rpc('registrar_logo', { p_empresa: A.id, p_tipo: 'negativo', p_ruta: antes })
+    comprobar('Al terminar, el logo negativo original de la empresa A se devuelve a su lugar', !anotado.error, anotado.error?.message)
+  }
 
   for (const n of ['GESTOR_A', 'USUARIO_A2']) {
     const c = sesion[n]
@@ -136,7 +146,8 @@ seccion('5. Vista de la empresa: qué puede hacer cada rol de A con su propia em
     comprobar(`${n} ve la ficha básica de su empresa (para encabezados)`, f.data?.length === 1)
     const k = await c.from('empresas_contactos').select('nombre').eq('empresa_id', A.id)
     comprobar(`${n} NO ve los contactos (datos personales) de su empresa`, k.data?.length === 0)
-    const l = await c.storage.from('logos').download(`${A.id}/positivo.png`)
+    // El logo positivo de A puede estar en cualquier formato (png, webp…): se pide el que la empresa tiene registrado.
+    const l = await c.storage.from('logos').download(A.logo_positivo)
     comprobar(`${n} SÍ puede ver el logo de su empresa`, !l.error, l.error?.message)
     const gc = await c.rpc('guardar_contactos', { p_empresa: A.id, p_datos: contactos })
     comprobar(`${n} NO puede editar contactos`, NO_AUTORIZADO(gc), gc.error?.message)
