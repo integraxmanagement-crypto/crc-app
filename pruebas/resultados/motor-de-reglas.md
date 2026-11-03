@@ -1,20 +1,19 @@
 # Motor de reglas de los formatos (tarea 3.4-B)
 
-Fecha: 2026-11-02 · Resultado: **71 de 71** · Sin base de datos, casos ficticios.
+Fecha: 2026-11-03 · Resultado: **69 de 69** · Sin base de datos, casos ficticios.
 
 | Prueba | Resultado |
 |---|---|
-| Hay 8 plantillas base | ✅ |
+| Hay 7 plantillas base (la genérica de bombas se retiró el 02/11/2026) | ✅ |
 | Inspección de extintores portátiles: sin problemas para publicar | ✅ |
 | Inspección de caseta de ataque rápido (CAR): sin problemas para publicar | ✅ |
-| Inspección de bombas contra incendio: sin problemas para publicar | ✅ |
 | Inspección de motobomba: sin problemas para publicar | ✅ |
 | Inspección de electrobomba: sin problemas para publicar | ✅ |
 | Inspección del sistema DACI (detección y alarma contra incendio): sin problemas para publicar | ✅ |
 | Eficacia del programa de bloqueo y etiquetado (LOTO): sin problemas para publicar | ✅ |
 | Inspección de seguridad ocupacional (IPF): sin problemas para publicar | ✅ |
-| Ninguna clave de punto se repite entre las 8 (167 puntos) | ✅ |
-| Todo punto crítico de todos los formatos genera hallazgo y pide acción, responsable y plazo (49 críticos; sin acción: ) | ✅ |
+| Ninguna clave de punto se repite entre las 7 (133 puntos) | ✅ |
+| Todo punto crítico de todos los formatos genera hallazgo y pide acción, responsable y plazo (35 críticos; sin acción: ) | ✅ |
 | Electrobomba: la hora de inicio (antes y final) es de tipo hora | ✅ |
 | Ningún punto trae severidad (queda para la v1.1) | ✅ |
 | Ningún texto de la base menciona un código de formato tipo «SO.R.G.» | ✅ |
@@ -50,18 +49,17 @@ Fecha: 2026-11-02 · Resultado: **71 de 71** · Sin base de datos, casos fictici
 | Si la empresa pone 20 años de vida útil, uno de 1990 queda vencido | ✅ |
 | N/A en la manguera cuenta como favorable → Conforme | ✅ |
 | Un punto obligatorio sin responder → no se puede cerrar (EXT-05: falta la respuesta.) | ✅ |
+| 13 puntos: 3 de condición y 10 materiales, uno por columna del Excel del dueño | ✅ |
+| Cada material trae su cantidad en el nombre («01 Mangueras…») y ninguno lleva cantidad aparte | ✅ |
 | Todo √ → Conforme | ✅ |
 | X en un material → No conforme y 1 hallazgo (por reponer) | ✅ |
-| Acceso bloqueado (crítico) → No conforme | ✅ |
-| Interior desordenado (ni crítico ni material) → Conforme, sin hallazgo | ✅ |
-| Electrobomba: ve BCI-E01 y la corriente, no los puntos de motor diésel | ✅ |
-| Motobomba: ve BCI-M01 a M05 y sus lecturas, no BCI-E01 | ✅ |
-| Todo Sí → sin resultado (solo «Realizado»), sin hallazgos | ✅ |
-| Un «No» sin observación → falta la observación | ✅ |
-| «No» en la sección B con observación → 1 hallazgo con la observación | ✅ |
-| «No» en la sección A → sin hallazgo (el anexo pone H solo en B y C) | ✅ |
+| Acceso bloqueado (crítico) → No conforme, con hallazgo y acción | ✅ |
+| Pictograma en X (ni crítico ni material) → Conforme, con 1 hallazgo | ✅ |
+| Un material que no corresponde (N/A) no cuenta como falta | ✅ |
 | Presión de descarga 140 con rango 90–120 → hallazgo «fuera de rango» | ✅ |
+| Dentro del rango → sin hallazgo | ✅ |
 | La misma lectura sin rango definido → no genera hallazgo | ✅ |
+| La inspección de bomba contra incendio se arma con motobomba y electrobomba | ✅ |
 | Pulsador todo √ → Operativo (solo ve sus 3 puntos) | ✅ |
 | Sirena que no suena en la prueba (crítico) → Inoperativo | ✅ |
 | Panel con un indicador apagado (no crítico) → Operativo, con 1 hallazgo | ✅ |

@@ -1,5 +1,5 @@
 // Prueba del motor de reglas de los formatos (tarea 3.4-B). No usa la base de datos ni cuentas.
-// Revisa que las 8 plantillas base estén bien armadas y que los resultados, el puntaje y los hallazgos
+// Revisa que las 7 plantillas base estén bien armadas y que los resultados, el puntaje y los hallazgos
 // salgan como se espera en casos conocidos (todos ficticios). Guarda un informe en pruebas/resultados/.
 // Uso: node pruebas/motor.mjs   (Node 24 entiende los archivos .ts de src/formatos sin compilar)
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -24,13 +24,13 @@ function todas(receta, valor, subtipo = null) {
 }
 
 console.log('\n── 1. Las 7 plantillas base están bien armadas')
-comprobar('Hay 8 plantillas base', PLANTILLAS_BASE.length === 8)
+comprobar('Hay 7 plantillas base (la genérica de bombas se retiró el 02/11/2026)', PLANTILLAS_BASE.length === 7 && !PLANTILLAS_BASE.some((x) => x.codigo === 'bombas'))
 for (const p of PLANTILLAS_BASE) {
   const problemas = validarReceta(p.receta, true)
   comprobar(`${p.nombre}: sin problemas para publicar`, problemas.length === 0, problemas.join(' | '))
 }
 const claves = PLANTILLAS_BASE.flatMap((p) => p.receta.secciones.flatMap((s) => s.puntos.map((x) => x.clave)))
-comprobar('Ninguna clave de punto se repite entre las 8', new Set(claves).size === claves.length, `${claves.length} puntos`)
+comprobar('Ninguna clave de punto se repite entre las 7', new Set(claves).size === claves.length, `${claves.length} puntos`)
 const criticos = PLANTILLAS_BASE.flatMap((x) => x.receta.secciones.flatMap((sc) => sc.puntos.filter((pt) => pt.critico).map((pt) => `${x.codigo}/${pt.clave}`)))
 const sinAccion = PLANTILLAS_BASE.flatMap((x) => x.receta.secciones.flatMap((sc) => sc.puntos.filter((pt) => pt.critico && !(pt.hallazgo === 'no_cumple' && pt.pide_accion)).map((pt) => pt.clave)))
 comprobar('Todo punto crítico de todos los formatos genera hallazgo y pide acción, responsable y plazo', criticos.length > 0 && sinAccion.length === 0, `${criticos.length} críticos; sin acción: ${sinAccion.join(', ')}`)
@@ -138,8 +138,11 @@ console.log('\n── 2. Extintores')
   comprobar('Un punto obligatorio sin responder → no se puede cerrar', e.faltan.length === 1 && e.faltan[0].startsWith('EXT-05'), e.faltan.join(' | '))
 }
 
-console.log('\n── 3. Caseta de ataque rápido')
+console.log('\n── 3. Caseta de ataque rápido (formato del dueño: 3 puntos de condición y 10 materiales)')
 {
+  const puntos = R.car.secciones.flatMap((s) => s.puntos)
+  comprobar('13 puntos: 3 de condición y 10 materiales, uno por columna del Excel del dueño', R.car.secciones[0].puntos.length === 3 && R.car.secciones[1].puntos.length === 10 && puntos.every((x) => x.tipo === 'cumple'))
+  comprobar('Cada material trae su cantidad en el nombre («01 Mangueras…») y ninguno lleva cantidad aparte', R.car.secciones[1].puntos.every((x) => /^0\d /.test(x.texto) && !('cantidad' in x)))
   let e = evaluar(R.car, { respuestas: todas(R.car, 'si'), fecha: FECHA })
   comprobar('Todo √ → Conforme', e.resultado === 'Conforme')
   const r = todas(R.car, 'si')
@@ -147,44 +150,34 @@ console.log('\n── 3. Caseta de ataque rápido')
   e = evaluar(R.car, { respuestas: r, fecha: FECHA })
   comprobar('X en un material → No conforme y 1 hallazgo (por reponer)', e.resultado === 'No conforme' && e.hallazgos.length === 1 && e.hallazgos[0].clave === 'CAR-M02')
   const r2 = todas(R.car, 'si')
-  r2['CAR-02'] = { valor: 'no' }
+  r2['CAR-02'] = { valor: 'no', accion: { texto: 'Despejar el acceso (ficticio)', responsable: 'persona-ficticia', plazo: '2026-12-01' } }
   e = evaluar(R.car, { respuestas: r2, fecha: FECHA })
-  comprobar('Acceso bloqueado (crítico) → No conforme', e.resultado === 'No conforme')
+  comprobar('Acceso bloqueado (crítico) → No conforme, con hallazgo y acción', e.resultado === 'No conforme' && e.hallazgos.some((h) => h.clave === 'CAR-02'), e.faltan.join(' | '))
   const r3 = todas(R.car, 'si')
-  r3['CAR-04'] = { valor: 'no' }
+  r3['CAR-01'] = { valor: 'no' }
   e = evaluar(R.car, { respuestas: r3, fecha: FECHA })
-  comprobar('Interior desordenado (ni crítico ni material) → Conforme, sin hallazgo', e.resultado === 'Conforme' && e.hallazgos.length === 0)
+  comprobar('Pictograma en X (ni crítico ni material) → Conforme, con 1 hallazgo', e.resultado === 'Conforme' && e.hallazgos.length === 1 && e.hallazgos[0].clave === 'CAR-01')
+  const r4 = todas(R.car, 'si')
+  r4['CAR-M10'] = { valor: 'na' }
+  e = evaluar(R.car, { respuestas: r4, fecha: FECHA })
+  comprobar('Un material que no corresponde (N/A) no cuenta como falta', e.resultado === 'Conforme' && e.hallazgos.length === 0)
 }
 
-console.log('\n── 4. Bombas')
+console.log('\n── 4. Lecturas con rango (la misma regla que usan la motobomba y la electrobomba)')
 {
-  const e1 = seccionesVisibles(R.bombas, 'electrobomba').flatMap((s) => s.puntos.map((p) => p.clave))
-  const m1 = seccionesVisibles(R.bombas, 'motobomba').flatMap((s) => s.puntos.map((p) => p.clave))
-  comprobar('Electrobomba: ve BCI-E01 y la corriente, no los puntos de motor diésel', e1.includes('BCI-E01') && e1.includes('BCI-L07') && !e1.includes('BCI-M01'))
-  comprobar('Motobomba: ve BCI-M01 a M05 y sus lecturas, no BCI-E01', m1.includes('BCI-M05') && m1.includes('BCI-L06') && !e1.includes('BCI-L06') && !m1.includes('BCI-E01'))
-  let e = evaluar(R.bombas, { respuestas: todas(R.bombas, 'si', 'motobomba'), activo: { subtipo: 'motobomba' }, fecha: FECHA })
-  comprobar('Todo Sí → sin resultado (solo «Realizado»), sin hallazgos', e.resultado === null && e.hallazgos.length === 0 && e.faltan.length === 0, e.faltan.join(' | '))
-  const r = todas(R.bombas, 'si', 'electrobomba')
-  r['BCI-B05'] = { valor: 'no' }
-  e = evaluar(R.bombas, { respuestas: r, activo: { subtipo: 'electrobomba' }, fecha: FECHA })
-  comprobar('Un «No» sin observación → falta la observación', e.faltan.some((f) => f.startsWith('BCI-B05')))
-  r['BCI-B05'] = { valor: 'no', obs: 'Vibración en el acople (ficticio)', accion: { texto: 'Revisar el acople', responsable: 'persona-ficticia', plazo: '2026-12-01' } } // los críticos piden acción, responsable y plazo
-  e = evaluar(R.bombas, { respuestas: r, activo: { subtipo: 'electrobomba' }, fecha: FECHA })
-  comprobar('«No» en la sección B con observación → 1 hallazgo con la observación', e.faltan.length === 0 && e.hallazgos.length === 1 && e.hallazgos[0].texto.includes('Vibración'))
-  const r2 = todas(R.bombas, 'si', 'electrobomba')
-  r2['BCI-A04'] = { valor: 'no', obs: 'Foco quemado (ficticio)' }
-  e = evaluar(R.bombas, { respuestas: r2, activo: { subtipo: 'electrobomba' }, fecha: FECHA })
-  comprobar('«No» en la sección A → sin hallazgo (el anexo pone H solo en B y C)', e.hallazgos.length === 0)
-  const conRango = structuredClone(R.bombas)
-  const l = conRango.secciones.find((s) => s.clave === 'lecturas').puntos.find((p) => p.clave === 'BCI-L02')
-  l.min = 90
-  l.max = 120
-  const r3 = todas(R.bombas, 'si', 'electrobomba')
-  r3['BCI-L02'] = { valor: 140 }
-  e = evaluar(conRango, { respuestas: r3, activo: { subtipo: 'electrobomba' }, fecha: FECHA })
-  comprobar('Presión de descarga 140 con rango 90–120 → hallazgo «fuera de rango»', e.hallazgos.some((h) => h.origen === 'fuera_rango' && h.clave === 'BCI-L02'))
-  e = evaluar(R.bombas, { respuestas: r3, activo: { subtipo: 'electrobomba' }, fecha: FECHA })
+  const lecturas = structuredClone(R.car)
+  lecturas.reglas = []
+  lecturas.secciones = [{ clave: 'lecturas', titulo: 'Lecturas', puntos: [{ clave: 'L-01', texto: 'Presión de descarga', tipo: 'numero', obligatorio: true, critico: false, hallazgo: 'fuera_rango', obs_si_no_cumple: false, foto_si_no_cumple: false, pide_accion: false, unidad: 'psi', min: 90, max: 120 }] }]
+  let e = evaluar(lecturas, { respuestas: { 'L-01': { valor: 140 } }, fecha: FECHA })
+  comprobar('Presión de descarga 140 con rango 90–120 → hallazgo «fuera de rango»', e.hallazgos.some((h) => h.origen === 'fuera_rango' && h.clave === 'L-01'))
+  e = evaluar(lecturas, { respuestas: { 'L-01': { valor: 100 } }, fecha: FECHA })
+  comprobar('Dentro del rango → sin hallazgo', e.hallazgos.length === 0)
+  lecturas.secciones[0].puntos[0].min = null
+  lecturas.secciones[0].puntos[0].max = null
+  e = evaluar(lecturas, { respuestas: { 'L-01': { valor: 140 } }, fecha: FECHA })
   comprobar('La misma lectura sin rango definido → no genera hallazgo', e.hallazgos.length === 0)
+  const sinMotor = ['electrobomba', 'motobomba'].every((k) => R[k] && R[k].secciones.length > 0)
+  comprobar('La inspección de bomba contra incendio se arma con motobomba y electrobomba', sinMotor)
 }
 
 console.log('\n── 5. DACI')

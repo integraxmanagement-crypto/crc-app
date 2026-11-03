@@ -47,18 +47,18 @@ type Vista = 'ninguna' | 'catastro' | 'inspeccion' | 'noop' | 'vencer' | 'regist
  * Pantalla de la inspección de extintores (pedido del dueño, 29/10/2026, paquete SO.R.G.085): cumplimiento de la semana, no operativos,
  * por vencer, catastro (doble entrada), tabla para inspeccionar, buscador por código con su ficha y el botón para generar el registro.
  */
-export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato, variante = 'extintor' }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean; copia: CopiaLocal; formato: FormatoLocal; variante?: 'extintor' | 'daci' }) {
-  // La misma pantalla sirve para extintores y para los dispositivos del sistema DACI (pedido del dueño, 29/10/2026); solo cambian los textos,
-  // el catastro, la ficha y que el DACI no tiene vencimientos.
+export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato, variante = 'extintor', vistaInicial }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean; copia: CopiaLocal; formato: FormatoLocal; variante?: 'extintor' | 'daci' | 'caseta'; vistaInicial?: Vista }) {
+  // La misma pantalla sirve para extintores, para los dispositivos del sistema DACI (pedido del dueño, 29/10/2026) y para las casetas de
+  // ataque rápido (02/11/2026); solo cambian los textos, el catastro, la ficha y que el DACI y la CAR no tienen vencimientos.
   const esExt = variante === 'extintor'
-  const N = esExt ? { s: 'extintor', p: 'extintores' } : { s: 'dispositivo', p: 'dispositivos' }
+  const N = esExt ? { s: 'extintor', p: 'extintores' } : variante === 'caseta' ? { s: 'caseta', p: 'casetas' } : { s: 'dispositivo', p: 'dispositivos' }
   const subtipos = copia.tipos.find((t) => t.id === formato.plantilla.tipo_activo_id)?.subtipos ?? []
   const { contexto, error: errCtx } = useContextoActivos(empresaId, true, false)
   const [activos, setActivos] = useState<Activo[] | null>(null)
   const [ultimas, setUltimas] = useState<Map<string, UltimaInspeccion> | null>(null)
   const [filas, setFilas] = useState<FilaAvance[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [vista, setVista] = useState<Vista>('ninguna')
+  const [vista, setVista] = useState<Vista>(vistaInicial ?? 'ninguna')
   const [sede, setSede] = useState(copia.sedes[0]?.id ?? '')
   const hoy = hoyLocal()
   // La frecuencia es la del formato (semanal por defecto): con frecuencia mensual, todo se mide por mes, una inspección al mes por extintor.
@@ -197,14 +197,14 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           )}
         </Seccion>
       )}
-      {vista === 'catastro' && <Catastro variante={variante} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />}
+      {vista === 'catastro' && <Catastro variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />}
       {vista === 'inspeccion' && (
         <TablaInspeccion activos={activos} filas={filas} formato={formato} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />
       )}
 
 
       {vista === 'hallazgos' && <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />}
-      {vista === 'registro' && <GenerarRegistro esExt={esExt} formato={formato} copia={copia} sede={sede} semanas={semanas} hoy={hoy} cuenta={cuenta} esSemanal={esSemanal} unPeriodo={unPeriodo} />}
+      {vista === 'registro' && <GenerarRegistro nombreArchivo={esExt ? 'Extintores' : variante === 'caseta' ? 'CAR' : 'DACI'} formato={formato} copia={copia} sede={sede} semanas={semanas} hoy={hoy} cuenta={cuenta} esSemanal={esSemanal} unPeriodo={unPeriodo} />}
     </>
   )
 }
@@ -213,16 +213,17 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
  * Catastro: cuadro de doble entrada con totales; al elegir una fila o una cantidad se abre la lista de esos equipos.
  * Extintores: agente × capacidad. Dispositivos del sistema DACI: subtipo × área.
  */
-function Catastro({ variante, subtipos, activos, nombrePersona, nombreArea, nombreUbic, hoy }: {
-  variante: 'extintor' | 'daci'; subtipos: { codigo: string; nombre: string }[]; activos: Activo[]; nombrePersona: Map<string, string>
+function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, nombreUbic, hoy }: {
+  variante: 'extintor' | 'daci' | 'caseta'; N: { s: string; p: string }; subtipos: { codigo: string; nombre: string }[]; activos: Activo[]; nombrePersona: Map<string, string>
   nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string; hoy: string
 }) {
   const esExt = variante === 'extintor'
+  const esCaseta = variante === 'caseta'
   const [ver, setVer] = useState<{ fila: string | null; col: string | null } | null>(null)
   const capacidad = (a: Activo) => (a.datos.capacidad != null && a.datos.capacidad !== '' ? `${a.datos.capacidad} ${a.datos.capacidad_unidad ?? ''}`.trim() : 'Sin capacidad')
   const subtipoDe = (a: Activo) => subtipos.find((x) => x.codigo === a.subtipo)?.nombre ?? 'Sin subtipo'
-  const filaDe = (a: Activo) => (esExt ? String(a.datos.agente ?? 'Sin agente') : subtipoDe(a))
-  const colDe = (a: Activo) => (esExt ? capacidad(a) : nombreArea(a.unidad_id) || 'Sin área')
+  const filaDe = (a: Activo) => (esExt ? String(a.datos.agente ?? 'Sin agente') : esCaseta ? nombreArea(a.unidad_id) || 'Sin área' : subtipoDe(a))
+  const colDe = (a: Activo) => (esExt ? capacidad(a) : esCaseta ? nombreUbic(a.ubicacion_id) || 'Sin ubicación' : nombreArea(a.unidad_id) || 'Sin área')
   const filasT = [...new Set(activos.map(filaDe))].sort((x, y) => x.localeCompare(y, 'es'))
   const colsT = [...new Set(activos.map(colDe))].sort((x, y) => (esExt ? parseFloat(x) - parseFloat(y) : 0) || x.localeCompare(y, 'es'))
   const de = (f: string | null, c: string | null) => activos.filter((a) => (f == null || filaDe(a) === f) && (c == null || colDe(a) === c))
@@ -232,13 +233,13 @@ function Catastro({ variante, subtipos, activos, nombrePersona, nombreArea, nomb
   }
   const lista = ver ? de(ver.fila, ver.col) : []
   return (
-    <Seccion titulo={`Catastro de ${esExt ? 'extintores' : 'dispositivos'} (${activos.length})`}>
-      <p className="nota">Toca {esExt ? 'un agente' : 'un subtipo'} o una cantidad para ver los equipos.</p>
+    <Seccion titulo={`Catastro de ${N.p} (${activos.length})`}>
+      <p className="nota">Toca {esExt ? 'un agente' : esCaseta ? 'un área' : 'un subtipo'} o una cantidad para ver los equipos.</p>
       <div className="tabla-scroll">
         <table className="tabla-catastro">
           <thead>
             <tr>
-              <th>{esExt ? 'Agente / Capacidad' : 'Subtipo / Área'}</th>
+              <th>{esExt ? 'Agente / Capacidad' : esCaseta ? 'Área / Ubicación' : 'Subtipo / Área'}</th>
               {colsT.map((c) => <th key={c}>{c}</th>)}
               <th>Total</th>
             </tr>
@@ -262,13 +263,14 @@ function Catastro({ variante, subtipos, activos, nombrePersona, nombreArea, nomb
         </table>
       </div>
       {ver && (
-        <Ventana titulo={`${ver.fila ?? (esExt ? 'Todos los agentes' : 'Todos los dispositivos')}${ver.col ? ` · ${ver.col}` : ''} (${lista.length})`} onCerrar={() => setVer(null)}>
+        <Ventana titulo={`${ver.fila ?? (esExt ? 'Todos los agentes' : esCaseta ? 'Todas las casetas' : 'Todos los dispositivos')}${ver.col ? ` · ${ver.col}` : ''} (${lista.length})`} onCerrar={() => setVer(null)}>
           <div className="tabla-scroll">
             <table className="tabla-catastro tabla-clic">
               <thead>
                 <tr>
                   {esExt
                     ? <><th>Código</th><th>Ubicación</th><th>Área</th><th>Agente</th><th>Capacidad</th><th>N.º de serie</th><th>Fabricación</th><th>PH</th><th>Próx. mant.</th><th>Responsable</th></>
+                    : esCaseta ? <><th>Código</th><th>Ubicación</th><th>Área</th><th>Responsable</th></>
                     : <><th>Código</th><th>Ubicación</th><th>Área</th><th>Subtipo</th><th>Modelo</th><th>Zona o lazo</th><th>Responsable</th></>}
                 </tr>
               </thead>
@@ -286,6 +288,13 @@ function Catastro({ variante, subtipos, activos, nombrePersona, nombreArea, nomb
                       <td>{String(a.datos.anio_fabricacion ?? '')}</td>
                       <td>{String(a.datos.anio_prueba_hidrostatica ?? '')}</td>
                       <td>{datoDeActivo(a.datos, 'activo.proximo_mantenimiento.mes_texto')} <span className={`chip ${m === 'vencido' ? 'chip-mal' : m === 'por_vencer' ? 'chip-aviso' : 'chip-ok'}`}>{m === 'vencido' ? 'Vencido' : m === 'por_vencer' ? 'Por vencer' : 'Vigente'}</span></td>
+                      <td>{a.responsable_id ? (nombrePersona.get(a.responsable_id) ?? '') : ''}</td>
+                    </tr>
+                  ) : esCaseta ? (
+                    <tr key={a.id}>
+                      <td><b>{a.codigo}</b></td>
+                      <td>{nombreUbic(a.ubicacion_id)}</td>
+                      <td>{nombreArea(a.unidad_id)}</td>
                       <td>{a.responsable_id ? (nombrePersona.get(a.responsable_id) ?? '') : ''}</td>
                     </tr>
                   ) : (
@@ -381,7 +390,7 @@ function TablaInspeccion({ activos, filas, formato, nombrePersona, nombreArea, n
 
 /** Buscador por código (se completa al escribir) con la ficha del extintor, «ir a inspeccionar», modificar y eliminar; o agregar uno nuevo. */
 export function BuscadorExtintor({ variante, subtipos, activos, filas, ultimas, formato, contexto, copia, nombreArea, nombreUbic, hoy, semanaActual, onCambio }: {
-  variante: 'extintor' | 'daci' | 'bomba'; subtipos: { codigo: string; nombre: string }[]
+  variante: 'extintor' | 'daci' | 'bomba' | 'caseta'; subtipos: { codigo: string; nombre: string }[]
   activos: Activo[]; filas: FilaAvance[]; ultimas: Map<string, UltimaInspeccion>; formato: FormatoLocal; contexto: NonNullable<ReturnType<typeof useContextoActivos>['contexto']>; copia: CopiaLocal
   nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string; hoy: string; semanaActual: boolean; onCambio: () => void
 }) {
@@ -397,7 +406,7 @@ export function BuscadorExtintor({ variante, subtipos, activos, filas, ultimas, 
   const terminado = () => (setModo('ver'), onCambio())
 
   return (
-    <Seccion titulo={`Buscar ${variante === 'extintor' ? 'extintor' : variante === 'bomba' ? (/electro/i.test(formato.plantilla.nombre) ? 'electrobomba' : 'motobomba') : 'dispositivo'} por código`}>
+    <Seccion titulo={`Buscar ${variante === 'extintor' ? 'extintor' : variante === 'bomba' ? (/electro/i.test(formato.plantilla.nombre) ? 'electrobomba' : 'motobomba') : variante === 'caseta' ? 'caseta' : 'dispositivo'} por código`}>
       <label className="field">
         <span>Código</span>
         <input type="search" list="codigos-ext" autoComplete="off" value={codigo} placeholder="Ej.: P1-001"
@@ -435,7 +444,7 @@ export function BuscadorExtintor({ variante, subtipos, activos, filas, ultimas, 
                   <div><dt>Electrobomba Jockey</dt><dd>{[a.datos.jockey_marca, a.datos.jockey_potencia, a.datos.jockey_caudal].filter(Boolean).join(' · ') || '—'}</dd></div>
                 </>
               ) : null
-            ) : (
+            ) : variante === 'caseta' ? null : (
               <>
                 <div><dt>Subtipo</dt><dd>{subtipos.find((x) => x.codigo === a.subtipo)?.nombre ?? '—'}</dd></div>
                 <div><dt>Modelo</dt><dd>{String(a.datos.modelo ?? '—')}</dd></div>
@@ -457,7 +466,7 @@ export function BuscadorExtintor({ variante, subtipos, activos, filas, ultimas, 
       {a && modo === 'baja' && <FormBaja activo={a} onListo={() => (setCodigo(''), terminado())} onCancelar={() => setModo('ver')} />}
       {!a && codigo.trim() && tipo && modo !== 'nuevo' && (
         <div className="acciones">
-          <span className="nota">No hay {variante === 'extintor' ? 'un extintor' : variante === 'bomba' ? `una ${/electro/i.test(formato.plantilla.nombre) ? 'electrobomba' : 'motobomba'}` : 'un dispositivo'} con el código «{codigo.trim()}».</span>
+          <span className="nota">No hay {variante === 'extintor' ? 'un extintor' : variante === 'bomba' ? `una ${/electro/i.test(formato.plantilla.nombre) ? 'electrobomba' : 'motobomba'}` : variante === 'caseta' ? 'una caseta' : 'un dispositivo'} con el código «{codigo.trim()}».</span>
           <button className="btn-sec" type="button" onClick={() => setModo('nuevo')}>
             <Plus size={18} aria-hidden="true" /> Agregar nuevo equipo
           </button>
@@ -481,7 +490,7 @@ export function mesesRecientes(hoy: string) {
 }
 
 /** Generar el registro en Excel o PDF de una semana o de un mes; la fecha de inspección es el domingo de la semana (se puede cambiar) o la que se escriba. */
-function GenerarRegistro({ esExt, formato, copia, sede, semanas, hoy, cuenta, esSemanal, unPeriodo }: { formato: FormatoLocal; copia: CopiaLocal; sede: string; semanas: ReturnType<typeof periodosHasta>; hoy: string; cuenta: string; esSemanal: boolean; unPeriodo: string; esExt: boolean }) {
+function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cuenta, esSemanal, unPeriodo }: { formato: FormatoLocal; copia: CopiaLocal; sede: string; semanas: ReturnType<typeof periodosHasta>; hoy: string; cuenta: string; esSemanal: boolean; unPeriodo: string; nombreArchivo: string }) {
   void cuenta
   // Con frecuencia semanal se puede elegir una semana o un mes del calendario; con otra frecuencia (mensual…), un período del formato.
   const meses = useMemo(
@@ -544,7 +553,7 @@ function GenerarRegistro({ esExt, formato, copia, sede, semanas, hoy, cuenta, es
       const filas = await avancePeriodo(formato.plantilla.id, sede, elegido.desde, elegido.hasta)
       const r = await armarRegistro({ formato, copia, sede, periodo: { etiqueta: elegido.etiqueta, desde: elegido.desde, hasta: elegido.hasta }, filas, registro: { ...registro, fecha }, firma })
       if (!r) return setAviso('Este formato no tiene un Excel de la organización. Súbelo en el formato.')
-      const vista = await entregarRegistro(r.bytes, como, `Inspección ${esExt ? 'Extintores' : 'DACI'}- ${elegido.clave}`)
+      const vista = await entregarRegistro(r.bytes, como, `Inspección ${nombreArchivo}- ${elegido.clave}`)
       if (vista) setVistaPdf(vista)
       setAviso(`Registro listo: ${r.filas} equipo(s)${r.agregadas ? `; se agregaron ${r.agregadas} filas al formato` : ''}.`)
     } catch (e) {

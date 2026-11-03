@@ -1,5 +1,5 @@
 // Segunda parte de la demo de dos sedes (FICTICIA, solo crc-dev): le pone a la empresa DEMO (RUC 20000000061) los mismos formatos
-// de inspección que ya se revisaron en la empresa A (extintores, DACI, bombas contra incendio, motobomba, electrobomba, CAR, LOTO, IPF),
+// de inspección que ya se revisaron en la empresa A (extintores, DACI, motobomba, electrobomba, CAR, LOTO, IPF; «bomba contra incendio» se hace con motobomba y electrobomba),
 // con equipos, una inspección por formato en cada sede (algunas con plan de acción) y esos formatos vinculados al programa anual de cada sede.
 // Antes hay que correr: node pruebas/demo-dos-sedes.mjs. Se puede repetir: lo que ya existe no se vuelve a crear.
 // Uso: node pruebas/demo-dos-sedes-formatos.mjs
@@ -43,8 +43,7 @@ const FORMATOS = [
   { codigo: 'daci', texto: 'Inspección del sistema DACI', equipos: (n) => [['DACI-PAN', 'panel', { modelo: 'X1 (ficticio)' }], ['DACI-DET', 'detector', {}], ['DACI-SIR', 'sirena', {}]].map(([c, st, d]) => [`${c}-${n}`, st, d]) },
   { codigo: 'motobomba', texto: 'Inspección de motobomba', equipos: null },
   { codigo: 'electrobomba', texto: 'Inspección de electrobomba', equipos: (n) => [[`EB-${n}-1`, null, ficha(`EB-${n}-1`)]] },
-  { codigo: 'bombas', texto: 'Inspección de bombas contra incendio', equipos: (n) => [[`BCI-${n}-E`, 'electrobomba', {}], [`BCI-${n}-M`, 'motobomba', {}]] },
-  { codigo: 'car', texto: 'Inspección de caseta de ataque rápido (CAR)', equipos: (n) => [[`CAR-${n}-1`, null, {}]] },
+  { codigo: 'car', texto: 'Inspección de caseta de ataque rápido (CAR)', equipos: (n) => [1, 2, 3].map((k) => [`CAR-${n}-${k}`, null, {}]) },
   { codigo: 'loto', texto: 'Eficacia del programa de bloqueo y etiquetado (LOTO)', equipos: null },
   { codigo: 'ipf', texto: 'Inspección de seguridad ocupacional (IPF)', equipos: null },
 ]
@@ -131,10 +130,20 @@ async function registrar({ quien, x, version, receta, activo, conFalla }) {
 const copias = {}
 for (const f of FORMATOS) {
   const c = await formatoDeEmpresa(dueno, empresa, f.codigo, `${ANIO}-01-15`)
-  const pl = (await dueno.from('plantillas').select('tipo_activo_id').eq('id', c.id).single()).data
+  // Si la base tiene una versión más nueva (p. ej. la CAR con el formato del dueño), la copia de la empresa se publica de nuevo con ella.
+  const canon = (o) => JSON.stringify(o, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x))
+  const baseV = (await dueno.from('plantillas').select('versiones:plantillas_versiones(estado, receta)').is('empresa_id', null).eq('codigo', f.codigo).single()).data.versiones.find((x) => x.estado === 'vigente')
+  if (canon(baseV.receta) !== canon(c.version.receta)) {
+    const borrador = falla(await dueno.rpc('nuevo_borrador', { p_plantilla: c.id }), 'nuevo borrador')
+    const actual = (await dueno.from('plantillas_versiones').select('codigo_formato, version_formato, fecha_aprobacion').eq('id', borrador).single()).data
+    falla(await dueno.rpc('guardar_borrador', { p_version: borrador, p_datos: { receta: baseV.receta, ...actual, logo: 'positivo' } }), 'guardar borrador')
+    falla(await dueno.rpc('publicar_version', { p_version: borrador }), 'publicar')
+    console.log(`${f.codigo}: se publicó la versión nueva del formato en la copia de la empresa.`)
+  }
+  const pl =(await dueno.from('plantillas').select('tipo_activo_id').eq('id', c.id).single()).data
   const v = (await dueno.from('plantillas_versiones').select('id, receta').eq('plantilla_id', c.id).eq('estado', 'vigente').single()).data
   copias[f.codigo] = { plantilla: c.id, tipo: pl.tipo_activo_id, version: v.id, receta: v.receta }
-  const hechas = (await dueno.from('inspecciones').select('id', { count: 'exact', head: true }).eq('empresa_id', empresa).eq('version_id', v.id)).count
+  const hechas = (await dueno.from('inspecciones').select('id', { count: 'exact', head: true }).eq('empresa_id', empresa).in('version_id', ((await dueno.from('plantillas_versiones').select('id').eq('plantilla_id', c.id)).data ?? []).map((x) => x.id))).count
   let nuevas = 0
   for (const [i, x] of sedes.entries()) {
     let equipos = []

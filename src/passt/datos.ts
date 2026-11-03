@@ -47,6 +47,7 @@ export type Semana = {
   manual: boolean
   manual_comentario: string | null
   manual_foto_ruta: string | null
+  manual_pdf_ruta: string | null
   manual_por: string | null
   manual_en: string | null
 }
@@ -107,15 +108,44 @@ export const guardarMetas = (nodo: string, metas: { texto: string; indicador: st
 export const programarSemana = (actividad: string, semana: number, programada: boolean, motivo: string | null) =>
   rpc<void>('programar_semana', { p_actividad: actividad, p_semana: semana, p_programada: programada, p_motivo: motivo })
 
-/** Marca a mano una semana como ejecutada (con foto opcional, que se sube antes al almacén privado) o quita la marca. */
-export async function marcarSemana(n: Pick<Nodo, 'id'> & { empresa_id: string }, semana: number, ejecutada: boolean, comentario: string | null, foto: Blob | null) {
+/** Tamaño máximo del PDF de una marca manual (el almacén «passt-pdf» tiene el mismo tope). */
+export const PDF_MAX_BYTES = 10485760
+
+/** Un PDF de verdad empieza con «%PDF»: así no se sube cualquier archivo renombrado. */
+export async function esPdf(archivo: Blob) {
+  return (await archivo.slice(0, 5).text()).startsWith('%PDF')
+}
+
+/**
+ * Marca a mano una semana como ejecutada (con foto y PDF opcionales, que se suben antes a su almacén privado) o quita la marca.
+ * El PDF es el registro firmado o el sustento de lo que se hizo (pedido del dueño, 03/11/2026).
+ */
+export async function marcarSemana(n: Pick<Nodo, 'id'> & { empresa_id: string }, semana: number, ejecutada: boolean, comentario: string | null, foto: Blob | null, pdf: Blob | null = null) {
   let ruta: string | null = null
+  let rutaPdf: string | null = null
   if (ejecutada && foto) {
     ruta = `${n.empresa_id}/${n.id}/passt-${semana}-${crypto.randomUUID().slice(0, 8)}.jpg`
     const { error } = await db().storage.from('evidencias').upload(ruta, foto, { contentType: 'image/jpeg', upsert: false })
     if (error) throw new Error(mensaje(error))
   }
-  await rpc<void>('marcar_semana', { p_actividad: n.id, p_semana: semana, p_ejecutada: ejecutada, p_comentario: comentario, p_foto_ruta: ruta, p_foto_bytes: foto?.size ?? null })
+  if (ejecutada && pdf) {
+    if (pdf.size > PDF_MAX_BYTES) throw new Error('El PDF pesa más de 10 MB.')
+    if (!(await esPdf(pdf))) throw new Error('El archivo no es un PDF.')
+    rutaPdf = `${n.empresa_id}/${n.id}/passt-${semana}-${crypto.randomUUID().slice(0, 8)}.pdf`
+    const { error } = await db().storage.from('passt-pdf').upload(rutaPdf, pdf, { contentType: 'application/pdf', upsert: false })
+    if (error) throw new Error(mensaje(error))
+  }
+  await rpc<void>('marcar_semana', {
+    p_actividad: n.id, p_semana: semana, p_ejecutada: ejecutada, p_comentario: comentario, p_foto_ruta: ruta, p_foto_bytes: foto?.size ?? null,
+    p_pdf_ruta: rutaPdf, p_pdf_bytes: pdf?.size ?? null,
+  })
+}
+
+/** Enlace temporal (10 minutos) para ver la foto o el PDF de una marca manual. */
+export async function enlaceMarca(ruta: string, tipo: 'foto' | 'pdf') {
+  const { data, error } = await db().storage.from(tipo === 'pdf' ? 'passt-pdf' : 'evidencias').createSignedUrl(ruta, 600)
+  if (error) throw new Error(mensaje(error))
+  return data.signedUrl
 }
 
 export const NOMBRE_TIPO: Record<Nodo['tipo'], string> = {

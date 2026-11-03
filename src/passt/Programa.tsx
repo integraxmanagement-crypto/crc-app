@@ -9,13 +9,14 @@ import { llenarExcel, partes } from '../inspecciones/excel'
 import { vistaDeExcel } from '../inspecciones/excelVista'
 import { guardarExcel, logoPng } from '../inspecciones/hoja'
 import { VistaExcel } from '../inspecciones/VistaExcel'
+import { esBombaIncendio } from '../inspecciones/BombasIncendio'
 import { prepararFoto } from '../inspecciones/imagen'
 import { semanasConMes } from '../inspecciones/periodos'
 import { ir } from '../ruta'
 import { type EstadoSemana, estadosPorActividad, mesDeHoy, promedioDe, semanaActual, textoPct, totalGeneral, totalesActividad, totalesPorMes } from './calculo'
 import {
   type DatosPrograma, HIJO_DE, NOMBRE_TIPO, type Nodo, type Responsable, aprobarPrograma, bajaNodo, formatosDeEmpresa, guardarMetas, guardarNodo,
-  areasDeEmpresa, guardarPrograma, leerPrograma, marcarSemana, moverNodo, programarSemana, responsables, trabajadores, NOMBRE_FRECUENCIA_ACTIVIDAD,
+  areasDeEmpresa, enlaceMarca, esPdf, guardarPrograma, leerPrograma, marcarSemana, PDF_MAX_BYTES, moverNodo, programarSemana, responsables, trabajadores, NOMBRE_FRECUENCIA_ACTIVIDAD,
 } from './datos'
 import { Ventana } from '../inspecciones/Ventana'
 import { excelPasst } from './excelPasst'
@@ -491,6 +492,13 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
   const puedeProgramar = puedeCambiar && permisos.admin // programar semanas o meses a mano: solo el administrador
   const puedeMarcar = (a: Nodo) => permisos.admin || (!a.plantilla_id && a.responsable_id === permisos.cuenta)
   const estado = (a: string, w: number): EstadoSemana | undefined => estados.get(a)?.get(w)
+  // «Generar registro» lleva a la pantalla del formato vinculado a la actividad, con la sección de registro abierta
+  // (motobomba y electrobomba comparten la pantalla «Inspección de bomba contra incendio»).
+  const registroHref = (a: Nodo) => {
+    if (!a.plantilla_id) return null
+    const nombreFormato = formatos.find((f) => f.id === a.plantilla_id)?.nombre ?? ''
+    return esBombaIncendio(nombreFormato) ? '/inspecciones/tipo/bombas/registro' : `/inspecciones/tipo/${a.plantilla_id}/registro`
+  }
   const hoy = hoyLocal()
   const semHoy = semanaActual(p.anio, hoy)
   const mesHoy = mesDeHoy(p.anio, hoy)
@@ -594,7 +602,7 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
                         const titulo = e?.inspecciones ? `${e.inspecciones} inspección(es)` : e?.manual ? 'Marcada a mano' : e?.vencida ? 'Vencida' : ''
                         return (
                           <td key={s.semana} className={`celda ${clase} ${esHoy(s) ? 'col-hoy' : ''}`} title={titulo}>
-                            {puedeMarcar(n) && !e?.inspecciones ? (
+                            {(puedeMarcar(n) && !e?.inspecciones) || n.plantilla_id ? (
                               <button type="button" aria-label={`${porMesSeg ? MESES_LARGOS[s.mes - 1] : `Semana ${s.semana}`}: ejecutado`} onClick={() => setMarcando({ actividad: n, semana: s.semana })}>
                                 {e?.ejecutada ? '✓' : e?.vencida ? '!' : ''}
                               </button>
@@ -640,35 +648,55 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
       )}
       {marcando && (
         <MarcaManual programa={d} actividad={marcando.actividad} semana={marcando.semana} estado={estado(marcando.actividad.id, marcando.semana)}
-          onListo={() => setMarcando(null)} hacer={hacer} />
+          puedeMarcar={puedeMarcar(marcando.actividad)} registroHref={registroHref(marcando.actividad)} onListo={() => setMarcando(null)} hacer={hacer} />
       )}
     </Seccion>
   )
 }
 
-function MarcaManual({ programa, actividad, semana, estado, onListo, hacer }: {
-  programa: DatosPrograma; actividad: Nodo; semana: number; estado: EstadoSemana | undefined; onListo: () => void; hacer: Hacer
+function MarcaManual({ programa, actividad, semana, estado, puedeMarcar, registroHref, onListo, hacer }: {
+  programa: DatosPrograma; actividad: Nodo; semana: number; estado: EstadoSemana | undefined; puedeMarcar: boolean; registroHref: string | null; onListo: () => void; hacer: Hacer
 }) {
   const [comentario, setComentario] = useState('')
   const [foto, setFoto] = useState<Blob | null>(null)
+  const [pdf, setPdf] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const guardada = programa.semanas.find((s) => s.actividad_id === actividad.id && s.semana === semana)
   const n = { id: actividad.id, empresa_id: programa.programa.empresa_id }
   // Marcar lo ejecutado no es reprogramar: no pide el motivo de cambio del programa aprobado.
   const marcar = (ejecutada: boolean) =>
-    void hacer(() => marcarSemana(n, semana, ejecutada, ejecutada ? comentario : 'Se quitó la marca', ejecutada ? foto : null), true).then((ok) => ok && onListo())
+    void hacer(() => marcarSemana(n, semana, ejecutada, ejecutada ? comentario : 'Se quitó la marca', ejecutada ? foto : null, ejecutada ? pdf : null), true).then((ok) => ok && onListo())
+  const abrir = (ruta: string, tipo: 'foto' | 'pdf') => enlaceMarca(ruta, tipo).then((u) => window.open(u, '_blank', 'noopener'), (e) => setError((e as Error).message))
+  const generar = registroHref && (
+    <button className="btn-sec" type="button" onClick={() => ir(registroHref)}>
+      <FileSpreadsheet size={18} aria-hidden="true" /> Generar registro
+    </button>
+  )
   return (
     <div className="panel-hallazgo marca-manual">
       <b>Semana {semana} · {actividad.texto}</b>
-      {estado?.manual && guardada ? (
+      {estado?.inspecciones ? (
         <>
-          <p className="nota">Marcada a mano el {fechaHora(guardada.manual_en!)}: {guardada.manual_comentario}</p>
+          <p className="nota">Esta semana ya tiene {estado.inspecciones} inspección(es) del formato vinculado: se marcó sola.</p>
+          <Aviso>{error}</Aviso>
           <div className="acciones">
-            <button className="btn-link peligro" type="button" onClick={() => marcar(false)}>Quitar la marca</button>
+            {generar}
             <button className="btn-link" type="button" onClick={onListo}>Cerrar</button>
           </div>
         </>
-      ) : (
+      ) : estado?.manual && guardada ? (
+        <>
+          <p className="nota">Marcada a mano el {fechaHora(guardada.manual_en!)}: {guardada.manual_comentario}</p>
+          <Aviso>{error}</Aviso>
+          <div className="acciones">
+            {guardada.manual_foto_ruta && <button className="btn-link" type="button" onClick={() => void abrir(guardada.manual_foto_ruta!, 'foto')}>Ver foto</button>}
+            {guardada.manual_pdf_ruta && <button className="btn-link" type="button" onClick={() => void abrir(guardada.manual_pdf_ruta!, 'pdf')}>Ver PDF</button>}
+            {generar}
+            {puedeMarcar && <button className="btn-link peligro" type="button" onClick={() => marcar(false)}>Quitar la marca</button>}
+            <button className="btn-link" type="button" onClick={onListo}>Cerrar</button>
+          </div>
+        </>
+      ) : puedeMarcar ? (
         <>
           <label className="field">
             <span>Qué se hizo</span>
@@ -685,10 +713,29 @@ function MarcaManual({ programa, actividad, semana, estado, onListo, hacer }: {
                   if (a) prepararFoto(a).then((f) => setFoto(f.blob), (err) => setError((err as Error).message))
                 }} />
             </label>
+            <label className="btn-link boton-foto">
+              {pdf ? `PDF listo: ${pdf.name.length > 28 ? `${pdf.name.slice(0, 25)}…` : pdf.name} (${Math.max(1, Math.round(pdf.size / 1024))} KB)` : 'Cargar PDF (opcional)'}
+              <input type="file" accept="application/pdf,.pdf" hidden
+                onChange={(e) => {
+                  const a = e.target.files?.[0]
+                  e.target.value = ''
+                  if (!a) return
+                  setError(null)
+                  if (a.size > PDF_MAX_BYTES) return setError('El PDF pesa más de 10 MB.')
+                  void esPdf(a).then((ok) => (ok ? setPdf(a) : setError('Ese archivo no es un PDF.')))
+                }} />
+            </label>
+            {pdf && <button className="btn-link" type="button" onClick={() => setPdf(null)}>Quitar PDF</button>}
+            {generar}
             <button className="btn" type="button" disabled={comentario.trim().length < 3} onClick={() => marcar(true)}>Marcar ejecutada</button>
             <button className="btn-link" type="button" onClick={onListo}>Cancelar</button>
           </div>
         </>
+      ) : (
+        <div className="acciones">
+          {generar}
+          <button className="btn-link" type="button" onClick={onListo}>Cerrar</button>
+        </div>
       )}
     </div>
   )

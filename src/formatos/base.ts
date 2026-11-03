@@ -61,7 +61,8 @@ export const TIPOS_ACTIVO_BASE: TipoActivoBase[] = [
       { clave: 'tipo_soporte', etiqueta: 'Tipo de soporte', tipo: 'lista', lista: 'tipos_soporte', obligatorio: false },
     ],
   },
-  { codigo: 'caseta', nombre: 'Caseta de ataque rápido (CAR)', subtipos: [], dotacion: true, campos: [] },
+  // La caseta ya no lleva dotación: los materiales del formato del dueño son columnas fijas de la inspección (Excel «Caseta de ataque rápido»).
+  { codigo: 'caseta', nombre: 'Caseta de ataque rápido (CAR)', subtipos: [], dotacion: false, campos: [] },
   // Una motobomba solo tiene código y ubicación (paquete MOTOBOMBA.md del dueño, 29/10/2026); la electrobomba tendrá su propio tipo.
   { codigo: 'motobomba', nombre: 'Motobomba (bomba diésel)', subtipos: [], dotacion: false, campos: [] },
   // Electrobomba (paquete ELECTROBOMBA.md del dueño): código, ubicación y dos fichas técnicas obligatorias, la principal y la jockey.
@@ -75,22 +76,6 @@ export const TIPOS_ACTIVO_BASE: TipoActivoBase[] = [
         ([c, e]): CampoFicha => ({ clave: `${q}_${c}`, etiqueta: `${q === 'principal' ? 'Principal' : 'Jockey'} · ${e}`, tipo: 'texto', obligatorio: true }),
       ),
     ),
-  },
-  {
-    codigo: 'bomba',
-    nombre: 'Bomba contra incendio',
-    subtipos: [
-      { codigo: 'electrobomba', nombre: 'Electrobomba' },
-      { codigo: 'motobomba', nombre: 'Motobomba (diésel)' },
-    ],
-    dotacion: false,
-    campos: [
-      { clave: 'marca', etiqueta: 'Marca', tipo: 'texto', obligatorio: false },
-      { clave: 'modelo', etiqueta: 'Modelo', tipo: 'texto', obligatorio: false },
-      { clave: 'potencia', etiqueta: 'Potencia', tipo: 'texto', obligatorio: false },
-      { clave: 'caudal', etiqueta: 'Caudal', tipo: 'texto', obligatorio: false },
-      { clave: 'presion_nominal', etiqueta: 'Presión nominal', tipo: 'texto', obligatorio: false },
-    ],
   },
   {
     codigo: 'dispositivo_alarma',
@@ -204,29 +189,34 @@ const extintores: PlantillaBase = {
 }
 
 // ───── 2. Caseta de ataque rápido (CAR) ─────
-const material = (clave: string, texto: string) => pCH(clave, texto, false, true, { cantidad: null })
+// Formato del dueño (Excel «Caseta de ataque rápido», SO.R.G.081, 02/11/2026): una fila por caseta con 3 puntos de condición y los
+// 10 materiales de la dotación como columnas fijas (la cantidad va en el nombre: «01 Mangueras…»). Como el DACI, el Excel junta todas las casetas.
+const material = (clave: string, texto: string) => pCH(clave, texto, false, true)
 const car: PlantillaBase = {
   codigo: 'car',
   nombre: 'Inspección de caseta de ataque rápido (CAR)',
-  descripcion: '1 inspección = 1 caseta. Revisa su condición y la dotación de materiales; X en un material = por reponer.',
+  descripcion: '1 inspección = 1 caseta, cada mes. 3 puntos de condición y los 10 materiales de la dotación (√ / X / N/A); X en un material = por reponer. El registro del mes (Excel o PDF) junta todas las casetas.',
   aplica_a: 'activo',
   tipo_activo: 'caseta',
   frecuencia: 'mensual',
   receta: recetaBase({
     secciones: [
-      sec('condicion', 'Condición', [
-        pCH('CAR-01', 'La señal informativa de la caseta es visible y legible', false, true),
-        pCH('CAR-02', 'El acceso a la caseta está libre', true, true),
-        pCH('CAR-03', 'La estructura, la puerta y el cierre están en buen estado', false, true),
-        pCH('CAR-04', 'El interior está limpio y ordenado', false, false),
+      sec('condicion', 'Condición de la caseta', [
+        pCH('CAR-01', 'Pictograma informativo', false, true),
+        pCH('CAR-02', 'Acceso libre (sin obstrucciones)', true, true),
+        pCH('CAR-03', 'Aspectos generales de la caseta (estructura)', false, true),
       ]),
       sec('materiales', 'Materiales (X = falta o está dañado: por reponer)', [
-        material('CAR-M01', 'Mangueras contra incendio del diámetro que use la empresa (una fila por diámetro)'),
-        material('CAR-M02', 'Boquillas o pitones regulables'),
-        material('CAR-M03', 'Bifurcación o accesorio de reducción'),
-        material('CAR-M04', 'Llaves para acoplamientos de manguera'),
-        material('CAR-M05', 'Llave de hidrante o de válvula'),
-        material('CAR-M06', 'Agente espumógeno y eductor (solo si la caseta lo requiere)'),
+        material('CAR-M01', '01 Mangueras de nitrilo Ø 2 1/2"'),
+        material('CAR-M02', '02 Mangueras de nitrilo Ø 1 1/2"'),
+        material('CAR-M03', '01 Bifurco válvulado Ø 2 1/2" a Ø 1 1/2"'),
+        material('CAR-M04', '02 Pitones tipo pistola Ø 1 1/2" regulable'),
+        material('CAR-M05', '01 Pitón tipo pistola Ø 1 1/2" regulable para espuma'),
+        material('CAR-M06', '01 Pitones tipo pistola Ø 2 1/2" regulable'),
+        material('CAR-M07', '02 Cuñetes de AR-AFFF/AFFF'),
+        material('CAR-M08', '01 Eductor de espuma de 1 1/2" regulable con tubo Pick Up'),
+        material('CAR-M09', '01 Llave Embon de manguera'),
+        material('CAR-M10', '01 Llave Hidrante'),
       ]),
     ],
     reglas: [
@@ -237,73 +227,10 @@ const car: PlantillaBase = {
   }),
 }
 
-// ───── 3. Bombas contra incendio ─────
+// ───── 3. Bombas contra incendio (ayudas de la motobomba y la electrobomba; la plantilla genérica «bombas» se retiró el 02/11/2026) ─────
 const SN: Marcas = { tipo: 'si_no', obs_si_no_cumple: true }
 // En las bombas, los puntos que generan hallazgo son los críticos: con No piden acción correctiva, responsable y plazo.
 const sn = (clave: string, texto: string, h: boolean, m: Marcas = {}) => p(clave, texto, { ...SN, hallazgo: h ? 'no_cumple' : 'nunca', critico: h, pide_accion: h, ...m })
-const lectura = (clave: string, texto: string, unidad: string, solo?: string[]) =>
-  dato(clave, texto, 'numero', { unidad, hallazgo: 'fuera_rango', min: null, max: null, solo_subtipos: solo ?? null })
-const bombas: PlantillaBase = {
-  codigo: 'bombas',
-  nombre: 'Inspección de bombas contra incendio',
-  descripcion: '1 inspección = 1 bomba. El subtipo (electrobomba o motobomba) elige los puntos. Prueba de arranque con lecturas.',
-  aplica_a: 'activo',
-  tipo_activo: 'bomba',
-  frecuencia: 'semanal',
-  receta: recetaBase({
-    secciones: [
-      sec('antes', 'A. Antes de la prueba', [
-        sn('BCI-A01', 'El acceso al cuarto de bombas está libre y señalizado', false),
-        sn('BCI-A02', 'El cuarto está limpio, ordenado y sin materiales ajenos', false),
-        sn('BCI-A03', 'No hay filtraciones, inundación ni agua acumulada', false),
-        sn('BCI-A04', 'La iluminación del cuarto funciona', false),
-        sn('BCI-A05', 'Las tuberías, soportes y uniones no tienen daños, fugas ni corrosión importante', false),
-        sn('BCI-A06', 'Las válvulas están en la posición normal de operación', false),
-        sn('BCI-A07', 'Los manómetros están en buen estado y se leen con claridad', false),
-        sn('BCI-A08', 'La bomba no tiene fugas ni piezas sueltas', false),
-        sn('BCI-A09', 'El selector de la bomba está en posición automática', false),
-        sn('BCI-A10', 'El tablero o controlador está energizado, sin alarmas ni fallas activas', false),
-        sn('BCI-E01', 'El motor, el acoplamiento y la guarda de protección están en buen estado', false, { solo_subtipos: ['electrobomba'] }),
-        sn('BCI-M01', 'El nivel de aceite del motor es el correcto', false, { solo_subtipos: ['motobomba'] }),
-        sn('BCI-M02', 'El nivel de refrigerante es el correcto y el precalentador funciona', false, { solo_subtipos: ['motobomba'] }),
-        sn('BCI-M03', 'Hay combustible suficiente y la válvula del tanque está abierta', false, { solo_subtipos: ['motobomba'] }),
-        sn('BCI-M04', 'Las baterías están cargadas y con bornes limpios', false, { solo_subtipos: ['motobomba'] }),
-        sn('BCI-M05', 'No hay fugas de combustible, aceite o refrigerante', false, { solo_subtipos: ['motobomba'] }),
-      ]),
-      sec('durante', 'B. Durante la prueba', [
-        sn('BCI-B01', 'La bomba arranca automáticamente al bajar la presión', true),
-        sn('BCI-B02', 'El arranque es normal, sin demora ni comportamiento extraño', true),
-        sn('BCI-B03', 'Funciona de forma estable durante la prueba', true),
-        sn('BCI-B04', 'No hay ruidos anormales', true),
-        sn('BCI-B05', 'No hay vibraciones anormales', true),
-        sn('BCI-B06', 'No hay fugas en bomba, tuberías, válvulas ni accesorios', true),
-        sn('BCI-B07', 'No hay sobrecalentamiento, humo ni olor anormal', true),
-        sn('BCI-B08', 'La presión de descarga está dentro de lo esperado', true),
-      ]),
-      // Lecturas: el rango mínimo/máximo lo define la empresa; fuera de rango = hallazgo. Las unidades son editables.
-      sec('lecturas', 'Lecturas de la prueba', [
-        lectura('BCI-L01', 'Presión de arranque', 'psi'),
-        lectura('BCI-L02', 'Presión de descarga', 'psi'),
-        lectura('BCI-L03', 'Tiempo de funcionamiento', 'min'),
-        lectura('BCI-L04', 'Temperatura del refrigerante', '°C', ['motobomba']),
-        lectura('BCI-L05', 'Presión de aceite', 'psi', ['motobomba']),
-        lectura('BCI-L06', 'Voltaje de baterías', 'V', ['motobomba']),
-        lectura('BCI-L07', 'Corriente', 'A', ['electrobomba']),
-      ]),
-      sec('despues', 'C. Después de la prueba', [
-        sn('BCI-C01', 'La parada de la bomba funciona', true),
-        sn('BCI-C02', 'El sistema quedó restablecido en automático', true),
-        sn('BCI-C03', 'El selector quedó en automático', true),
-        sn('BCI-C04', 'Las válvulas quedaron en su posición normal', true),
-        sn('BCI-C05', 'No quedaron fugas, alarmas ni condiciones anormales', true),
-        sn('BCI-C06', 'El cuarto quedó limpio y con acceso libre', true),
-      ]),
-    ],
-    // Por defecto sin resultado (solo Realizado/Pendiente); la empresa puede agregar «No conforme si hay un No».
-    reglas: [],
-    resultado_defecto: null,
-  }),
-}
 
 // ───── 3b. Motobomba (bomba diésel) contra incendio ─────
 // Según el paquete MOTOBOMBA.md del dueño (SO.R.G.075, 29/10/2026): 22 puntos Sí / No (16 antes y 6 durante la prueba), observación obligatoria
@@ -556,4 +483,4 @@ const ipf: PlantillaBase = {
   }),
 }
 
-export const PLANTILLAS_BASE: PlantillaBase[] = [extintores, car, bombas, motobomba, electrobomba, daci, loto, ipf]
+export const PLANTILLAS_BASE: PlantillaBase[] = [extintores, car, motobomba, electrobomba, daci, loto, ipf]

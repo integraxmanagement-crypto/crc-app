@@ -1,6 +1,6 @@
 # Pruebas del seguimiento por mes del PASST
 
-Fecha: 2026-11-02T15:43:49.201Z · Datos FICTICIOS · **12 de 12 correctas**
+Fecha: 2026-11-02T22:50:29.612Z · Datos FICTICIOS · **12 de 12 correctas**
 
 - ✅ Por semana, una inspección en otra semana del mes no cierra la casilla programada
 - ✅ Por mes, la casilla queda en la primera semana de cada mes

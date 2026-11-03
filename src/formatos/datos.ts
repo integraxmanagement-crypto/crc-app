@@ -95,9 +95,9 @@ async function leer<T>(consulta: PromiseLike<{ data: unknown; error: { message?:
 // ───── Plantillas ─────
 const CAMPOS_PLANTILLA = '*, versiones:plantillas_versiones(id, numero, estado), tipos_activo(nombre)'
 
-/** Plantillas base de CRC (empresa vacía). */
+/** Plantillas base de CRC (empresa vacía). Las retiradas (vigente = no) ya no se ofrecen. */
 export const listarPlantillasBase = () =>
-  leer<Plantilla[]>(db().from('plantillas').select(CAMPOS_PLANTILLA).is('empresa_id', null).order('nombre'))
+  leer<Plantilla[]>(db().from('plantillas').select(CAMPOS_PLANTILLA).is('empresa_id', null).eq('vigente', true).order('nombre'))
 
 export const listarPlantillas = (empresaId: string) =>
   leer<Plantilla[]>(db().from('plantillas').select(CAMPOS_PLANTILLA).eq('empresa_id', empresaId).order('nombre'))
@@ -126,7 +126,7 @@ export const publicarVersion = (versionId: string) => rpc<void>('publicar_versio
 export const descartarBorrador = (versionId: string) => rpc<void>('descartar_borrador', { p_version: versionId })
 
 // ───── Tipos de activo, listas y ubicaciones ─────
-export const listarTiposBase = () => leer<TipoActivo[]>(db().from('tipos_activo').select('*').is('empresa_id', null).order('nombre'))
+export const listarTiposBase = () => leer<TipoActivo[]>(db().from('tipos_activo').select('*').is('empresa_id', null).eq('vigente', true).order('nombre'))
 export const listarTipos = (empresaId: string) =>
   leer<TipoActivo[]>(db().from('tipos_activo').select('*').eq('empresa_id', empresaId).order('nombre'))
 export const activarTipo = (empresaId: string, tipoBase: string) =>

@@ -1,7 +1,7 @@
 # Demo de dos sedes: pasos para probar (datos ficticios, solo crc-dev)
 
 Empresa **DEMO · Constructora Dos Sedes S.A.C.** (RUC 20000000061) con **Sede Norte** y **Sede Sur**.
-Tiene los **8 formatos** ya revisados (extintores, DACI, bombas contra incendio, motobomba, electrobomba, CAR, LOTO e IPF). Cada sede tiene equipos de cada formato, 1 o 2 inspecciones por formato (varias con plan de acción) y un programa anual de SST con los 8 formatos vinculados (con la frecuencia de cada formato). Además hay un programa general.
+Tiene los **7 formatos** ya revisados (extintores, DACI, motobomba y electrobomba —la «bomba contra incendio»—, CAR, LOTO e IPF). Cada sede tiene equipos de cada formato, 1 o 2 inspecciones por formato (varias con plan de acción) y un programa anual de SST con los 7 formatos vinculados (con la frecuencia de cada formato). Además hay un programa general.
 Se crea con `node pruebas/demo-dos-sedes.mjs` y después `node pruebas/demo-dos-sedes-formatos.mjs` (ambos se pueden repetir sin duplicar).
 La empresa A (la de los datos de siempre: 153 inspecciones, 231 activos, 106 formatos) no se tocó y sigue completa.
 

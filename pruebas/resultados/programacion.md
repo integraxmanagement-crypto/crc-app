@@ -1,10 +1,10 @@
 # Pruebas de la programación (tarea 3.4-D, parte 1)
 
-Fecha: 2026-11-02T15:42:48.834Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
+Fecha: 2026-11-03T13:04:32.189Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
 
 ## 1. Frecuencias de las plantillas base
 
-- ❌ Valores iniciales aprobados: caseta, DACI e IPF mensual; extintores y bombas semanal; LOTO trimestral — {"extintores":"semanal","car":"mensual","bombas":"semanal","daci":"mensual","ipf":"mensual","motobomba":"semanal","loto":"trimestral","electrobomba":"semanal"}
+- ❌ Valores iniciales aprobados: caseta, DACI e IPF mensual; extintores y bombas semanal; LOTO trimestral — {"extintores":"semanal","car":"mensual","daci":"mensual","ipf":"mensual","motobomba":"semanal","loto":"trimestral","electrobomba":"semanal","bombas":"semanal"}
 
 ## 2. Formato propio y quién cambia la frecuencia
 
@@ -21,10 +21,10 @@ Fecha: 2026-11-02T15:42:48.834Z · Base: crc-dev · Datos FICTICIOS · **undefin
 
 ## 3. Avance por período
 
-- ❌ Se inspecciona el equipo 1 con una X: «Inoperativo» — {"id":"a27c16a0-3a52-4863-8b48-81d83d31b8d3","estado":"grabada","huella":"5424683636a0fd68fc694b2ce7cd532b08ff20fe33f1b9490f14520467928944","numero":148}
+- ❌ Se inspecciona el equipo 1 con una X: «Inoperativo» — {"id":"655d2f9a-962f-4c17-91e4-8f8deb35eef9","estado":"grabada","huella":"f8d421fe706382d0b9db5cd6a2a38917e9ab21895814273da7be1ceb20bcba00","numero":166}
 - ❌ El equipo 3 se da de baja hoy
-- ❌ Mes actual (Noviembre 2026 · 01/11/2026 al 30/11/2026): total 2 (el dado de baja no cuenta) — ["LUZ-94899-1","LUZ-94899-2"]
-- ❌ 1 de 2 inspeccionados: el «Inoperativo» cuenta como inspeccionado — [{"activo_id":"ca9c01c3-fb96-40a5-aa38-ee98cb3e56b7","codigo":"LUZ-94899-1","numero":1,"subtipo":null,"ubicacion_id":null,"unidad_id":null,"inspeccion_id":"a27c16a0-3a52-4863-8b48-81d83d31b8d3","inspeccion_numero":148,"fecha":"2026-11-02","resultado":"Inoperativo","hallazgos":1}]
+- ❌ Mes actual (Noviembre 2026 · 01/11/2026 al 30/11/2026): total 2 (el dado de baja no cuenta) — ["LUZ-94691-1","LUZ-94691-2"]
+- ❌ 1 de 2 inspeccionados: el «Inoperativo» cuenta como inspeccionado — [{"activo_id":"c70f2d50-e81e-4cbb-8587-de25eb2df906","codigo":"LUZ-94691-1","numero":1,"subtipo":null,"ubicacion_id":null,"unidad_id":null,"inspeccion_id":"655d2f9a-962f-4c17-91e4-8f8deb35eef9","inspeccion_numero":166,"fecha":"2026-11-03","resultado":"Inoperativo","hallazgos":1}]
 - ❌ Falta el equipo 2
 - ❌ El equipo inspeccionado trae su hallazgo
 - ❌ Mes anterior: los equipos todavía no existían, total 0 — []

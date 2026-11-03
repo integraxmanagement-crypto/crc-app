@@ -1,6 +1,6 @@
 # Pruebas del Programa Anual de SST (tarea 3.4-E)
 
-Fecha: 2026-11-02T15:56:39.620Z · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: 45 de 2026 · **undefined de undefined correctas**
+Fecha: 2026-11-03T12:47:19.915Z · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: 45 de 2026 · **undefined de undefined correctas**
 
 ## 1. Quién ve y quién crea
 
@@ -48,9 +48,9 @@ Fecha: 2026-11-02T15:56:39.620Z · Base: crc-dev · Datos FICTICIOS · Semana de
 ## 4. Lo ejecutado: por inspección y a mano
 
 - ❌ Sin inspecciones, nada ejecutado por inspección
-- ❌ El administrador (no el responsable) inspecciona con resultado «Inoperativo» — {"id":"4bac618f-5187-4b7b-9d5a-365afaf108d9","estado":"grabada","huella":"a54b3ffdf39690b54fda3141d52b6f20d920d77293906d387e66663d8fc49828","numero":153}
-- ❌ La semana queda ejecutada sola, con cualquier inspector y resultado — [{"actividad_id":"37925af1-3d57-47f0-9584-4c71db6c5b3d","semana":45,"inspecciones":1,"ultima":"4bac618f-5187-4b7b-9d5a-365afaf108d9"}]
-- ❌ La actividad muestra el hallazgo abierto de su inspección — [{"actividad_id":"37925af1-3d57-47f0-9584-4c71db6c5b3d","abiertos":1,"vencidos":0}]
+- ❌ El administrador (no el responsable) inspecciona con resultado «Inoperativo» — {"id":"1eeff335-5dbd-44af-a2fb-e5652871c5fa","estado":"grabada","huella":"9f874351bf11678ae6244d66596347c0b667d8ed7d2581bc61720bb99431c66c","numero":163}
+- ❌ La semana queda ejecutada sola, con cualquier inspector y resultado — [{"actividad_id":"09179a9c-1d60-4382-b566-4d17d6a4fab2","semana":45,"inspecciones":1,"ultima":"1eeff335-5dbd-44af-a2fb-e5652871c5fa"}]
+- ❌ La actividad muestra el hallazgo abierto de su inspección — [{"actividad_id":"09179a9c-1d60-4382-b566-4d17d6a4fab2","abiertos":1,"vencidos":0}]
 - ❌ El gestor no marca una actividad que no es suya — No autorizado
 - ❌ El responsable no marca a mano una actividad vinculada a un formato — No autorizado
 - ❌ Sin explicar qué se hizo no se marca
@@ -60,6 +60,31 @@ Fecha: 2026-11-02T15:56:39.620Z · Base: crc-dev · Datos FICTICIOS · Semana de
 - ❌ El administrador ve la foto
 - ❌ El administrador marca cualquier actividad
 - ❌ La marca guarda quién la hizo
+- ❌ El responsable sube un PDF a la carpeta de su actividad
+- ❌ Otra empresa no sube PDF al programa de A
+- ❌ Un usuario sin permiso de marcar no sube PDF
+- ❌ El almacén de PDF rechaza archivos que no son PDF — mime type text/plain is not supported
+- ❌ El almacén de PDF rechaza imágenes
+- ❌ Solo se aceptan los nombres passt-<semana>-<código>.pdf
+- ❌ No se sube un PDF a una actividad que no existe
+- ❌ Las fotos de evidencias siguen sin aceptar PDF
+- ❌ Un PDF subido pero todavía no marcado no se puede leer
+- ❌ La marca rechaza una ruta de PDF que no es de la actividad y la semana — El PDF no está en la carpeta de la actividad
+- ❌ La marca rechaza un PDF de más de 10 MB — El PDF no está en la carpeta de la actividad
+- ❌ La marca rechaza un PDF vacío — El PDF no está en la carpeta de la actividad
+- ❌ Otra empresa no marca con PDF — No autorizado
+- ❌ El responsable marca la semana con su PDF
+- ❌ Queda guardado el PDF de la marca
+- ❌ El administrador de la empresa abre el PDF
+- ❌ Quien lo marcó también lo abre
+- ❌ Otra empresa no abre el PDF
+- ❌ Un usuario sin permiso de ver el PASST no abre el PDF
+- ❌ Sin sesión no se abre ningún PDF
+- ❌ Otra empresa no lista los PDF de A
+- ❌ Nadie borra un PDF directamente (queda como evidencia)
+- ❌ Al quitar la marca se suelta el PDF de la semana
+- ❌ Marcar sin PDF sigue funcionando como antes
+- ❌ Sin sesión no se puede marcar
 - ❌ Si se anula la inspección, la semana vuelve a quedar pendiente (se calcula al consultar)
 
 ## 5. Baja y duplicar

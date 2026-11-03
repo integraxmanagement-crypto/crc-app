@@ -61,8 +61,8 @@ seccion('1. Sin sesión no se ve nada')
 seccion('2. Contenido base de CRC: lo ven todos, nadie de una empresa lo cambia')
 {
   const u = s.USUARIO_A2
-  const pl = await u.from('plantillas').select('codigo').is('empresa_id', null)
-  comprobar('Usuario A2 ve las 8 plantillas base', pl.data?.length === 8, `${pl.data?.length}`)
+  const pl = await u.from('plantillas').select('codigo, vigente').is('empresa_id', null)
+  comprobar('Usuario A2 ve las 7 plantillas base vigentes (la genérica de bombas está retirada)', pl.data?.filter((x) => x.vigente).length === 7 && !pl.data?.some((x) => x.vigente && x.codigo === 'bombas'), `${pl.data?.filter((x) => x.vigente).length}`)
   const vs = await s.ADMIN_B.from('plantillas_versiones').select('receta, huella, estado, plantillas(codigo)').is('empresa_id', null)
   const iguales = PLANTILLAS_BASE.every((p) => {
     const v = vs.data.find((x) => x.plantillas.codigo === p.codigo && x.estado === 'vigente')

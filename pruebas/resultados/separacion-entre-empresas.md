@@ -1,6 +1,6 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 2/11/2026, 11:28:47 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 2/11/2026, 5:51:00 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 105 de 105 pruebas pasaron.**
 
@@ -87,7 +87,7 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve A y B (y las demás empresas de prueba) | 4 empresas |
+| ✅ Pasa | El dueño ve A y B (y las demás empresas de prueba) | 5 empresas |
 
 ## 8. Ampliación 3.2: sedes, contactos y logos tampoco cruzan entre empresas
 

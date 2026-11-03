@@ -223,9 +223,9 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     if (ruta[1] === 'avance' && esEquipoSso(perfil)) return <Avance empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
     if (ruta[1] === 'nueva' && ruta[2] && esEquipoSso(perfil))
       return <Inspecciones key={ruta.join('/')} empresaId={perfil.empresaId} cuenta={perfil.id} online={online} preset={{ plantilla: ruta[2], unidad: ruta[3] && ruta[3] !== '-' ? ruta[3] : null, activo: ruta[4] ?? null }} />
-    if (ruta[1] === 'tipo' && ruta[2] === 'bombas' && esEquipoSso(perfil)) return <BombasIncendio empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
+    if (ruta[1] === 'tipo' && ruta[2] === 'bombas' && esEquipoSso(perfil)) return <BombasIncendio key={ruta[3] ?? ''} abrir={ruta[3] === 'registro' ? 'registro' : undefined} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
     if (ruta[1] === 'tipo' && ruta[2] && esEquipoSso(perfil))
-      return <TipoInspeccion key={ruta[2]} id={ruta[2]} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
+      return <TipoInspeccion key={`${ruta[2]}${ruta[3] ?? ''}`} abrir={ruta[3] === 'registro' ? 'registro' : undefined} id={ruta[2]} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
     // El detalle también lo abre cada firmante (la base de datos decide qué puede ver).
     if (ruta[1])
       return <DetalleInspeccion key={`${ruta[1]}${ruta[2] ?? ''}`} auto={ruta[2] === 'excel' || ruta[2] === 'pdf' ? ruta[2] : undefined} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={esAdminDeEmpresa(perfil)} />
@@ -327,4 +327,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.9.1 · Bombas contra incendio, DACI y extintores con su registro'
+const VERSION = 'Versión 0.9.3 · Sedes, caseta de ataque rápido (CAR) y PDF en el programa anual'

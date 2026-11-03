@@ -1,6 +1,6 @@
 # Separación entre sedes de una misma empresa (etapa 1 del punto 2)
 
-Fecha: 2026-11-02 · empresa D ficticia (RUC 20000000052).
+Fecha: 2026-11-03 · empresa D ficticia (RUC 20000000052).
 
 ## 1. Activos y ubicaciones: cada sede ve y toca solo lo suyo
 
@@ -14,16 +14,16 @@ Fecha: 2026-11-02 · empresa D ficticia (RUC 20000000052).
 - ✅ Admin de la sede 1 NO edita un activo de la sede 2 — No autorizado
 - ✅ Admin de la sede 1 NO pasa su activo a la sede 2 — No autorizado
 - ✅ Admin de la sede 1 NO da de baja un activo de la sede 2 — No autorizado
-- ✅ ADMSEDE_C1: de los activos ve solo los de sus sedes — 13 activo(s)
-- ✅ ADMSEDE_C1: de las ubicaciones ve solo las de sus sedes — 14 ubicación(es)
-- ✅ USUARIO_C1: de los activos ve solo los de sus sedes — 13 activo(s)
-- ✅ USUARIO_C1: de las ubicaciones ve solo las de sus sedes — 14 ubicación(es)
-- ✅ GESTOR_C2: de los activos ve solo los de sus sedes — 13 activo(s)
-- ✅ GESTOR_C2: de las ubicaciones ve solo las de sus sedes — 13 ubicación(es)
-- ✅ GESTOR_C12: de los activos ve solo los de sus sedes — 26 activo(s)
-- ✅ GESTOR_C12: de las ubicaciones ve solo las de sus sedes — 27 ubicación(es)
-- ✅ ADMIN_C: de los activos ve solo los de sus sedes — 26 activo(s)
-- ✅ ADMIN_C: de las ubicaciones ve solo las de sus sedes — 27 ubicación(es)
+- ✅ ADMSEDE_C1: de los activos ve solo los de sus sedes — 15 activo(s)
+- ✅ ADMSEDE_C1: de las ubicaciones ve solo las de sus sedes — 16 ubicación(es)
+- ✅ USUARIO_C1: de los activos ve solo los de sus sedes — 15 activo(s)
+- ✅ USUARIO_C1: de las ubicaciones ve solo las de sus sedes — 16 ubicación(es)
+- ✅ GESTOR_C2: de los activos ve solo los de sus sedes — 15 activo(s)
+- ✅ GESTOR_C2: de las ubicaciones ve solo las de sus sedes — 15 ubicación(es)
+- ✅ GESTOR_C12: de los activos ve solo los de sus sedes — 30 activo(s)
+- ✅ GESTOR_C12: de las ubicaciones ve solo las de sus sedes — 31 ubicación(es)
+- ✅ ADMIN_C: de los activos ve solo los de sus sedes — 30 activo(s)
+- ✅ ADMIN_C: de las ubicaciones ve solo las de sus sedes — 31 ubicación(es)
 
 ## 2. Inspecciones, planes de acción, fotos y firmas
 
@@ -34,11 +34,11 @@ Fecha: 2026-11-02 · empresa D ficticia (RUC 20000000052).
 - ✅ Gestor con las dos sedes registra en la sede 2 — 200 
 - ✅ Cada inspección quedó en la sede correcta
 - ✅ Ninguna inspección rechazada quedó guardada
-- ✅ ADMSEDE_C1: de las inspecciones ve solo las de sus sedes — 19
-- ✅ USUARIO_C1: solo ve las inspecciones que firma — 39
-- ✅ GESTOR_C2: de las inspecciones ve solo las de sus sedes — 20
-- ✅ GESTOR_C12: de las inspecciones ve solo las de sus sedes — 39
-- ✅ ADMIN_C: de las inspecciones ve solo las de sus sedes — 39
+- ✅ ADMSEDE_C1: de las inspecciones ve solo las de sus sedes — 23
+- ✅ USUARIO_C1: solo ve las inspecciones que firma — 47
+- ✅ GESTOR_C2: de las inspecciones ve solo las de sus sedes — 24
+- ✅ GESTOR_C12: de las inspecciones ve solo las de sus sedes — 47
+- ✅ ADMIN_C: de las inspecciones ve solo las de sus sedes — 47
 - ✅ Admin de la sede 1 NO anula una inspección de la sede 2 — Ya no tienes acceso a esa sede: la inspección no se puede recibir
 - ✅ El plan de acción nació con la sede de la inspección (sede 2)
 - ✅ Admin de la sede 1 NO ve los planes de acción de la sede 2
@@ -70,9 +70,9 @@ Fecha: 2026-11-02 · empresa D ficticia (RUC 20000000052).
 - ✅ personas_de_mi_empresa: admin de la sede 1 no recibe al gestor de la sede 2
 - ✅ personas_de_mi_empresa: el admin general recibe a todos
 - ✅ passt_responsables: admin de la sede 1 no ve al gestor de la sede 2 y sí al gestor de las dos sedes
-- ✅ passt_trabajadores: la sede 1 cuenta menos personas que la empresa entera — sede 1: 27; empresa: 30
-- ✅ numero_trabajadores: igual que passt_trabajadores para el admin de la sede 1 — 27
-- ✅ uso_almacenamiento: la sede 1 usa menos que la empresa entera — sede 1: 2660; empresa: 5460
+- ✅ passt_trabajadores: la sede 1 cuenta menos personas que la empresa entera — sede 1: 31; empresa: 34
+- ✅ numero_trabajadores: igual que passt_trabajadores para el admin de la sede 1 — 31
+- ✅ uso_almacenamiento: la sede 1 usa menos que la empresa entera — sede 1: 3220; empresa: 6580
 - ✅ uso_almacenamiento: nadie lo pide para otra empresa
 
 ## 4. Programa anual de SST: general, de sede y aprobación
@@ -90,6 +90,15 @@ Fecha: 2026-11-02 · empresa D ficticia (RUC 20000000052).
 - ✅ Admin de la sede 1 NO edita el programa general
 - ✅ El admin general sí edita el programa general
 - ✅ Gestor con dos sedes edita el programa de la sede 1
+- ✅ Admin de la sede 1 NO sube un PDF a una actividad del programa de la sede 2
+- ✅ Admin de la sede 2 sí sube el PDF de su programa
+- ✅ El responsable de la sede 2 sube el PDF de su actividad
+- ✅ Admin de la sede 1 NO marca la actividad de la sede 2
+- ✅ El responsable marca su actividad con el PDF
+- ✅ Admin de la sede 2 abre el PDF
+- ✅ Admin general abre el PDF
+- ✅ Admin de la sede 1 NO abre el PDF de la sede 2
+- ✅ Gestor de la sede 1 y 2 sí lo abre (tiene las dos sedes)
 - ✅ Admin de la sede 1 ve su programa y el general, y NO el de la sede 2
 - ✅ Gestor de la sede 2 ve el suyo y el general, y NO el de la sede 1
 - ✅ El admin general ve los tres
@@ -192,4 +201,4 @@ Fecha: 2026-11-02 · empresa D ficticia (RUC 20000000052).
 - ✅ Se encontraron las tablas de public en las migraciones — 41 tablas
 - ✅ Ninguna tabla de public deja escribir directo a anon ni a authenticated
 
-**163 de 163 pruebas pasaron.**
+**172 de 172 pruebas pasaron.**

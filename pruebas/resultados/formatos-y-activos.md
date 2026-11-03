@@ -20,7 +20,7 @@ Fecha: 2026-11-02 · Resultado: **103 de 103** · Cuentas y datos ficticios de c
 
 | Prueba | Resultado |
 |---|---|
-| Usuario A2 ve las 8 plantillas base | ✅ |
+| Usuario A2 ve las 7 plantillas base vigentes (la genérica de bombas está retirada) | ✅ |
 | Las 6 recetas guardadas son idénticas al anexo (src/formatos/base.ts) y están publicadas con huella | ✅ |
 | Hay 6 tipos de activo base | ✅ |
 | Admin A no puede editar una versión base | ✅ |

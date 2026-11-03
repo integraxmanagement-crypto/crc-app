@@ -19,14 +19,15 @@ import { Ventana } from './Ventana'
  * Las inspecciones de un tipo (un formato), ordenadas por tipo desde la pantalla de Inspecciones (pedido del dueño, 29/10/2026).
  * Extintores tiene su propia pantalla (cumplimiento, no operativos, catastro…); los demás muestran sus inspecciones y «Nueva inspección».
  */
-export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id: string; empresaId: string; cuenta: string; gestiona: boolean; online: boolean }) {
+export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir }: { id: string; empresaId: string; cuenta: string; gestiona: boolean; online: boolean; abrir?: 'registro' }) {
   const [copia, setCopia] = useState<CopiaLocal | null | undefined>(undefined)
   const [recibidas, setRecibidas] = useState<ResumenInspeccion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [porMes, setPorMes] = useState(false)
   const [cargando, setCargando] = useState(false)
   const [cargaVersion, setCargaVersion] = useState(0) // sube al cargar equipos: la pantalla de extintores vuelve a leer el catastro
-  const [pestana, setPestana] = useState<'resultados' | 'registros' | 'hallazgos'>('resultados')
+  // Con «abrir» (desde «Generar registro» del programa anual) se abre directo la sección de registros del formato.
+  const [pestana, setPestana] = useState<'resultados' | 'registros' | 'hallazgos'>(abrir === 'registro' ? 'registros' : 'resultados')
   const { borradores: todosB, cola: todaCola } = useCampo(cuenta)
   const borradores = todosB.filter((b) => b.plantilla_id === id)
   const cola = todaCola.filter((c) => c.borrador.plantilla_id === id)
@@ -48,6 +49,8 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
   const nombreTipo = (copia?.tipos.find((t) => t.id === formato?.plantilla.tipo_activo_id)?.nombre ?? '').toLowerCase()
   const cargaMasiva = formato?.plantilla.aplica_a === 'activo' && (nombreTipo.startsWith('extintor') || nombreTipo.includes('alarma'))
   const esDaci = Boolean(formato?.plantilla.aplica_a === 'activo' && nombreTipo.includes('alarma'))
+  // La caseta de ataque rápido usa la misma pantalla que el DACI (pedido del dueño, 02/11/2026).
+  const esCaseta = Boolean(formato?.plantilla.aplica_a === 'activo' && nombreTipo.startsWith('caseta'))
   // Motobomba / electrobomba (bomba contra incendio): misma pantalla que extintores y DACI.
   const esBomba = Boolean(formato && esBombaIncendio(formato.plantilla.nombre))
   const esIpf = Boolean(formato?.version.receta.secciones.some((s) => s.puntos.some((p) => p.clave.startsWith('IPF-'))))
@@ -55,7 +58,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
   const esExtintor = Boolean(formato && copia?.tipos.find((t) => t.id === formato.plantilla.tipo_activo_id)?.nombre.toLowerCase().startsWith('extintor'))
 
   // Motobomba y electrobomba comparten una sola pantalla, «Inspección de bomba contra incendio».
-  if (esBomba) return <BombasIncendio empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} />
+  if (esBomba) return <BombasIncendio abrir={abrir} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} />
 
   return (
     <div className="detalle">
@@ -74,7 +77,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
               <p>Se inspecciona de forma {NOMBRE_FRECUENCIA[formato.plantilla.frecuencia].toLowerCase()}.</p>
             </div>
             <span className="acciones">
-              {!esExtintor && !esDaci && !esLoto && !esIpf && (
+              {!esExtintor && !esDaci && !esCaseta && !esLoto && !esIpf && (
                 <button className="btn-sec" type="button" aria-pressed={porMes} onClick={() => setPorMes((x) => !x)}>
                   <CalendarDays size={18} aria-hidden="true" /> Ver por mes
                 </button>
@@ -105,7 +108,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
                   <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
                 </button>
               </div>
-              {pestana === 'resultados' ? (
+              {pestana !== 'hallazgos' ? (
                 <ResultadosEficacia nombre={formato.plantilla.nombre} copia={copia} online={online} />
               ) : (
                 <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />
@@ -133,11 +136,11 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
               {pestana === 'hallazgos' && <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />}
             </>
           )}
-          {esExtintor || esDaci ? (
-            <Extintores key={cargaVersion} variante={esExtintor ? 'extintor' : 'daci'} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formato={formato} />
+          {esExtintor || esDaci || esCaseta ? (
+            <Extintores key={cargaVersion} variante={esExtintor ? 'extintor' : esCaseta ? 'caseta' : 'daci'} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formato={formato} vistaInicial={abrir === 'registro' ? 'registro' : undefined} />
           ) : null}
           {/* En la eficacia del LOTO no se muestra «En este equipo» (pedido del dueño, 29/10/2026). */}
-          {!esLoto && !esDaci && (borradores.length > 0 || cola.length > 0) && (
+          {!esLoto && !esDaci && !esCaseta && (borradores.length > 0 || cola.length > 0) && (
             <Seccion titulo="En este equipo">
               <ul className="lista">
                 {borradores.map((b) => <FilaBorrador key={b.id} b={b} />)}
@@ -145,7 +148,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online }: { id
               </ul>
             </Seccion>
           )}
-          {!esExtintor && !esDaci && !esLoto && !esIpf && (
+          {!esExtintor && !esDaci && !esCaseta && !esLoto && !esIpf && (
             <Seccion titulo="Inspecciones recibidas">
               <ListaRecibidas recibidas={recibidas?.filter((i) => i.plantilla_id === id) ?? null} error={error} online={online} />
             </Seccion>

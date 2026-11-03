@@ -28,7 +28,7 @@ const NOMBRES: Record<Clave, string> = { electrobomba: 'Electrobomba', motobomba
  * las tarjetas de cumplimiento general y de hallazgos, y los botones catastro (separado por tipo), realizar inspección, generar registro
  * y ver hallazgos (acumulado de las dos). La frecuencia semanal es la del programa anual de SST.
  */
-export function BombasIncendio({ empresaId, cuenta, gestiona, online }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean }) {
+export function BombasIncendio({ empresaId, cuenta, gestiona, online, abrir }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean; abrir?: 'registro' }) {
   const [copia, setCopia] = useState<CopiaLocal | null | undefined>(undefined)
   useEffect(() => {
     void leerCopia(cuenta, empresaId).then((c) => setCopia(c ?? null), () => setCopia(null))
@@ -56,19 +56,19 @@ export function BombasIncendio({ empresaId, cuenta, gestiona, online }: { empres
       ) : !online ? (
         <p className="nota">La pantalla de bombas necesita señal. Sin señal, empieza una inspección desde «Nueva inspección» en Inspecciones.</p>
       ) : (
-        <Panel empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formatos={formatos} />
+        <Panel abrir={abrir} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formatos={formatos} />
       )}
     </div>
   )
 }
 
-function Panel({ empresaId, cuenta, gestiona, online, copia, formatos }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean; copia: CopiaLocal; formatos: { clave: Clave; formato: FormatoLocal }[] }) {
+function Panel({ abrir, empresaId, cuenta, gestiona, online, copia, formatos }: { abrir?: 'registro'; empresaId: string; cuenta: string; gestiona: boolean; online: boolean; copia: CopiaLocal; formatos: { clave: Clave; formato: FormatoLocal }[] }) {
   const hoy = hoyLocal()
   const semanas = useMemo(() => periodosHasta(hoy, 'semanal', 13), [hoy])
   const [semana, setSemana] = useState(semanas[0]?.clave ?? '')
   const periodo = semanas.find((s) => s.clave === semana) ?? semanas[0]
   const [sede, setSede] = useState(copia.sedes[0]?.id ?? '')
-  const [vista, setVista] = useState<Vista>('ninguna')
+  const [vista, setVista] = useState<Vista>(abrir === 'registro' ? 'registro' : 'ninguna')
   const [grupos, setGrupos] = useState<Grupo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState<'elegir' | Clave | null>(null)

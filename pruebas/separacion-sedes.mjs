@@ -296,6 +296,29 @@ comprobar('Admin de la sede 1 NO edita el programa general', SIN_PERMISO(await n
 comprobar('El admin general sí edita el programa general', !(await nodoS('ADMIN_C', pG.data)).error)
 comprobar('Gestor con dos sedes edita el programa de la sede 1', !(await nodoS('GESTOR_C12', pS1.data)).error)
 
+// PDF al marcar una semana del programa (03/11/2026): sigue las mismas sedes que la foto.
+{
+  const og2 = (await dueno.from('passt_nodos').select('id').eq('programa_id', pS2.data).eq('tipo', 'objetivo_general').single()).data.id
+  const oe = (await s.GESTOR_C2.rpc('guardar_nodo', { p_programa: pS2.data, p_id: null, p_datos: { tipo: 'objetivo_especifico', padre_id: og2, texto: 'Objetivo del PDF (ficticio)' } })).data
+  const se = (await s.GESTOR_C2.rpc('guardar_nodo', { p_programa: pS2.data, p_id: null, p_datos: { tipo: 'seccion', padre_id: oe, texto: 'Actividades (ficticias)' } })).data
+  const ac = (await s.GESTOR_C2.rpc('guardar_nodo', { p_programa: pS2.data, p_id: null, p_datos: { tipo: 'actividad', padre_id: se, texto: 'Actividad con PDF (ficticia)', responsable_id: ID.GESTOR_C2 } })).data
+  const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n')
+  const ruta = `${empresa}/${ac}/passt-10-${randomUUID().slice(0, 8)}.pdf`
+  const subir = (n) => s[n].storage.from('passt-pdf').upload(`${empresa}/${ac}/passt-10-${randomUUID().slice(0, 8)}.pdf`, new Blob([PDF], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+  comprobar('Admin de la sede 1 NO sube un PDF a una actividad del programa de la sede 2', Boolean((await subir('ADMSEDE_C1')).error))
+  comprobar('Admin de la sede 2 sí sube el PDF de su programa', !(await subir('ADMSEDE_C2')).error)
+  const up = await s.GESTOR_C2.storage.from('passt-pdf').upload(ruta, new Blob([PDF], { type: 'application/pdf' }), { contentType: 'application/pdf' })
+  comprobar('El responsable de la sede 2 sube el PDF de su actividad', !up.error, up.error?.message)
+  const marca = (n) => s[n].rpc('marcar_semana', { p_actividad: ac, p_semana: 10, p_ejecutada: true, p_comentario: 'Hecho con PDF (ficticio)', p_foto_ruta: null, p_foto_bytes: null, p_pdf_ruta: ruta, p_pdf_bytes: PDF.length })
+  comprobar('Admin de la sede 1 NO marca la actividad de la sede 2', SIN_PERMISO(await marca('ADMSEDE_C1')))
+  const ok = await marca('GESTOR_C2')
+  comprobar('El responsable marca su actividad con el PDF', !ok.error, ok.error?.message)
+  comprobar('Admin de la sede 2 abre el PDF', !(await s.ADMSEDE_C2.storage.from('passt-pdf').download(ruta)).error)
+  comprobar('Admin general abre el PDF', !(await s.ADMIN_C.storage.from('passt-pdf').download(ruta)).error)
+  comprobar('Admin de la sede 1 NO abre el PDF de la sede 2', Boolean((await s.ADMSEDE_C1.storage.from('passt-pdf').download(ruta)).error))
+  comprobar('Gestor de la sede 1 y 2 sí lo abre (tiene las dos sedes)', !(await s.GESTOR_C12.storage.from('passt-pdf').download(ruta)).error)
+}
+
 const verProg = async (n) => (await s[n].from('passt_programas').select('id, sede_id').eq('empresa_id', empresa).eq('anio', ANIO)).data ?? []
 const pv1 = await verProg('ADMSEDE_C1')
 comprobar('Admin de la sede 1 ve su programa y el general, y NO el de la sede 2', pv1.some((p) => p.id === pS1.data) && pv1.some((p) => p.id === pG.data) && !pv1.some((p) => p.id === pS2.data))

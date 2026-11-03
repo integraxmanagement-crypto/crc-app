@@ -12,6 +12,7 @@ const EXCEL = {
   ipf: 'IPF_con_marcas_CRC.xlsx',
   loto: 'LOTO_con_marcas_CRC.xlsx',
   motobomba: 'MOTOBOMBA_con_marcas_CRC.xlsx',
+  car: 'CAR_con_marcas_CRC.xlsx',
 }
 const { c, error } = await ingresarComo('DEMO_GENERAL')
 if (error) throw new Error(`DEMO_GENERAL no pudo ingresar: ${error.message}`)
