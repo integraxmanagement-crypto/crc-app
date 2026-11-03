@@ -27,8 +27,10 @@ comprobar('Antes del cese, USUARIO_A ve su empresa', antes.data?.length === 1)
 // Intentos de cese no permitidos.
 const porB = await adminB.rpc('cesar_vinculo', { p_vinculo: vinculo.id, p_fecha_cese: '2026-10-22', p_motivo: 'Prueba indebida' })
 comprobar('El administrador B NO puede cesar a alguien de A', porB.error?.message === 'No autorizado', porB.error?.message)
-const porGestor = await gestorA.rpc('cesar_vinculo', { p_vinculo: vinculo.id, p_fecha_cese: '2026-10-22', p_motivo: 'Prueba indebida' })
-comprobar('El gestor A NO puede cesar cuentas', porGestor.error?.message === 'No autorizado', porGestor.error?.message)
+// Desde la etapa 2 el gestor puede cesar usuarios de sus sedes (se prueba en facultades.mjs); aquí, que no cesa a un administrador.
+const { data: admins } = await adminA.from('vinculos').select('id, personas!inner(numero_documento)').eq('rol', 'admin_empresa').eq('estado', 'activo').limit(1)
+const porGestor = await gestorA.rpc('cesar_vinculo', { p_vinculo: admins?.[0]?.id, p_fecha_cese: '2026-10-22', p_motivo: 'Prueba indebida' })
+comprobar('El gestor A NO puede cesar a un administrador', porGestor.error?.message === 'No autorizado', porGestor.error?.message)
 const sinMotivo = await adminA.rpc('cesar_vinculo', { p_vinculo: vinculo.id, p_fecha_cese: '2026-10-22', p_motivo: '' })
 comprobar('El cese exige un motivo', Boolean(sinMotivo.error), sinMotivo.error?.message)
 

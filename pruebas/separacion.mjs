@@ -61,7 +61,9 @@ seccion('2. Dentro de la empresa A, cada rol ve solo lo que le toca')
   comprobar('Gestor A: la lista trae solo nombres, puesto y área (sin documento)', columnas === 'apellidos_nombres, area, persona_id, puesto', columnas)
   comprobar('Gestor A: la lista no incluye a nadie de B', !gl.data?.some((p) => /ADMIN B|GESTOR B|USUARIO B/.test(p.apellidos_nombres)))
   const gp = await g.from('personas').select('numero_documento')
-  comprobar('Gestor A: no puede leer los documentos de otras personas', gp.data?.length === 1)
+  // Desde la etapa 2 el gestor maneja el personal de sus sedes, así que lee las fichas de las personas de A (nunca las de B).
+  const gdocs = gp.data?.map((p) => p.numero_documento) ?? []
+  comprobar('Gestor A: lee las fichas de las personas de A y ninguna de B', gdocs.length >= 3 && !gdocs.some((d) => ['30000001', '30000002', 'CE300003'].includes(d)), `${gdocs.length} fichas`)
 
   const a = sesion.ADMIN_A
   const ap = await a.from('personas').select('numero_documento')
@@ -79,8 +81,10 @@ seccion('3. Un administrador de A no puede crear ni leer cuentas de B')
   comprobar('Admin A NO puede crear un usuario en la empresa B', enB.estado === 403, enB.datos?.error)
   const otroAdmin = await llamarFuncion(a, 'crear-cuenta', { ...datos, empresa_id: ID[RUC_A], rol: 'admin_empresa', numero_documento: '99000002' })
   comprobar('Admin A NO puede crear otro administrador (solo el dueño)', otroAdmin.estado === 403, otroAdmin.datos?.error)
-  const gestorCrea = await llamarFuncion(sesion.GESTOR_A, 'crear-cuenta', { ...datos, empresa_id: ID[RUC_A], rol: 'usuario', numero_documento: '99000003' })
-  comprobar('Gestor A NO puede crear cuentas', gestorCrea.estado === 403, gestorCrea.datos?.error)
+  const gestorCrea = await llamarFuncion(sesion.GESTOR_A, 'crear-cuenta', { ...datos, empresa_id: ID[RUC_A], rol: 'gestor', numero_documento: '99000003' })
+  comprobar('Gestor A NO puede crear otro gestor (solo usuarios y usuarios gestores de sus sedes)', gestorCrea.estado === 403, gestorCrea.datos?.error)
+  const gestorEnB = await llamarFuncion(sesion.GESTOR_A, 'crear-cuenta', { ...datos, empresa_id: ID[RUC_B], rol: 'usuario', numero_documento: '99000005' })
+  comprobar('Gestor A NO puede crear cuentas en la empresa B', gestorEnB.estado === 403, gestorEnB.datos?.error)
   const usuarioCrea = await llamarFuncion(sesion.USUARIO_A2, 'crear-cuenta', { ...datos, empresa_id: ID[RUC_A], rol: 'usuario', numero_documento: '99000004' })
   comprobar('Usuario A2 NO puede crear cuentas', usuarioCrea.estado === 403, usuarioCrea.datos?.error)
   const sinSesion = await llamarFuncion(cliente(), 'crear-cuenta', { ...datos, empresa_id: ID[RUC_A], rol: 'usuario', numero_documento: '99000005' })
@@ -229,8 +233,9 @@ seccion('10. Ampliación 3.6: carga desde Excel, registro de cargas y «por revi
   const sigue = await sesion.ADMIN_A.rpc('confirmar_sigue', { p_vinculo: vinculoDe('30000002').id })
   comprobar('ADMIN_A no puede resolver «por revisar» de una persona de B', SIN_PERMISO(sigue), sigue.error?.message)
 
-  const fila = { fila: 2, tipo: 'DNI', numero: '75000001', nombres: 'Separación, Prueba', fecha: '2024-01-02', puesto: 'Operario', gerencia: 'General (ficticia)', area: 'Obras', subarea: '', rol: 'usuario' }
-  for (const [n, empresa, esperado] of [['ADMIN_A', RUC_B, 403], ['GESTOR_A', RUC_A, 403], ['USUARIO_A2', RUC_A, 403], ['GESTOR_B', RUC_B, 403]]) {
+  const DOC_CARGA = String(75000001 + Math.floor(Math.random() * 900000))
+  const fila = { fila: 2, tipo: 'DNI', numero: DOC_CARGA, nombres: 'Separación, Prueba', fecha: '2024-01-02', puesto: 'Operario', gerencia: 'General (ficticia)', area: 'Obras', subarea: '', rol: 'usuario' }
+  for (const [n, empresa, esperado] of [['ADMIN_A', RUC_B, 403], ['GESTOR_A', RUC_B, 403], ['USUARIO_A2', RUC_A, 403], ['GESTOR_B', RUC_A, 403]]) {
     for (const modo of ['revisar', 'grabar']) {
       const r = await llamarFuncion(sesion[n], 'carga-personal', { modo, empresa_id: ID[empresa], filas: [fila] })
       comprobar(`${n}: no puede ${modo} una carga en ${empresa === RUC_A ? 'A' : 'B'}`, r.estado === esperado, `${r.estado}`)
@@ -240,7 +245,7 @@ seccion('10. Ampliación 3.6: carga desde Excel, registro de cargas y «por revi
   comprobar('Sin iniciar sesión no se puede usar la carga', anon.estado === 401, `${anon.estado}`)
   const directo = await sesion.ADMIN_A.rpc('grabar_carga', { p_empresa: ID[RUC_B], p_por: vinculoDe('20000001')?.persona_id, p_datos: {} })
   comprobar('ADMIN_A no puede llamar al grabado de la base de datos directamente', SIN_PERMISO(directo), directo.error?.message)
-  const { count } = await dueno.from('personas').select('id', { count: 'exact', head: true }).eq('numero_documento', '75000001')
+  const { count } = await dueno.from('personas').select('id', { count: 'exact', head: true }).eq('numero_documento', DOC_CARGA)
   comprobar('Ninguno de esos intentos creó a la persona', count === 0, `${count}`)
 }
 

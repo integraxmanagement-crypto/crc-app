@@ -244,7 +244,7 @@ const hasta = new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10)
 const ap2 = await s.ADMSEDE_C1.rpc('avance_periodo', { p_plantilla: plantilla, p_sede: S2, p_desde: HOY, p_hasta: hasta })
 comprobar('avance_periodo: admin de la sede 1 NO pide la sede 2', SIN_PERMISO(ap2), ap2.error?.message)
 const ap1 = await s.ADMSEDE_C1.rpc('avance_periodo', { p_plantilla: plantilla, p_sede: S1, p_desde: HOY, p_hasta: hasta })
-comprobar('avance_periodo: admin de la sede 1 sí pide su sede', !ap1.error && ap1.data.every((f) => f.codigo.startsWith('MB-S1')), ap1.error?.message)
+comprobar('avance_periodo: admin de la sede 1 sí pide su sede', !ap1.error && ap1.data.every((f) => !f.codigo.includes('-S2-')), ap1.error?.message)
 const apG = await s.ADMIN_C.rpc('avance_periodo', { p_plantilla: plantilla, p_sede: S2, p_desde: HOY, p_hasta: hasta })
 comprobar('avance_periodo: el admin general pide cualquier sede', !apG.error && apG.data.length >= 1, apG.error?.message)
 
@@ -439,8 +439,8 @@ comprobar('Admin de la sede 1 NO cambia su rol escribiendo la tabla', Boolean(rp
 comprobar('El rol admin_sede no tiene permisos de toda la empresa',
   !(await dueno.from('roles_permisos').select('permiso').eq('rol', 'admin_sede').in('permiso', ['empresa.editar_logos', 'empresa.editar_contactos', 'plantillas.publicar', 'listas.editar'])).data?.length)
 const asignables = (await dueno.from('roles_asignables').select('rol, rol_asignable').in('rol', ['admin_sede', 'admin_empresa'])).data ?? []
-comprobar('Los roles asignables: el admin de sede solo asigna gestor y usuario; nadie asigna administradores',
-  asignables.filter((x) => x.rol === 'admin_sede').map((x) => x.rol_asignable).sort().join() === 'gestor,usuario' && !asignables.some((x) => /^admin_/.test(x.rol_asignable)))
+comprobar('Los roles asignables: el admin de sede solo asigna gestor, usuario gestor y usuario; nadie asigna administradores',
+  asignables.filter((x) => x.rol === 'admin_sede').map((x) => x.rol_asignable).sort().join() === 'gestor,usuario,usuario_gestor' && !asignables.some((x) => /^admin_/.test(x.rol_asignable)))
 
 // ───────────────────────────────────────────────
 seccion('6. Quitar una sede con inspecciones guardadas sin señal: el servidor las rechaza y quedan en el equipo')

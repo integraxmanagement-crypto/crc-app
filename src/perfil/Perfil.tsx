@@ -1,11 +1,11 @@
-import { ArrowLeft, Building2, ChevronDown, Database, LogOut, UserRound, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, Building2, ChevronDown, Database, Inbox, LogOut, UserRound, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Aviso, Dato, Seccion } from '../empresas/campos'
 import { DetalleEmpresa } from '../empresas/DetalleEmpresa'
 import { conLimite, db, mensaje } from '../empresas/datos'
 import { type DbState, useDatabase, useMenu } from '../hooks'
 import { ir } from '../ruta'
-import { type Perfil, salir } from '../sesion'
+import { type Perfil, esAdminDeEmpresa, salir } from '../sesion'
 
 /**
  * Botón «Perfil» de la barra superior (revisión de diseño, obs. 1): abre un menú con la información de la persona,
@@ -36,6 +36,16 @@ export function MenuPerfil({ perfil }: { perfil: Perfil }) {
           {perfil.empresaId && (
             <button type="button" role="menuitem" onClick={elegir(() => ir('/perfil/empresa'))}>
               <Building2 size={18} aria-hidden="true" /> Información de la empresa
+            </button>
+          )}
+          {perfil.empresaId && perfil.rolCodigo === 'gestor' && (
+            <button type="button" role="menuitem" onClick={elegir(() => ir('/mi-empresa/usuarios'))}>
+              <Users size={18} aria-hidden="true" /> Personal de mis sedes
+            </button>
+          )}
+          {perfil.empresaId && (esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor') && (
+            <button type="button" role="menuitem" onClick={elegir(() => ir('/solicitudes'))}>
+              <Inbox size={18} aria-hidden="true" /> Solicitudes de cambio
             </button>
           )}
           <button type="button" role="menuitem" onClick={elegir(() => void salir())}>

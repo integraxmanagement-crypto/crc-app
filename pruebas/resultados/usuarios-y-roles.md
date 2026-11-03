@@ -1,6 +1,6 @@
 # Usuarios y roles por empresa · CRC tarea 3.3
 
-Ejecutada: 2/11/2026, 5:53:59 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 3/11/2026, 8:47:21 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 81 de 81 pruebas pasaron.**
 
@@ -12,7 +12,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 32 personas visibles |
+| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 34 personas visibles |
 | ✅ Pasa | ADMIN_A ve 0 cuentas de B |  |
 | ✅ Pasa | ADMIN_A no puede crear una cuenta en B | 403 No autorizado |
 | ✅ Pasa | ADMIN_A no puede cesar a USUARIO_B | No autorizado |
@@ -37,14 +37,14 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 | ✅ Pasa | Con dos administradores, el dueño puede cesar a uno |  |
 | ✅ Pasa | …y reactivarlo |  |
 
-## 3. El gestor y el usuario no crean cuentas ni dan contraseñas
+## 3. El usuario no crea cuentas; el gestor solo maneja usuarios de sus sedes (etapa 2) y nadie de ellos da contraseñas
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | GESTOR_A no puede crear cuentas | 403 |
+| ✅ Pasa | GESTOR_A no puede crear otro gestor | 403 |
 | ✅ Pasa | GESTOR_A no puede dar contraseñas nuevas | 403 |
-| ✅ Pasa | GESTOR_A no puede cesar cuentas | No autorizado |
-| ✅ Pasa | GESTOR_A no puede corregir datos de otras personas | No autorizado |
+| ✅ Pasa | GESTOR_A no puede cesar a un administrador | No autorizado |
+| ✅ Pasa | GESTOR_A no puede corregir datos de un administrador | No autorizado |
 | ✅ Pasa | GESTOR_A no puede editar las listas de áreas y puestos | No autorizado |
 | ✅ Pasa | GESTOR_A no puede restablecer en bloque | 403 |
 | ✅ Pasa | USUARIO_A2 no puede crear cuentas | 403 |
@@ -82,7 +82,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve los intentos | 2059 intentos |
+| ✅ Pasa | El dueño ve los intentos | 2300 intentos |
 | ✅ Pasa | ADMIN_A ve 0 intentos |  |
 | ✅ Pasa | GESTOR_A ve 0 intentos |  |
 | ✅ Pasa | USUARIO_A2 ve 0 intentos |  |

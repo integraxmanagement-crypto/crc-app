@@ -1,6 +1,6 @@
 # Pruebas de la sección de sismos
 
-Fecha: 2026-11-02T22:54:18.855Z · Datos FICTICIOS · **15 de 15 correctas**
+Fecha: 2026-11-03T13:54:53.704Z · Datos FICTICIOS · **15 de 15 correctas**
 
 - ✅ Consulta a USGS en GeoJSON, ordenada por hora, hasta 200
 - ✅ Caja de Perú y alrededores

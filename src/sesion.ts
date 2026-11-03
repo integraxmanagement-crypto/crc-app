@@ -28,7 +28,12 @@ export type Perfil = {
   area: string | null
   // Sedes de la cuenta (etapa 1 del punto 2). El administrador general ve todas las sedes de la empresa; las demás cuentas, las suyas.
   sedes: { id: string; nombre: string }[]
+  // Permisos reales de la cuenta (los de su rol más las facultades que le marcó el administrador). La base de datos decide; esto solo ordena las pantallas.
+  permisos: string[]
 }
+
+/** ¿La cuenta tiene este permiso (por su rol o por una facultad marcada)? El dueño de la plataforma no pasa por aquí. */
+export const puede = (perfil: Perfil, permiso: string) => perfil.permisos.includes(permiso)
 
 /** Administrador general (ve todas las sedes) o de una sede: ambos manejan personas y programas, cada uno en su alcance. */
 export const esAdminDeEmpresa = (perfil: Perfil) => perfil.rolCodigo === 'admin_empresa' || perfil.rolCodigo === 'admin_sede'
@@ -52,7 +57,7 @@ function guardarPerfil(perfil: Perfil | null) {
 function perfilGuardado(id: string): Perfil | null {
   try {
     const p = JSON.parse(localStorage.getItem(CLAVE_PERFIL) ?? 'null') as Perfil | null
-    return p?.id === id ? { ...p, sedes: p.sedes ?? [] } : null
+    return p?.id === id ? { ...p, sedes: p.sedes ?? [], permisos: p.permisos ?? [] } : null
   } catch {
     return null
   }
@@ -60,7 +65,7 @@ function perfilGuardado(id: string): Perfil | null {
 
 async function leerPerfil(id: string): Promise<Perfil | null> {
   if (!supabase) return null
-  const [persona, vinculo, dueno, misSedes] = await Promise.all([
+  const [persona, vinculo, dueno, misSedes, misPermisos] = await Promise.all([
     supabase.from('personas').select('apellidos_nombres, numero_documento, debe_cambiar_contrasena').eq('id', id).maybeSingle(),
     supabase
       .from('vinculos')
@@ -70,6 +75,7 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
       .maybeSingle(),
     supabase.from('duenos_plataforma').select('persona_id').eq('persona_id', id).maybeSingle(),
     supabase.from('vinculos_sedes').select('sedes(id, nombre, activa), vinculos!inner(persona_id, estado)').eq('vinculos.persona_id', id).eq('vinculos.estado', 'activo'),
+    supabase.rpc('mis_permisos'),
   ])
   if (persona.error || vinculo.error || dueno.error || misSedes.error) throw new Error('sin respuesta')
   if (!persona.data) return null
@@ -104,6 +110,7 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
     puesto: v?.puesto ?? null,
     area: v?.area ?? null,
     sedes,
+    permisos: misPermisos.error ? [] : ((misPermisos.data ?? []) as string[]),
   }
 }
 

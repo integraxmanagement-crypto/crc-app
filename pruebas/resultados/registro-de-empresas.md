@@ -1,6 +1,6 @@
 # Pruebas del registro de empresas · CRC tarea 3.2
 
-Ejecutadas: 2/11/2026, 5:53:34 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutadas: 3/11/2026, 8:42:03 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 74 de 74 pruebas pasaron.**
 
@@ -117,5 +117,5 @@ Cada prueba ingresa con una persona ficticia por la misma puerta que usa la app 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | Se encontraron las tablas de public en las migraciones | 41 tablas |
+| ✅ Pasa | Se encontraron las tablas de public en las migraciones | 44 tablas |
 | ✅ Pasa | Ninguna tabla de public deja escribir directo a anon ni a authenticated |  |

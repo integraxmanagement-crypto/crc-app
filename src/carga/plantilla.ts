@@ -35,7 +35,7 @@ export function crearPlantilla(d: DatosPlantilla): Uint8Array {
   // Hoja «Listas» (oculta): una columna por lista desplegable.
   const listas: [string, string[]][] = [
     ['tipo_documento', ['DNI', 'CE', 'PAS']],
-    ['rol', ['gestor', 'usuario']],
+    ['rol', ['gestor', 'usuario_gestor', 'usuario']],
     ['puesto', d.puestos],
     ['gerencia', d.gerencias],
     ['area', d.areas],
@@ -61,7 +61,7 @@ export function crearPlantilla(d: DatosPlantilla): Uint8Array {
     )
   }
   validar('tipo', '"DNI,CE,PAS"', true, 'Elige DNI, CE (carnet de extranjería) o PAS (pasaporte).')
-  validar('rol', '"gestor,usuario"', true, 'Solo «gestor» o «usuario». Los administradores los crea Integrax.')
+  validar('rol', '"gestor,usuario_gestor,usuario"', true, 'Solo «gestor», «usuario_gestor» o «usuario». Los administradores los crea Integrax.')
   if (d.puestos.length) validar('puesto', rango(2, d.puestos.length), false, 'Ese puesto no está en la lista de la empresa. CRC te ofrecerá crearlo al cargar.')
   if (d.gerencias.length) validar('gerencia', rango(3, d.gerencias.length), false, 'Esa gerencia no está en la estructura de la empresa. CRC te ofrecerá crearla al cargar.')
   if (d.areas.length) validar('area', rango(4, d.areas.length), false, 'Esa área no está en la estructura de la empresa. CRC te ofrecerá crearla al cargar.')
@@ -87,7 +87,7 @@ export function crearPlantilla(d: DatosPlantilla): Uint8Array {
     conSubareas
       ? '7. subarea_o_linea: opcional. Si el área no tiene subáreas, deja la celda vacía o repite el área: CRC lo trata igual.'
       : '7. Esta empresa no usa subáreas o líneas: por eso esa columna no aparece.',
-    '8. rol: «gestor» (equipo SSO) o «usuario» (trabajadores). Los administradores los crea únicamente Integrax.',
+    '8. rol: «gestor» (equipo SSO), «usuario_gestor» (usuario con facultades que el administrador le marca) o «usuario» (trabajadores). Quien carga solo puede asignar los roles que su rol permite. Los administradores los crea únicamente Integrax.',
     '',
     `Máximo ${FILAS_MAXIMAS} personas y 1 MB por archivo. Guárdalo como .xlsx.`,
     'Al subirlo, CRC muestra primero una vista previa: no se guarda nada hasta que confirmes.',

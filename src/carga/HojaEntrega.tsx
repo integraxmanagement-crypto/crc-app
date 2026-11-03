@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
 import type { Grabado } from './datos'
 
-const ROL: Record<string, string> = { gestor: 'Gestor', usuario: 'Usuario' }
+const ROL: Record<string, string> = { gestor: 'Gestor', usuario_gestor: 'Usuario gestor', usuario: 'Usuario' }
 const APP = 'crc-app-phi.vercel.app'
 
 /**

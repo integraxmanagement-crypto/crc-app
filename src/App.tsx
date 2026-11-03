@@ -36,7 +36,8 @@ import { LogoBarra } from './marca/LogoBarra'
 import { InfoEmpresa, MenuPerfil, MiInformacion } from './perfil/Perfil'
 import { ir, useRuta } from './ruta'
 import { elegirSede, useSedeActiva, validarSede } from './sedeActiva'
-import { type Perfil, esAdminDeEmpresa, useSesion } from './sesion'
+import { type Perfil, esAdminDeEmpresa, puede, useSesion } from './sesion'
+import { Solicitudes } from './solicitudes/Solicitudes'
 import { Intentos } from './usuarios/Intentos'
 import { Listas } from './usuarios/Listas'
 import { Usuarios } from './usuarios/Usuarios'
@@ -133,7 +134,7 @@ function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; onl
           </button>
         )}
         <SelectorSede perfil={perfil} />
-        {perfil.empresaId && <Campana firmas={firmas} cuenta={perfil.id} online={online} />}
+        {perfil.empresaId && <Campana firmas={firmas} cuenta={perfil.id} online={online} resuelve={puede(perfil, 'solicitudes.resolver')} solicita={perfil.rolCodigo === 'gestor'} />}
         <Emergencias />
         <MenuPerfil perfil={perfil} />
       </nav>
@@ -165,9 +166,14 @@ function SelectorSede({ perfil }: { perfil: Perfil }) {
   )
 }
 
-/** Administrador y gestor (equipo SSO) de una empresa: trabajan con los formatos y los activos (tarea 3.4-B). */
+/**
+ * Administrador y gestor (equipo SSO) de una empresa: trabajan con los formatos y los activos (tarea 3.4-B).
+ * El usuario gestor entra a esas pantallas solo si el administrador le marcó alguna facultad que las usa (etapa 2); lo que de verdad puede lo decide la base de datos.
+ */
 function esEquipoSso(perfil: Perfil) {
-  return Boolean(perfil.empresaId) && (esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor')
+  if (!perfil.empresaId) return false
+  if (esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor') return true
+  return perfil.rolCodigo === 'usuario_gestor' && ['inspecciones.registrar', 'inspecciones.ver', 'hallazgos.gestionar', 'passt.ver'].some((p) => puede(perfil, p))
 }
 
 /**
@@ -228,7 +234,8 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
       return <TipoInspeccion key={`${ruta[2]}${ruta[3] ?? ''}`} abrir={ruta[3] === 'registro' ? 'registro' : undefined} id={ruta[2]} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} />
     // El detalle también lo abre cada firmante (la base de datos decide qué puede ver).
     if (ruta[1])
-      return <DetalleInspeccion key={`${ruta[1]}${ruta[2] ?? ''}`} auto={ruta[2] === 'excel' || ruta[2] === 'pdf' ? ruta[2] : undefined} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={esAdminDeEmpresa(perfil)} />
+      return <DetalleInspeccion key={`${ruta[1]}${ruta[2] ?? ''}`} auto={ruta[2] === 'excel' || ruta[2] === 'pdf' ? ruta[2] : undefined} id={ruta[1]} cuenta={perfil.id} empresaId={perfil.empresaId} online={online} esAdmin={esAdminDeEmpresa(perfil)}
+        puedeAnular={esAdminDeEmpresa(perfil) || puede(perfil, 'inspecciones.anular')} puedeCorregir={esAdminDeEmpresa(perfil) || puede(perfil, 'inspecciones.editar_cerrada')} solicita={perfil.rolCodigo === 'gestor'} />
     if (esEquipoSso(perfil)) return <Inspecciones empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
   }
   if (ruta[0] === 'firmas' && perfil.empresaId) return <MisFirmas cuenta={perfil.id} online={online} />
@@ -236,7 +243,7 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     if (ruta[1] === 'mis-actividades') return <MisActividades empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />
     if (ruta[1])
       return <ProgramaAnual key={ruta[1]} id={ruta[1]} empresaId={perfil.empresaId} online={online}
-        permisos={{ editar: true, admin: esAdminDeEmpresa(perfil), general: perfil.rolCodigo === 'admin_empresa', cuenta: perfil.id }} />
+        permisos={{ editar: puede(perfil, 'passt.editar') || esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor', admin: esAdminDeEmpresa(perfil) || puede(perfil, 'passt.reprogramar'), general: perfil.rolCodigo === 'admin_empresa', cuenta: perfil.id, solicita: perfil.rolCodigo === 'gestor' && !puede(perfil, 'passt.reprogramar') }} />
     return <Programas empresaId={perfil.empresaId} online={online} sedesPropias={perfil.rolCodigo === 'admin_empresa' ? null : perfil.sedes} />
   }
   if (ruta[0] === 'hallazgos' && perfil.empresaId)
@@ -245,12 +252,20 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     const rutas: Rutas = { formatos: '/formatos', activos: '/activos', volver: null }
     return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
   }
+  // Solicitudes de cambio del gestor y su respuesta (etapa 2).
+  if (ruta[0] === 'solicitudes' && perfil.empresaId && (esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor'))
+    return <Solicitudes cuenta={perfil.id} resuelve={puede(perfil, 'solicitudes.resolver')} online={online} />
+  // El gestor maneja el personal de sus sedes (usuarios y usuarios gestores): solo las pantallas de Usuarios y de la carga por Excel.
+  if (ruta[0] === 'mi-empresa' && perfil.rolCodigo === 'gestor' && perfil.empresaId && (ruta[1] === 'usuarios' || ruta[1] === 'carga')) {
+    if (ruta[1] === 'carga') return <Carga empresaId={perfil.empresaId} sedesPropias={perfil.sedes} onVolver={() => ir('/mi-empresa/usuarios')} />
+    return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} sedesPropias={perfil.sedes} rolMio="gestor" onVolver={() => ir('/perfil')} />
+  }
   if (ruta[0] === 'mi-empresa' && esAdminDeEmpresa(perfil) && perfil.empresaId) {
     // «Mi empresa» vive ahora en Perfil → Información de la empresa (revisión de diseño, obs. 11).
     // El administrador de sede maneja las personas de sus sedes; las listas, los contactos y los logos son del administrador general.
     const general = perfil.rolCodigo === 'admin_empresa'
     const volver = () => ir('/perfil/empresa')
-    if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} sedesPropias={general ? null : perfil.sedes} onVolver={volver} />
+    if (ruta[1] === 'usuarios') return <Usuarios empresaId={perfil.empresaId} esDueno={false} miId={perfil.id} sedesPropias={general ? null : perfil.sedes} rolMio={perfil.rolCodigo ?? 'admin_empresa'} puedeFacultades={puede(perfil, 'facultades.dar')} onVolver={volver} />
     if (ruta[1] === 'listas' && general) return <Listas empresaId={perfil.empresaId} onVolver={volver} />
     if (ruta[1] === 'carga') return <Carga empresaId={perfil.empresaId} sedesPropias={general ? null : perfil.sedes} onVolver={() => ir('/mi-empresa/usuarios')} />
     return <InfoEmpresa empresaId={perfil.empresaId} online={online} esAdmin={general} esAdminSede={!general} />
@@ -327,4 +342,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.9.3 · Sedes, caseta de ataque rápido (CAR) y PDF en el programa anual'
+const VERSION = 'Versión 0.9.4 · Usuario gestor, facultades y solicitudes de cambio'

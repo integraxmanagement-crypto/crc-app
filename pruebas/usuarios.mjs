@@ -122,20 +122,24 @@ seccion('2. Reglas de administradores')
 }
 
 // ───────────────────────────────────────────────
-seccion('3. El gestor y el usuario no crean cuentas ni dan contraseñas')
+seccion('3. El usuario no crea cuentas; el gestor solo maneja usuarios de sus sedes (etapa 2) y nadie de ellos da contraseñas')
 for (const n of ['GESTOR_A', 'USUARIO_A2']) {
   const c = sesion[n]
+  // Desde la etapa 2 el gestor crea, cesa y corrige usuarios y usuarios gestores de sus sedes (se prueba en facultades.mjs):
+  // aquí se comprueba lo que NO puede (otro gestor, administradores, contraseñas) con una cuenta que no se daña.
+  const esGestor = n === 'GESTOR_A'
+  const blanco = esGestor ? vinculoDe('ADMIN_A') : vinculoDe('USUARIO_A3')
   const crear = await llamarFuncion(c, 'crear-cuenta', {
-    empresa_id: A.id, rol: 'usuario', tipo_documento: 'dni', numero_documento: '20000098',
+    empresa_id: A.id, rol: esGestor ? 'gestor' : 'usuario', tipo_documento: 'dni', numero_documento: '20000098',
     apellidos_nombres: 'PRUEBA INTRUSO, Iván (ficticio)', fecha_ingreso: '2026-05-01',
   })
-  comprobar(`${n} no puede crear cuentas`, RECHAZO_FUNCION(crear), `${crear.estado}`)
-  const dar = await llamarFuncion(c, 'dar-contrasena', { persona_id: vinculoDe('USUARIO_A3').persona_id })
+  comprobar(esGestor ? `${n} no puede crear otro gestor` : `${n} no puede crear cuentas`, RECHAZO_FUNCION(crear), `${crear.estado}`)
+  const dar = await llamarFuncion(c, 'dar-contrasena', { persona_id: blanco.persona_id })
   comprobar(`${n} no puede dar contraseñas nuevas`, dar.estado === 403, `${dar.estado}`)
-  const cese = await c.rpc('cesar_vinculo', { p_vinculo: vinculoDe('USUARIO_A3').id, p_fecha_cese: '2026-10-22', p_motivo: 'Intento indebido' })
-  comprobar(`${n} no puede cesar cuentas`, NO_AUTORIZADO(cese), cese.error?.message)
-  const corr = await c.rpc('actualizar_persona', { p_vinculo: vinculoDe('USUARIO_A3').id, p_datos: { apellidos_nombres: 'Cambio indebido' } })
-  comprobar(`${n} no puede corregir datos de otras personas`, NO_AUTORIZADO(corr), corr.error?.message)
+  const cese = await c.rpc('cesar_vinculo', { p_vinculo: blanco.id, p_fecha_cese: '2026-10-22', p_motivo: 'Intento indebido' })
+  comprobar(esGestor ? `${n} no puede cesar a un administrador` : `${n} no puede cesar cuentas`, NO_AUTORIZADO(cese), cese.error?.message)
+  const corr = await c.rpc('actualizar_persona', { p_vinculo: blanco.id, p_datos: { apellidos_nombres: 'Cambio indebido' } })
+  comprobar(esGestor ? `${n} no puede corregir datos de un administrador` : `${n} no puede corregir datos de otras personas`, NO_AUTORIZADO(corr), corr.error?.message)
   const lista = await c.rpc('guardar_unidad', { p_empresa: A.id, p_id: null, p_nivel: 'gerencia', p_padre: null, p_nombre: 'Gerencia indebida' })
   comprobar(`${n} no puede editar las listas de áreas y puestos`, NO_AUTORIZADO(lista), lista.error?.message)
   const bloque = await llamarFuncion(c, 'dar-contrasena', { empresa_id: A.id, roles: ['usuario'] })

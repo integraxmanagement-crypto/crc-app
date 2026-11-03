@@ -1,8 +1,8 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 2/11/2026, 5:51:00 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 3/11/2026, 8:46:57 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 105 de 105 pruebas pasaron.**
+**Resultado: 106 de 106 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app (clave pública + reglas RLS) e intenta ver o tocar lo que no le corresponde.
 
@@ -35,8 +35,8 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 | ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 27 personas |
 | ✅ Pasa | Gestor A: la lista trae solo nombres, puesto y área (sin documento) | apellidos_nombres, area, persona_id, puesto |
 | ✅ Pasa | Gestor A: la lista no incluye a nadie de B |  |
-| ✅ Pasa | Gestor A: no puede leer los documentos de otras personas |  |
-| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 32 fichas |
+| ✅ Pasa | Gestor A: lee las fichas de las personas de A y ninguna de B | 32 fichas |
+| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 34 fichas |
 | ✅ Pasa | Administrador A: ninguna ficha es de B |  |
 
 ## 3. Un administrador de A no puede crear ni leer cuentas de B
@@ -45,7 +45,8 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 |---|---|---|
 | ✅ Pasa | Admin A NO puede crear un usuario en la empresa B | No autorizado |
 | ✅ Pasa | Admin A NO puede crear otro administrador (solo el dueño) | No autorizado |
-| ✅ Pasa | Gestor A NO puede crear cuentas | No autorizado |
+| ✅ Pasa | Gestor A NO puede crear otro gestor (solo usuarios y usuarios gestores de sus sedes) | No autorizado |
+| ✅ Pasa | Gestor A NO puede crear cuentas en la empresa B | No autorizado |
 | ✅ Pasa | Usuario A2 NO puede crear cuentas | No autorizado |
 | ✅ Pasa | Sin iniciar sesión NO se puede crear cuentas | Inicia sesión para continuar |
 | ✅ Pasa | Admin A NO puede leer la cuenta del gestor B aunque conozca su código |  |
@@ -139,24 +140,24 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | Hay cargas registradas en A para probar | 32 cargas en total |
+| ✅ Pasa | Hay cargas registradas en A para probar | 33 cargas en total |
 | ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 30 |
-| ✅ Pasa | ADMIN_B: no ve cargas de A | 0 visibles |
+| ✅ Pasa | ADMIN_B: no ve cargas de A | 1 visibles |
 | ✅ Pasa | GESTOR_A: no ve cargas de A | 0 visibles |
 | ✅ Pasa | USUARIO_A2: no ve cargas de A | 0 visibles |
-| ✅ Pasa | GESTOR_B: no ve cargas de A | 0 visibles |
+| ✅ Pasa | GESTOR_B: no ve cargas de A | 1 visibles |
 | ✅ Pasa | USUARIO_B: no ve cargas de A | 0 visibles |
 | ✅ Pasa | Sin iniciar sesión no se ve ninguna carga |  |
 | ✅ Pasa | ADMIN_B no ve las marcas «por revisar» de A |  |
 | ✅ Pasa | ADMIN_A no puede resolver «por revisar» de una persona de B | No autorizado |
 | ✅ Pasa | ADMIN_A: no puede revisar una carga en B | 403 |
 | ✅ Pasa | ADMIN_A: no puede grabar una carga en B | 403 |
-| ✅ Pasa | GESTOR_A: no puede revisar una carga en A | 403 |
-| ✅ Pasa | GESTOR_A: no puede grabar una carga en A | 403 |
+| ✅ Pasa | GESTOR_A: no puede revisar una carga en B | 403 |
+| ✅ Pasa | GESTOR_A: no puede grabar una carga en B | 403 |
 | ✅ Pasa | USUARIO_A2: no puede revisar una carga en A | 403 |
 | ✅ Pasa | USUARIO_A2: no puede grabar una carga en A | 403 |
-| ✅ Pasa | GESTOR_B: no puede revisar una carga en B | 403 |
-| ✅ Pasa | GESTOR_B: no puede grabar una carga en B | 403 |
+| ✅ Pasa | GESTOR_B: no puede revisar una carga en A | 403 |
+| ✅ Pasa | GESTOR_B: no puede grabar una carga en A | 403 |
 | ✅ Pasa | Sin iniciar sesión no se puede usar la carga | 401 |
 | ✅ Pasa | ADMIN_A no puede llamar al grabado de la base de datos directamente | permission denied for function grabar_carga |
 | ✅ Pasa | Ninguno de esos intentos creó a la persona | 0 |

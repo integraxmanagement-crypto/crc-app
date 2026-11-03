@@ -62,6 +62,7 @@ export type Resultado = {
 }
 
 const TIPOS: Record<string, string> = { DNI: 'dni', CE: 'ce', PAS: 'pas', 'CARNET DE EXTRANJERIA': 'ce', PASAPORTE: 'pas' }
+const ROLES_CARGA = ['gestor', 'usuario_gestor', 'usuario']
 const NOMBRE_TIPO: Record<string, string> = { dni: 'DNI', ce: 'CE', pas: 'PAS' }
 
 /** Para comparar nombres de listas sin que importen mayúsculas, tildes ni espacios de más. */
@@ -148,9 +149,9 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
     else if (nombres.length > 200) motivos.push('Apellidos y nombres demasiado largos (máximo 200 caracteres).')
     if (!f.fecha || !fechaReal(f.fecha)) motivos.push(`Fecha de ingreso no válida${f.fechaTexto ? ` («${f.fechaTexto}»)` : ''}: usa día/mes/año.`)
     else if (f.fecha < '1950-01-01' || f.fecha > maxFecha) motivos.push(`Fecha de ingreso fuera de rango (${fechaPeru(f.fecha)}).`)
-    const rol = limpio(f.rol).toLowerCase()
+    const rol = limpio(f.rol).toLowerCase().replace(/\s+/g, '_')
     if (rol === 'administrador' || rol === 'admin' || rol === 'admin_empresa') motivos.push('Rol no permitido: los administradores los crea Integrax, no el Excel.')
-    else if (rol !== 'gestor' && rol !== 'usuario') motivos.push('Rol no válido: usa «gestor» o «usuario».')
+    else if (!ROLES_CARGA.includes(rol)) motivos.push('Rol no válido: usa «gestor», «usuario gestor» o «usuario».')
 
     // Puesto y estructura (gerencia → área → subárea opcional; si la subárea repite el área, es lo mismo que vacía)
     let puestoId: string | null = null
@@ -216,7 +217,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
             if (f.fecha && activo.fecha_ingreso !== f.fecha) cambios.push(`Fecha de ingreso: ${fechaPeru(activo.fecha_ingreso as string)} → ${fechaPeru(f.fecha)}`)
             if (puestoId && activo.puesto_id !== puestoId) cambios.push('Puesto')
             if (unidadId && activo.unidad_id !== unidadId) cambios.push('Área o subárea')
-            if ((rol === 'gestor' || rol === 'usuario') && activo.rol !== rol) cambios.push(`Rol: ${activo.rol} → ${rol}`)
+            if (ROLES_CARGA.includes(rol) && activo.rol !== rol) cambios.push(`Rol: ${activo.rol} → ${rol}`)
             r.estado = cambios.length ? 'actualizar' : 'sin_cambios'
           }
         } else {
@@ -238,7 +239,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
     r.puesto_id = puestoId
     r.unidad_id = unidadId
     if (f.fecha) r.fecha = f.fecha
-    if (rol === 'gestor' || rol === 'usuario') r.rol = rol
+    if (ROLES_CARGA.includes(rol)) r.rol = rol
     filas.push(r)
   }
 
@@ -246,7 +247,7 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
   const enExcel = new Set(filas.filter((x) => x.persona_id).map((x) => x.persona_id))
   const { data: activos } = await admin.from('vinculos')
     .select('id, rol, persona_id, vinculos_sedes(sede_id), personas!inner(tipo_documento, numero_documento, apellidos_nombres)')
-    .eq('empresa_id', empresaId).eq('estado', 'activo').in('rol', ['gestor', 'usuario'])
+    .eq('empresa_id', empresaId).eq('estado', 'activo').in('rol', ROLES_CARGA)
   const noAparecen = (activos ?? [])
     .filter((v) => !enExcel.has(v.persona_id as string))
     // Solo cuentan las personas de las sedes de esta carga (quien carga una sede no revisa a las de otra).

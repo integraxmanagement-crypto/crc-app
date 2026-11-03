@@ -6,6 +6,7 @@ import { db } from '../empresas/datos'
 import { type Fila, type Respuesta, puntoVisible, seccionesVisibles, sinOcultas } from '../formatos/motor'
 import type { Punto } from '../formatos/receta'
 import { ir } from '../ruta'
+import { solicitarCambio } from '../solicitudes/datos'
 import { type CopiaLocal, bajarCopia, leerCopia } from './campo'
 import {
   type ArchivoServidor, type FirmaServidor, NOMBRE_AVISO, anularInspeccion, corregirInspeccion, detalleInspeccion, enlaceEvidencia, marcarEnPapel,
@@ -33,7 +34,11 @@ const ESTADO_FIRMA: Record<FirmaServidor['estado'], [string, string]> = {
  * la organización se descarga llena, con las firmas hechas en CRC como imágenes (las de papel se firman a mano). Corregir (con motivo, deja historial) y
  * anular las puede el administrador.
  */
-export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto }: { id: string; cuenta: string; empresaId: string; online: boolean; esAdmin: boolean; auto?: 'excel' | 'pdf' }) {
+export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto, puedeAnular = esAdmin, puedeCorregir = esAdmin, solicita = false }: {
+  id: string; cuenta: string; empresaId: string; online: boolean; esAdmin: boolean; auto?: 'excel' | 'pdf'
+  // Etapa 2: el gestor sin la facultad no corrige ni anula; lo pide y un administrador de su sede lo aprueba o lo deniega.
+  puedeAnular?: boolean; puedeCorregir?: boolean; solicita?: boolean
+}) {
   const [d, setD] = useState<Detalle | null>(null)
   const [copia, setCopia] = useState<CopiaLocal | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -229,7 +234,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto
       )}
 
       {modo === 'corregir' && receta ? (
-        <Corregir key={i.edicion} d={d} copia={copia} onListo={() => (setModo('ver'), cargar())} onCancelar={() => setModo('ver')} />
+        <Corregir key={i.edicion} d={d} copia={copia} solicitud={!puedeCorregir} onListo={() => (setModo('ver'), cargar())} onCancelar={() => setModo('ver')} />
       ) : (
         <Seccion titulo="Respuestas">
           {secciones.map((s) => (
@@ -277,18 +282,22 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto
         </Seccion>
       )}
 
-      {esAdmin && i.estado === 'cerrada' && modo === 'ver' && (
+      {(puedeCorregir || puedeAnular || solicita) && i.estado === 'cerrada' && modo === 'ver' && (
         <div className="acciones no-imprimir">
-          <button className="btn-sec" type="button" disabled={!online} onClick={() => setModo('corregir')}>
-            <Pencil size={18} aria-hidden="true" /> Corregir
-          </button>
-          <button className="btn-link peligro" type="button" disabled={!online} onClick={() => setModo('anular')}>
-            <Ban size={18} aria-hidden="true" /> Anular
-          </button>
+          {(puedeCorregir || solicita) && (
+            <button className="btn-sec" type="button" disabled={!online} onClick={() => setModo('corregir')}>
+              <Pencil size={18} aria-hidden="true" /> {puedeCorregir ? 'Corregir' : 'Solicitar corrección'}
+            </button>
+          )}
+          {(puedeAnular || solicita) && (
+            <button className="btn-link peligro" type="button" disabled={!online} onClick={() => setModo('anular')}>
+              <Ban size={18} aria-hidden="true" /> {puedeAnular ? 'Anular' : 'Solicitar anulación'}
+            </button>
+          )}
           {!online && <span className="nota">Corregir y anular necesitan señal.</span>}
         </div>
       )}
-      {modo === 'anular' && <Anular id={i.id} onListo={() => (setModo('ver'), cargar())} onCancelar={() => setModo('ver')} />}
+      {modo === 'anular' && <Anular solicitud={!puedeAnular} id={i.id} onListo={() => (setModo('ver'), cargar())} onCancelar={() => setModo('ver')} />}
       {/* Desde «Registros» se puede pedir el Excel o el PDF directo: se descarga una vez que está lista la copia del equipo. */}
       {auto && copia && <AutoDescarga onListo={() => void descargar(auto)} />}
       {createPortal(vistaPdf ? <VistaExcel vista={vistaPdf.vista} medias={vistaPdf.medias} /> : <HojaImpresa d={d} copia={copia} nombre={nombre} />, document.body)}
@@ -432,21 +441,22 @@ function FirmaVista({ f, nombre, puedePapel, onCambio, edicionActual }: { f: Fir
   )
 }
 
-function Anular({ id, onListo, onCancelar }: { id: string; onListo: () => void; onCancelar: () => void }) {
+function Anular({ id, solicitud = false, onListo, onCancelar }: { id: string; solicitud?: boolean; onListo: () => void; onCancelar: () => void }) {
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)
   return (
     <div className="subform">
       <label className="field">
-        <span>Motivo de la anulación</span>
+        <span>{solicitud ? 'Motivo de la solicitud de anulación' : 'Motivo de la anulación'}</span>
         <input type="text" maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
       </label>
-      <p className="nota">La inspección no se borra: queda marcada como anulada, con el motivo.</p>
+      <p className="nota">{solicitud ? 'No se anula todavía: un administrador de tu sede la aprueba o la deniega y te avisa. La inspección no se borra: queda marcada como anulada, con el motivo.' : 'La inspección no se borra: queda marcada como anulada, con el motivo.'}</p>
       <Aviso>{error}</Aviso>
       <div className="acciones">
         <button className="btn peligro" type="button" disabled={motivo.trim().length < 3}
-          onClick={() => anularInspeccion(id, motivo).then(onListo, (e) => setError((e as Error).message))}>
-          Anular
+          onClick={() => (solicitud ? solicitarCambio('anular_inspeccion', id, {}, motivo).then(() => ir('/solicitudes'), (e) => setError((e as Error).message))
+            : anularInspeccion(id, motivo).then(onListo, (e) => setError((e as Error).message)))}>
+          {solicitud ? 'Enviar solicitud' : 'Anular'}
         </button>
         <button className="btn-link" type="button" onClick={onCancelar}>Cancelar</button>
       </div>
@@ -455,7 +465,7 @@ function Anular({ id, onListo, onCancelar }: { id: string; onListo: () => void; 
 }
 
 /** Corregir con señal: se cambian respuestas y observación (no las fotos), con motivo. El servidor recalcula. */
-function Corregir({ d, copia, onListo, onCancelar }: { d: Detalle; copia: CopiaLocal | null; onListo: () => void; onCancelar: () => void }) {
+function Corregir({ d, copia, solicitud = false, onListo, onCancelar }: { d: Detalle; copia: CopiaLocal | null; solicitud?: boolean; onListo: () => void; onCancelar: () => void }) {
   const i = d.inspeccion
   const receta = i.plantillas_versiones!.receta
   const [respuestas, setRespuestas] = useState<Record<string, Respuesta>>(i.respuestas)
@@ -472,6 +482,11 @@ function Corregir({ d, copia, onListo, onCancelar }: { d: Detalle; copia: CopiaL
     setOcupado(true)
     setError(null)
     try {
+      if (solicitud) {
+        await solicitarCambio('corregir_inspeccion', i.id, { edicion: i.edicion, respuestas, filas, observacion: observacion || null }, motivo)
+        ir('/solicitudes')
+        return
+      }
       await corregirInspeccion({ id: i.id, edicion: i.edicion, motivo, respuestas, filas, observacion: observacion || null })
       onListo()
     } catch (e) {
@@ -481,7 +496,7 @@ function Corregir({ d, copia, onListo, onCancelar }: { d: Detalle; copia: CopiaL
   }
   return (
     <Seccion titulo="Corregir respuestas">
-      <p className="nota">Las fotos y las firmas no cambian. Las firmas hechas quedarán marcadas como de una versión anterior.</p>
+      <p className="nota">{solicitud ? 'Escribe cómo debe quedar. No se corrige todavía: un administrador de tu sede aprueba la corrección o la deniega y te avisa. ' : ''}Las fotos y las firmas no cambian. Las firmas hechas quedarán marcadas como de una versión anterior.</p>
       {seccionesVisibles(receta, i.activo_foto?.subtipo ?? null).map((s) => (
         <div key={s.clave} className="prueba-seccion">
           <h3>{s.titulo}</h3>
@@ -511,7 +526,7 @@ function Corregir({ d, copia, onListo, onCancelar }: { d: Detalle; copia: CopiaL
       <Aviso>{error}</Aviso>
       <div className="acciones">
         <button className="btn" type="button" disabled={ocupado || motivo.trim().length < 3} onClick={() => void guardar()}>
-          {ocupado ? 'Guardando…' : 'Guardar corrección'}
+          {ocupado ? 'Guardando…' : solicitud ? 'Enviar solicitud de corrección' : 'Guardar corrección'}
         </button>
         <button className="btn-link" type="button" onClick={onCancelar}>Cancelar</button>
       </div>

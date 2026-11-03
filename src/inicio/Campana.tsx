@@ -1,8 +1,9 @@
-import { Bell, ListChecks, PenLine } from 'lucide-react'
+import { Bell, Inbox, ListChecks, PenLine } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { db } from '../empresas/datos'
 import { useMenu } from '../hooks'
 import { ir } from '../ruta'
+import { contarSolicitudes } from '../solicitudes/datos'
 
 /**
  * Hallazgos abiertos o en proceso que tengo a mi cargo (pedido del dueño, 29/10/2026: al asignar a alguien como
@@ -27,15 +28,33 @@ function useHallazgosAsignados(cuenta: string, online: boolean) {
   return n
 }
 
+/** Solicitudes de cambio (etapa 2): por resolver y comunicaciones para el administrador; respuestas sin leer para el gestor. */
+function useSolicitudes(cuenta: string, resuelve: boolean, solicita: boolean, online: boolean) {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    if (!online || (!resuelve && !solicita)) return
+    let vivo = true
+    const leer = () => contarSolicitudes(cuenta, resuelve).then((c) => vivo && setN(c), () => {})
+    void leer()
+    const cada = setInterval(leer, 120_000)
+    return () => {
+      vivo = false
+      clearInterval(cada)
+    }
+  }, [cuenta, resuelve, solicita, online])
+  return n
+}
+
 /**
  * Campana de avisos de la barra (revisión de diseño, obs. 8a). El círculo rojo cuenta lo que espera a la persona:
  * firmas pendientes y hallazgos asignados. Los eventos del PASST, los mensajes y el «sin leer» (obs. 8b, 8c y 8e)
  * esperan la decisión del dueño con Cowork, porque son alcance nuevo o necesitan tablas.
  */
-export function Campana({ firmas, cuenta, online }: { firmas: number; cuenta: string; online: boolean }) {
+export function Campana({ firmas, cuenta, online, resuelve = false, solicita = false }: { firmas: number; cuenta: string; online: boolean; resuelve?: boolean; solicita?: boolean }) {
   const { abierto, setAbierto, caja } = useMenu<HTMLDivElement>()
   const hallazgos = useHallazgosAsignados(cuenta, online)
-  const total = firmas + hallazgos
+  const solicitudes = useSolicitudes(cuenta, resuelve, solicita, online)
+  const total = firmas + hallazgos + solicitudes
 
   const elegir = (ruta: string) => () => {
     setAbierto(false)
@@ -56,6 +75,11 @@ export function Campana({ firmas, cuenta, online }: { firmas: number; cuenta: st
           {hallazgos > 0 && (
             <button type="button" role="menuitem" onClick={elegir('/hallazgos')}>
               <ListChecks size={18} aria-hidden="true" /> Tienes {hallazgos} plan(es) de acción asignado(s) por cerrar
+            </button>
+          )}
+          {solicitudes > 0 && (
+            <button type="button" role="menuitem" onClick={elegir('/solicitudes')}>
+              <Inbox size={18} aria-hidden="true" /> {resuelve ? `Tienes ${solicitudes} solicitud(es) o aviso(s) de los gestores` : `Tienes ${solicitudes} respuesta(s) a tus solicitudes`}
             </button>
           )}
           {firmas > 0 && (

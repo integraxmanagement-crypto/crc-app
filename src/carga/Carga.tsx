@@ -184,8 +184,8 @@ export function Carga({ empresaId, sedesPropias, onVolver }: { empresaId: string
   const bloqueado = cuenta.error > 0 || cuenta.falta_lista > 0
   const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`
   const ausentes = revision?.noAparecen.length === 1
-    ? '1 gestor o usuario activo no aparece'
-    : `${revision?.noAparecen.length ?? 0} gestores o usuarios activos no aparecen`
+    ? '1 persona activa no aparece'
+    : `${revision?.noAparecen.length ?? 0} personas activas no aparecen`
   const marcarRevisar = listaCompleta ? (revision?.noAparecen.length ?? 0) : 0
   const quitarMarca = (revision?.filas ?? []).filter((f) => f.porRevisar).length
   const resumenGrabar = [
@@ -366,7 +366,7 @@ export function Carga({ empresaId, sedesPropias, onVolver }: { empresaId: string
             </label>
             <p className="nota">
               {revision.noAparecen.length === 0
-                ? 'Todos los gestores y usuarios activos de la empresa aparecen en el Excel.'
+                ? 'Todo el personal activo de la empresa aparece en el Excel.'
                 : listaCompleta
                   ? `${ausentes}: ${revision.noAparecen.length === 1 ? 'quedará' : 'quedarán'} «por revisar» hasta que confirmes su cese o que siguen. Nadie se cesa solo.`
                   : `${ausentes}. Como no marcaste «lista completa», no les pasará nada.`}{' '}
@@ -384,7 +384,7 @@ export function Carga({ empresaId, sedesPropias, onVolver }: { empresaId: string
                     <div>
                       <b>{p.apellidos_nombres}</b>
                       <small>
-                        {p.tipo_documento} {p.numero_documento} · {p.rol === 'gestor' ? 'Gestor' : 'Usuario'}
+                        {p.tipo_documento} {p.numero_documento} · {p.rol === 'gestor' ? 'Gestor' : p.rol === 'usuario_gestor' ? 'Usuario gestor' : 'Usuario'}
                       </small>
                     </div>
                   </li>

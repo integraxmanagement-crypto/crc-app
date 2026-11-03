@@ -1,6 +1,6 @@
 # Carga de personal desde Excel — prueba final (tarea 3.6)
 
-Fecha: 2/11/2026, 10:49:00 a. m. (hora de Lima). Solo datos ficticios; esta prueba no graba nada.
+Fecha: 3/11/2026, 12:14:38 p. m. (hora de Lima). Solo datos ficticios; esta prueba no graba nada.
 
 Archivo: `pruebas/excel/CRC_prueba_carga_25_filas_FICTICIO.xlsx` (se crea con `pruebas/excel/crear_excel_prueba.py`).
 
@@ -35,7 +35,7 @@ Archivo: `pruebas/excel/CRC_prueba_carga_25_filas_FICTICIO.xlsx` (se crea con `p
 | ✅ Pasa | Fila 11: error («Repetido») | error · Repetido: el mismo documento ya está en la fila 2. |
 | ✅ Pasa | Fila 12: error («Faltan los apellidos») | error · Faltan los apellidos y nombres. |
 | ✅ Pasa | Fila 13: error («administradores los crea Integrax») | error · Rol no permitido: los administradores los crea Integrax, no el Excel. |
-| ✅ Pasa | Fila 14: error («Rol no válido») | error · Rol no válido: usa «gestor» o «usuario». |
+| ✅ Pasa | Fila 14: error («Rol no válido») | error · Rol no válido: usa «gestor», «usuario gestor» o «usuario». |
 | ✅ Pasa | Fila 15: falta_lista («Puesto «Piloto de submarino»») | falta_lista · Puesto «Piloto de submarino» |
 | ✅ Pasa | Fila 16: falta_lista («Área fantasma») | falta_lista · Área «General (ficticia) › Área fantasma» |
 | ✅ Pasa | Fila 17: nueva | nueva ·  |

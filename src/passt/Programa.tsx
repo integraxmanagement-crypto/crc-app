@@ -15,7 +15,7 @@ import { semanasConMes } from '../inspecciones/periodos'
 import { ir } from '../ruta'
 import { type EstadoSemana, estadosPorActividad, mesDeHoy, promedioDe, semanaActual, textoPct, totalGeneral, totalesActividad, totalesPorMes } from './calculo'
 import {
-  type DatosPrograma, HIJO_DE, NOMBRE_TIPO, type Nodo, type Responsable, aprobarPrograma, bajaNodo, formatosDeEmpresa, guardarMetas, guardarNodo,
+  type DatosPrograma, HIJO_DE, NOMBRE_TIPO, type Nodo, type Responsable, aprobarPrograma, bajaNodo, formatosDeEmpresa, pedirEnVezDeHacer, guardarMetas, guardarNodo,
   areasDeEmpresa, enlaceMarca, esPdf, guardarPrograma, leerPrograma, marcarSemana, PDF_MAX_BYTES, moverNodo, programarSemana, responsables, trabajadores, NOMBRE_FRECUENCIA_ACTIVIDAD,
 } from './datos'
 import { Ventana } from '../inspecciones/Ventana'
@@ -30,7 +30,8 @@ type Area = { id: string; nombre: string; nivel: string; padre_id: string | null
 
 // `general`: administrador general (ve todas las sedes). En una empresa con varias sedes, el programa general (de todas las sedes)
 // solo lo edita y aprueba el administrador general; el de una sede, el administrador de esa sede (decisión del dueño, 02/11/2026).
-export type PermisosPasst = { editar: boolean; admin: boolean; general: boolean; cuenta: string }
+// `solicita`: gestor sin la facultad de cambiar el programa aprobado; en un programa aprobado sus cambios se envían como solicitud.
+export type PermisosPasst = { editar: boolean; admin: boolean; general: boolean; cuenta: string; solicita?: boolean }
 
 /**
  * Un programa anual de SST (tarea 3.4-E, D-41 y decisiones del dueño del 28/10/2026). Tres partes: la estructura
@@ -107,7 +108,8 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
     }
   }
   const aprobado = p.estado === 'aprobado'
-  const puedeCambiar = perm.editar && (!aprobado || perm.admin)
+  const pideCambios = aprobado && Boolean(perm.solicita) && perm.editar && !perm.admin
+  const puedeCambiar = perm.editar && (!aprobado || perm.admin || pideCambios)
   const arbol = numerar(d.nodos)
 
   // Hace una acción y vuelve a leer. Si el programa está aprobado y falta el motivo, lo pide en una ventana (antes salía un aviso
@@ -127,14 +129,17 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
       m = dado.trim()
     }
     try {
+      pedirEnVezDeHacer(pideCambios ? id : null)
       await fn(aprobado ? m : null)
       cargar()
-      avisar('Cambio guardado')
+      avisar(pideCambios ? 'Solicitud enviada al administrador' : 'Cambio guardado')
       return true
     } catch (e) {
       setError((e as Error).message)
       avisar((e as Error).message, true)
       return false
+    } finally {
+      pedirEnVezDeHacer(null)
     }
   }
 
@@ -187,7 +192,8 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
         </Ventana>
       )}
       {generalDeVarias && !permisos.general && <p className="nota">Este programa es de todas las sedes: lo edita y aprueba solo el administrador general.</p>}
-      {aprobado && !perm.admin && <p className="nota">El programa está aprobado: solo el administrador lo cambia. Puedes marcar tus actividades sin formato vinculado.</p>}
+      {pideCambios && <p className="nota">El programa está aprobado: tus cambios se envían como <b>solicitud</b> y un administrador de tu sede los aprueba o los deniega (lo ves en Solicitudes). Hasta entonces el programa queda como está.</p>}
+      {aprobado && !perm.admin && !pideCambios && <p className="nota">El programa está aprobado: solo el administrador lo cambia. Puedes marcar tus actividades sin formato vinculado.</p>}
 
       {/* El encabezado queda oculto; solo sale, con una alerta, si falta el código, la versión o la fecha de aprobación. */}
       {faltan.length > 0 && (
@@ -208,7 +214,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
       </div>
 
       {pestana === 'estructura' && <Estructura d={d} arbol={arbol} puedeCambiar={puedeCambiar} esAdmin={perm.admin} personas={personas} formatos={formatos} areas={areas} nombre={nombre} hacer={hacer} />}
-      {pestana === 'calendario' && <Calendario d={d} arbol={arbol} puedeCambiar={puedeCambiar} permisos={perm} nombre={nombre} formatos={formatos} areas={areas} hacer={hacer} />}
+      {pestana === 'calendario' && <Calendario d={d} arbol={arbol} puedeCambiar={puedeCambiar} pideCambios={pideCambios} permisos={perm} nombre={nombre} formatos={formatos} areas={areas} hacer={hacer} />}
       {pestana === 'historial' && (
         <Seccion titulo="Historial">
           <ul className="historial">
@@ -471,8 +477,8 @@ function FormNodo({ esAdmin, d, nodo, tipo, padreId, arbol, personas, formatos, 
 
 // ───────────────────────── Calendario ─────────────────────────
 
-function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas, hacer }: {
-  d: DatosPrograma; arbol: NodoNumerado<Nodo>[]; puedeCambiar: boolean; permisos: PermisosPasst; nombre: (id: string | null) => string
+function Calendario({ d, arbol, puedeCambiar, pideCambios, permisos, nombre, formatos, areas, hacer }: {
+  d: DatosPrograma; arbol: NodoNumerado<Nodo>[]; puedeCambiar: boolean; pideCambios: boolean; permisos: PermisosPasst; nombre: (id: string | null) => string
   formatos: { id: string; nombre: string; vigente: boolean }[]; areas: Area[]; hacer: Hacer
 }) {
   const p = d.programa
@@ -489,7 +495,7 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
   const porMes = totalesPorMes(estados, actividades.map((a) => a.id), p.anio)
   const general = totalGeneral(porMes)
   const meta = Number(p.meta_cumplimiento)
-  const puedeProgramar = puedeCambiar && permisos.admin // programar semanas o meses a mano: solo el administrador
+  const puedeProgramar = puedeCambiar && (permisos.admin || pideCambios) // programar semanas o meses a mano: el administrador, o un gestor pidiéndolo
   const puedeMarcar = (a: Nodo) => permisos.admin || (!a.plantilla_id && a.responsable_id === permisos.cuenta)
   const estado = (a: string, w: number): EstadoSemana | undefined => estados.get(a)?.get(w)
   // «Generar registro» lleva a la pantalla del formato vinculado a la actividad, con la sección de registro abierta
@@ -519,7 +525,7 @@ function Calendario({ d, arbol, puedeCambiar, permisos, nombre, formatos, areas,
         </label>}
         <p className="nota leyenda">
           <span className="c-p">P</span> programada · <span className="c-e">✓</span> ejecutada · <span className="c-v">!</span> vencida · <span className="c-x">✓</span> ejecutada sin programar
-          {puedeProgramar ? ' · Toca una casilla P para programar o quitar (solo el administrador; la actividad pasa a manual).' : ''}
+          {puedeProgramar ? ' · Toca una casilla P para programar o quitar (la actividad pasa a manual).' : ''}
         </p>
       </div>
       {!actividades.length ? (

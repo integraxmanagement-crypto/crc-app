@@ -7,7 +7,7 @@ import { sedeActiva } from '../sedeActiva'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
 import { EnBloque } from './EnBloque'
 import {
-  type ContrasenaDada, type Cuenta, ES_ADMIN, type Listas, NOMBRE_ROL, type Rol, actualizarPersona, asignarSedes, cesarCuenta, confirmarSigue,
+  type ContrasenaDada, type Cuenta, darFacultad, ES_ADMIN, FACULTADES, leerFacultades, type Listas, NOMBRE_ROL, quitarFacultad, type Rol, actualizarPersona, asignarSedes, cesarCuenta, confirmarSigue,
   crearCuenta, darContrasena, leerListas, leerSedesActivas, listarContrasenasDadas, listarCuentas, reactivarCuenta, unidadesAsignables,
 } from './datos'
 
@@ -42,9 +42,12 @@ const autor = (d: ContrasenaDada) => (d.dado_por ? (d.autor?.apellidos_nombres ?
  * Usuarios de una empresa (tarea 3.3). La usa el administrador para su empresa y el dueño dentro de cada empresa.
  * Los botones son solo comodidad: quien decide qué se puede hacer es la base de datos.
  */
-export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver }: {
+export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver, rolMio = 'admin_empresa', puedeFacultades = false }: {
   empresaId: string; esDueno: boolean; miId: string; sedesPropias: SedeLista[] | null; onVolver: () => void
+  // El gestor (desde la etapa 2) maneja solo usuarios y usuarios gestores de sus sedes; no cambia contraseñas.
+  rolMio?: string; puedeFacultades?: boolean
 }) {
+  const esGestor = rolMio === 'gestor'
   const [cuentas, setCuentas] = useState<Cuenta[] | null>(null)
   const [listas, setListas] = useState<Listas>({ puestos: [], unidades: [] })
   const [dadas, setDadas] = useState<ContrasenaDada[]>([])
@@ -140,7 +143,7 @@ export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver }: {
           </button>
         </div>
       )}
-      {creando && <NuevaCuenta empresaId={empresaId} esDueno={esDueno} listas={listas} sedes={asignables} onCancelar={() => setCreando(false)} onListo={listo} />}
+      {creando && <NuevaCuenta empresaId={empresaId} esDueno={esDueno} esGestor={esGestor} listas={listas} sedes={asignables} onCancelar={() => setCreando(false)} onListo={listo} />}
 
       <div className="filtros">
         <span className="buscador">
@@ -160,7 +163,7 @@ export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver }: {
       <ul className="lista lista-usuarios">
         {visibles.map((c) => {
           const propia = c.persona_id === miId
-          const gestionable = !propia && (esDueno || !ES_ADMIN.includes(c.rol))
+          const gestionable = !propia && (esGestor ? c.rol === 'usuario' || c.rol === 'usuario_gestor' : esDueno || !ES_ADMIN.includes(c.rol))
           return (
             <li key={c.id} className={c.estado === 'activo' ? '' : 'inactiva'}>
               <div>
@@ -179,7 +182,7 @@ export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver }: {
                   {sedes.length > 1 && (c.vinculos_sedes.length ? ` · ${c.vinculos_sedes.map((x) => nombreSede(x.sede_id)).filter(Boolean).join(', ')}` : ' · todas las sedes')}
                   {c.estado === 'cesado' && c.motivo_cese ? ` · Motivo: ${c.motivo_cese}` : ''}
                 </small>
-                {abierta === c.id && <PanelCuenta cuenta={c} esDueno={esDueno} listas={listas} sedes={asignables} todasLasSedes={sedes} onCerrar={() => setAbierta(null)} onListo={listo} />}
+                {abierta === c.id && <PanelCuenta cuenta={c} esDueno={esDueno} esGestor={esGestor} puedeFacultades={puedeFacultades} listas={listas} sedes={asignables} todasLasSedes={sedes} onCerrar={() => setAbierta(null)} onListo={listo} />}
               </div>
               {gestionable && abierta !== c.id && (
                 <span className="lista-acciones">
@@ -193,7 +196,7 @@ export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver }: {
         })}
         {cuentas && !visibles.length && <li className="vacio">Nadie coincide con la búsqueda.</li>}
       </ul>
-      {!esDueno && <p className="nota">Los administradores (general y de sede) los crea y gestiona Integrax. Tu propia contraseña la cambias desde tu cuenta.</p>}
+      {!esDueno && <p className="nota">{esGestor ? 'Puedes crear, corregir y cesar usuarios y usuarios gestores de tus sedes. Los gestores y los administradores los define el administrador o Integrax. ' : 'Los administradores (general y de sede) los crea y gestiona Integrax. '}Tu propia contraseña la cambias desde tu cuenta.</p>}
 
       <Seccion titulo="Últimas contraseñas nuevas dadas">
         {dadas.length === 0 ? (
@@ -221,8 +224,8 @@ export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver }: {
 
 /** Formulario para crear una cuenta nueva (función crear-cuenta de la 3.1). */
 function NuevaCuenta({
-  empresaId, esDueno, listas, sedes, onCancelar, onListo,
-}: { empresaId: string; esDueno: boolean; listas: Listas; sedes: SedeLista[]; onCancelar: () => void; onListo: (c?: Clave, texto?: string) => void }) {
+  empresaId, esDueno, esGestor, listas, sedes, onCancelar, onListo,
+}: { empresaId: string; esDueno: boolean; esGestor: boolean; listas: Listas; sedes: SedeLista[]; onCancelar: () => void; onListo: (c?: Clave, texto?: string) => void }) {
   const [rol, setRol] = useState<Rol>('usuario')
   const [tipo, setTipo] = useState<TipoDocumento>('dni')
   const [numero, setNumero] = useState('')
@@ -267,11 +270,12 @@ function NuevaCuenta({
         <span>Rol</span>
         <select value={rol} onChange={(e) => setRol(e.target.value as Rol)}>
           <option value="usuario">{NOMBRE_ROL.usuario}</option>
-          <option value="gestor">{NOMBRE_ROL.gestor}</option>
+          <option value="usuario_gestor">{NOMBRE_ROL.usuario_gestor}</option>
+          {!esGestor && <option value="gestor">{NOMBRE_ROL.gestor}</option>}
           {esDueno && <option value="admin_sede">{NOMBRE_ROL.admin_sede}</option>}
           {esDueno && <option value="admin_empresa">{NOMBRE_ROL.admin_empresa}</option>}
         </select>
-        <small className="ayuda">El rol decide qué puede hacer la persona. El puesto es solo un dato de su ficha.</small>
+        <small className="ayuda">El rol decide qué puede hacer la persona. El usuario gestor es un trabajador al que el administrador le marca facultades extra. El puesto es solo un dato de su ficha.</small>
       </label>
       {rol !== 'admin_empresa' && <SelectorSedes sedes={sedes} valor={sedeIds} onCambio={setSedeIds} />}
       <div className="fila2">
@@ -316,9 +320,9 @@ function NuevaCuenta({
 
 /** Acciones sobre una cuenta: corregir datos, contraseña nueva, cesar o reactivar. */
 function PanelCuenta({
-  cuenta: c, esDueno, listas, sedes, todasLasSedes, onCerrar, onListo,
-}: { cuenta: Cuenta; esDueno: boolean; listas: Listas; sedes: SedeLista[]; todasLasSedes: SedeLista[]; onCerrar: () => void; onListo: (c?: Clave) => void }) {
-  const [accion, setAccion] = useState<'menu' | 'corregir' | 'clave' | 'cesar'>('menu')
+  cuenta: c, esDueno, esGestor, puedeFacultades, listas, sedes, todasLasSedes, onCerrar, onListo,
+}: { cuenta: Cuenta; esDueno: boolean; esGestor: boolean; puedeFacultades: boolean; listas: Listas; sedes: SedeLista[]; todasLasSedes: SedeLista[]; onCerrar: () => void; onListo: (c?: Clave) => void }) {
+  const [accion, setAccion] = useState<'menu' | 'corregir' | 'clave' | 'cesar' | 'facultades'>('menu')
   const [nombres, setNombres] = useState(c.personas?.apellidos_nombres ?? '')
   const [ingreso, setIngreso] = useState(c.fecha_ingreso)
   const [rol, setRol] = useState<Rol>(c.rol)
@@ -393,9 +397,16 @@ function PanelCuenta({
               <button className="btn-sec" type="button" onClick={() => setAccion('corregir')}>
                 <Pencil size={18} aria-hidden="true" /> Corregir datos
               </button>
-              <button className="btn-sec" type="button" onClick={() => setAccion('clave')}>
-                <KeyRound size={18} aria-hidden="true" /> Contraseña nueva
-              </button>
+              {!esGestor && (
+                <button className="btn-sec" type="button" onClick={() => setAccion('clave')}>
+                  <KeyRound size={18} aria-hidden="true" /> Contraseña nueva
+                </button>
+              )}
+              {puedeFacultades && FACULTADES[c.rol] && (
+                <button className="btn-sec" type="button" onClick={() => setAccion('facultades')}>
+                  <UserRoundCheck size={18} aria-hidden="true" /> Facultades
+                </button>
+              )}
               <button className="btn-sec btn-sec-peligro" type="button" onClick={() => setAccion('cesar')}>
                 <UserMinus size={18} aria-hidden="true" /> Cesar
               </button>
@@ -420,7 +431,8 @@ function PanelCuenta({
               <span>Rol</span>
               <select value={rol} onChange={(e) => setRol(e.target.value as Rol)}>
                 <option value="usuario">{NOMBRE_ROL.usuario}</option>
-                <option value="gestor">{NOMBRE_ROL.gestor}</option>
+                <option value="usuario_gestor">{NOMBRE_ROL.usuario_gestor}</option>
+                {!esGestor && <option value="gestor">{NOMBRE_ROL.gestor}</option>}
                 {(esDueno || c.rol === 'admin_sede') && <option value="admin_sede">{NOMBRE_ROL.admin_sede}</option>}
                 {(esDueno || c.rol === 'admin_empresa') && <option value="admin_empresa">{NOMBRE_ROL.admin_empresa}</option>}
               </select>
@@ -450,6 +462,8 @@ function PanelCuenta({
           </div>
         </form>
       )}
+
+      {accion === 'facultades' && <PanelFacultades cuenta={c} onVolver={() => setAccion('menu')} />}
 
       {accion === 'clave' && (
         <div className="form">
@@ -495,5 +509,47 @@ function PanelCuenta({
       )}
       {accion === 'menu' && <Aviso>{error}</Aviso>}
     </div>
+  )
+}
+
+/** Facultades de una cuenta: casillas de una lista fija. Marcar o quitar una la hace la base de datos, con su historial. */
+function PanelFacultades({ cuenta: c, onVolver }: { cuenta: Cuenta; onVolver: () => void }) {
+  const lista = FACULTADES[c.rol] ?? []
+  const [marcadas, setMarcadas] = useState<string[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState<string | null>(null)
+  useEffect(() => {
+    void leerFacultades(c.id).then(setMarcadas, (e) => setError((e as Error).message))
+  }, [c.id])
+  async function cambiar(permiso: string, marcar: boolean) {
+    setError(null)
+    setOcupado(permiso)
+    try {
+      await (marcar ? darFacultad(c.id, permiso) : quitarFacultad(c.id, permiso))
+      setMarcadas(await leerFacultades(c.id))
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setOcupado(null)
+    }
+  }
+  return (
+    <fieldset className="form sedes-cuenta">
+      <legend>Facultades de {c.personas?.apellidos_nombres}</legend>
+      {c.rol === 'gestor' ? (
+        <p className="nota">Sin marca, el gestor <b>pide</b> anular o corregir una inspección o cambiar el programa aprobado y un administrador lo aprueba o lo deniega. Con la marca lo hace <b>directo</b> y a los administradores les llega solo un aviso a modo de comunicación.</p>
+      ) : (
+        <p className="nota">Sin marcas se comporta como un usuario. Cada marca vale solo en las sedes de la cuenta.</p>
+      )}
+      {!marcadas ? <p className="nota">Cargando…</p> : lista.map((f) => (
+        <label key={f.permiso} className="check">
+          <input type="checkbox" checked={marcadas.includes(f.permiso)} disabled={ocupado !== null}
+            onChange={(e) => void cambiar(f.permiso, e.target.checked)} />
+          <span>{f.titulo}<small className="ayuda"> {f.ayuda}</small></span>
+        </label>
+      ))}
+      <Aviso>{error}</Aviso>
+      <div className="acciones"><button className="btn-link" type="button" onClick={onVolver}>Volver</button></div>
+    </fieldset>
   )
 }

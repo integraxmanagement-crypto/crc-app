@@ -99,14 +99,38 @@ export const duplicarPrograma = (id: string, datos: { anio: number; sede_id: str
 export const guardarPrograma = (id: string, datos: Record<string, unknown>) => rpc<void>('guardar_programa', { p_id: id, p_datos: datos })
 export const aprobarPrograma = (id: string) => rpc<void>('aprobar_programa', { p_id: id })
 export const cambiarVigenciaPrograma = (id: string, vigente: boolean) => rpc<void>('cambiar_vigencia_programa', { p_id: id, p_vigente: vigente })
-export const guardarNodo = (programa: string, id: string | null, datos: Record<string, unknown>) =>
-  rpc<string>('guardar_nodo', { p_programa: programa, p_id: id, p_datos: datos })
-export const moverNodo = (id: string, datos: { direccion?: 'subir' | 'bajar'; padre_id?: string; motivo?: string }) => rpc<void>('mover_nodo', { p_id: id, p_datos: datos })
-export const bajaNodo = (id: string, motivo: string | null) => rpc<void>('baja_nodo', { p_id: id, p_motivo: motivo })
-export const guardarMetas = (nodo: string, metas: { texto: string; indicador: string }[], motivo: string | null) =>
-  rpc<void>('guardar_metas', { p_nodo: nodo, p_metas: metas, p_motivo: motivo })
-export const programarSemana = (actividad: string, semana: number, programada: boolean, motivo: string | null) =>
-  rpc<void>('programar_semana', { p_actividad: actividad, p_semana: semana, p_programada: programada, p_motivo: motivo })
+// Un gestor sin la facultad de cambiar el programa aprobado no lo cambia: lo PIDE (etapa 2, 03/11/2026) y un administrador de su sede lo aprueba o lo
+// deniega. Mientras la pantalla lo indique con `pedirEnVezDeHacer(programa)`, estas acciones envían la solicitud en lugar de hacer el cambio.
+let pidiendoCambioDe: string | null = null
+export const pedirEnVezDeHacer = (programa: string | null) => {
+  pidiendoCambioDe = programa
+}
+const pedir = (operacion: string, args: Record<string, unknown>, motivo: string | null) =>
+  rpc<string>('solicitar_cambio', { p_tipo: 'cambio_programa', p_objetivo: pidiendoCambioDe, p_datos: { operacion, ...args }, p_motivo: motivo ?? '' })
+
+export const guardarNodo = async (programa: string, id: string | null, datos: Record<string, unknown>) => {
+  if (pidiendoCambioDe) {
+    await pedir('guardar_nodo', { p_id: id, p_datos: datos }, typeof datos.motivo === 'string' ? datos.motivo : null)
+    return id ?? ''
+  }
+  return rpc<string>('guardar_nodo', { p_programa: programa, p_id: id, p_datos: datos })
+}
+export const moverNodo = async (id: string, datos: { direccion?: 'subir' | 'bajar'; padre_id?: string; motivo?: string }) => {
+  if (pidiendoCambioDe) await pedir('mover_nodo', { p_id: id, p_datos: datos }, datos.motivo ?? null)
+  else await rpc<void>('mover_nodo', { p_id: id, p_datos: datos })
+}
+export const bajaNodo = async (id: string, motivo: string | null) => {
+  if (pidiendoCambioDe) await pedir('baja_nodo', { p_id: id }, motivo)
+  else await rpc<void>('baja_nodo', { p_id: id, p_motivo: motivo })
+}
+export const guardarMetas = async (nodo: string, metas: { texto: string; indicador: string }[], motivo: string | null) => {
+  if (pidiendoCambioDe) await pedir('guardar_metas', { p_nodo: nodo, p_metas: metas }, motivo)
+  else await rpc<void>('guardar_metas', { p_nodo: nodo, p_metas: metas, p_motivo: motivo })
+}
+export const programarSemana = async (actividad: string, semana: number, programada: boolean, motivo: string | null) => {
+  if (pidiendoCambioDe) await pedir('programar_semana', { p_actividad: actividad, p_semana: semana, p_programada: programada }, motivo)
+  else await rpc<void>('programar_semana', { p_actividad: actividad, p_semana: semana, p_programada: programada, p_motivo: motivo })
+}
 
 /** Tamaño máximo del PDF de una marca manual (el almacén «passt-pdf» tiene el mismo tope). */
 export const PDF_MAX_BYTES = 10485760

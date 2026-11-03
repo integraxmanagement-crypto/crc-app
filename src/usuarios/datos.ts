@@ -2,8 +2,8 @@
 // se escribe solo con las acciones de la base de datos y las funciones del servidor, que revisan los permisos.
 import { conLimite, db, invocar, mensaje, rpc } from '../empresas/datos'
 
-export type Rol = 'admin_empresa' | 'admin_sede' | 'gestor' | 'usuario'
-export const NOMBRE_ROL: Record<Rol, string> = { admin_empresa: 'Administrador general', admin_sede: 'Administrador de sede', gestor: 'Gestor (equipo SSO)', usuario: 'Usuario' }
+export type Rol = 'admin_empresa' | 'admin_sede' | 'gestor' | 'usuario_gestor' | 'usuario'
+export const NOMBRE_ROL: Record<Rol, string> = { admin_empresa: 'Administrador general', admin_sede: 'Administrador de sede', gestor: 'Gestor (equipo SSO)', usuario_gestor: 'Usuario gestor', usuario: 'Usuario' }
 export const ES_ADMIN: Rol[] = ['admin_empresa', 'admin_sede']
 
 export type Cuenta = {
@@ -195,3 +195,29 @@ export async function listarIntentos(f: FiltroIntentos): Promise<Intento[]> {
   if (error) throw new Error(mensaje(error))
   return data
 }
+
+// ───── Facultades por persona (etapa 2, 03/11/2026) ─────
+// El administrador marca, persona por persona, facultades de una lista fija. La base de datos revisa quién las da y a quién.
+export type Facultad = { permiso: string; titulo: string; ayuda: string }
+export const FACULTADES: Partial<Record<Rol, Facultad[]>> = {
+  usuario_gestor: [
+    { permiso: 'inspecciones.ver', titulo: 'Ver las inspecciones de sus sedes', ayuda: 'Con sus fotos y firmas.' },
+    { permiso: 'inspecciones.registrar', titulo: 'Registrar inspecciones', ayuda: 'En las sedes de la cuenta.' },
+    { permiso: 'hallazgos.gestionar', titulo: 'Ver y gestionar planes de acción', ayuda: 'Asignar responsable, plazo y cerrar.' },
+    { permiso: 'passt.ver', titulo: 'Ver el programa anual de SST', ayuda: 'Solo lectura.' },
+    { permiso: 'personas.ver_nombres', titulo: 'Ver los nombres del personal', ayuda: 'Para asignar responsables.' },
+  ],
+  gestor: [
+    { permiso: 'inspecciones.anular', titulo: 'Anular inspecciones sin pedir aprobación', ayuda: 'Sin esta marca, el gestor lo pide y un administrador lo aprueba.' },
+    { permiso: 'inspecciones.editar_cerrada', titulo: 'Corregir inspecciones sin pedir aprobación', ayuda: 'Sin esta marca, el gestor lo pide y un administrador lo aprueba.' },
+    { permiso: 'passt.reprogramar', titulo: 'Cambiar el programa anual aprobado sin pedir aprobación', ayuda: 'Sin esta marca, el gestor lo pide y un administrador lo aprueba. En una empresa de una sola sede lo sigue haciendo solo el administrador general.' },
+  ],
+}
+
+export async function leerFacultades(vinculo: string): Promise<string[]> {
+  const { data, error } = await db().from('facultades_persona').select('permiso').eq('vinculo_id', vinculo)
+  if (error) throw new Error(mensaje(error))
+  return (data ?? []).map((x) => x.permiso as string)
+}
+export const darFacultad = (vinculo: string, permiso: string) => rpc<void>('dar_facultad', { p_vinculo: vinculo, p_permiso: permiso })
+export const quitarFacultad = (vinculo: string, permiso: string) => rpc<void>('quitar_facultad', { p_vinculo: vinculo, p_permiso: permiso })
