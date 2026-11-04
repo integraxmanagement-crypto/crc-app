@@ -221,3 +221,19 @@ export async function leerFacultades(vinculo: string): Promise<string[]> {
 }
 export const darFacultad = (vinculo: string, permiso: string) => rpc<void>('dar_facultad', { p_vinculo: vinculo, p_permiso: permiso })
 export const quitarFacultad = (vinculo: string, permiso: string) => rpc<void>('quitar_facultad', { p_vinculo: vinculo, p_permiso: permiso })
+
+// ───── Etapa 4 (04/11/2026): roles adicionales como etiquetas (sin permisos) ─────
+export const ETIQUETAS = [
+  { codigo: 'miembro_comite', titulo: 'Miembro del comité' },
+  { codigo: 'brigadista', titulo: 'Brigadista' },
+  { codigo: 'monitor_seguridad', titulo: 'Monitor de seguridad' },
+  { codigo: 'otro', titulo: 'Otro' },
+] as const
+export type EtiquetaPersona = { etiqueta: string; detalle: string | null }
+export async function leerEtiquetas(vinculo: string): Promise<EtiquetaPersona[]> {
+  const { data, error } = await db().from('etiquetas_persona').select('etiqueta, detalle').eq('vinculo_id', vinculo)
+  if (error) throw new Error(mensaje(error))
+  return (data ?? []) as EtiquetaPersona[]
+}
+export const darEtiqueta = (vinculo: string, etiqueta: string, detalle: string | null) => rpc<void>('dar_etiqueta', { p_vinculo: vinculo, p_etiqueta: etiqueta, p_detalle: detalle })
+export const quitarEtiqueta = (vinculo: string, etiqueta: string) => rpc<void>('quitar_etiqueta', { p_vinculo: vinculo, p_etiqueta: etiqueta })

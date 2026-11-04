@@ -222,8 +222,12 @@ seccion('10. Ampliación 3.6: carga desde Excel, registro de cargas y «por revi
   const cargasA = await sesion.ADMIN_A.from('cargas_personal').select('empresa_id')
   comprobar('ADMIN_A ve el registro de cargas solo de su empresa', cargasA.data?.length > 0 && cargasA.data.every((x) => x.empresa_id === ID[RUC_A]), `${cargasA.data?.length}`)
   for (const n of ['ADMIN_B', 'GESTOR_A', 'USUARIO_A2', 'GESTOR_B', 'USUARIO_B']) {
-    const r = await sesion[n].from('cargas_personal').select('empresa_id')
-    comprobar(`${n}: no ve cargas de A`, !(r.data ?? []).some((x) => x.empresa_id === ID[RUC_A]), `${r.data?.length ?? 0} visibles`)
+    const r = await sesion[n].from('cargas_personal').select('empresa_id, hecha_por')
+    if (n === 'GESTOR_A') {
+      // Desde la etapa 2 el gestor carga personal de sus sedes: ve las cargas que hizo él, ninguna de otra persona.
+      const yo = (await sesion[n].auth.getUser()).data.user.id
+      comprobar(`${n}: de las cargas de A solo ve las que hizo él`, (r.data ?? []).every((x) => x.hecha_por === yo), `${r.data?.length ?? 0} visibles`)
+    } else comprobar(`${n}: no ve cargas de A`, !(r.data ?? []).some((x) => x.empresa_id === ID[RUC_A]), `${r.data?.length ?? 0} visibles`)
   }
   const anonCargas = await cliente().from('cargas_personal').select('id')
   comprobar('Sin iniciar sesión no se ve ninguna carga', (anonCargas.data ?? []).length === 0)

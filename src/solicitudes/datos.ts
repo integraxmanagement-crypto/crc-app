@@ -1,10 +1,11 @@
-// Solicitudes de cambio del gestor (etapa 2 del punto 2, 03/11/2026): anular o corregir inspecciones y cambiar el programa anual aprobado.
+// Solicitudes de cambio del gestor (etapas 2 y 3 del punto 2, 03/11/2026): anular o corregir inspecciones, cambiar el programa anual aprobado
+// y publicar o retirar un formato (estas últimas, sin sede: solo las decide el administrador general).
 // El gestor pide; un administrador de su sede (o el general) aprueba o deniega. Lo que el gestor hace directo con su facultad llega como «comunicada».
 // Se lee con las reglas de la base de datos; se escribe solo con sus funciones, que revisan quién puede qué.
 import { corregirInspeccion } from '../inspecciones/datos'
 import { db, mensaje, rpc } from '../empresas/datos'
 
-export type TipoSolicitud = 'anular_inspeccion' | 'corregir_inspeccion' | 'cambio_programa'
+export type TipoSolicitud = 'anular_inspeccion' | 'corregir_inspeccion' | 'cambio_programa' | 'publicar_formato' | 'retirar_formato'
 export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'denegada' | 'comunicada'
 
 export type Solicitud = {
@@ -48,7 +49,13 @@ export const solicitarCambio = (tipo: TipoSolicitud, objetivo: string, datos: Re
 export const resolverSolicitud = (id: string, aprobar: boolean, comentario: string | null) =>
   rpc<void>('resolver_solicitud', { p_id: id, p_aprobar: aprobar, p_comentario: comentario })
 
-export const marcarSolicitudVista = (id: string) => rpc<void>('marcar_solicitud_vista', { p_id: id })
+/** ¿Ya hay una solicitud de este tipo esperando respuesta sobre este borrador o formato? */
+export async function hayPendiente(tipo: TipoSolicitud, objetivo: string): Promise<boolean> {
+  const { count } = await db().from('solicitudes_cambio').select('id', { count: 'exact', head: true }).eq('tipo', tipo).eq('objetivo_id', objetivo).eq('estado', 'pendiente')
+  return (count ?? 0) > 0
+}
+
+export const marcarSolicitudVista =(id: string) => rpc<void>('marcar_solicitud_vista', { p_id: id })
 
 /**
  * Aprobar una corrección: primero se aplica con la ruta de siempre (el servidor valida con el motor de reglas y la corrección queda hecha por

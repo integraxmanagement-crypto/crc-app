@@ -116,7 +116,8 @@ function Fila({ s, nombre, puedeResolver = false, onCambio }: { s: Solicitud; no
         <small>
           {nombre(s.solicitado_por)} · {cuando(s.solicitado_en)}
           {operacion ? ` · ${operacion}` : ''}
-          {s.tipo !== 'cambio_programa' && <> · <button className="btn-link" type="button" onClick={() => ir(`/inspecciones/${s.objetivo_id}`)}>Ver la inspección</button></>}
+          {(s.tipo === 'anular_inspeccion' || s.tipo === 'corregir_inspeccion') && <> · <button className="btn-link" type="button" onClick={() => ir(`/inspecciones/${s.objetivo_id}`)}>Ver la inspección</button></>}
+          {(s.tipo === 'publicar_formato' || s.tipo === 'retirar_formato') && typeof s.datos.plantilla === 'string' && <> · <button className="btn-link" type="button" onClick={() => ir(`/formatos/${s.datos.plantilla as string}`)}>Ver el formato</button></>}
         </small>
         <small>Motivo: {s.motivo}</small>
         {s.estado !== 'pendiente' && s.estado !== 'comunicada' && (
@@ -128,6 +129,8 @@ function Fila({ s, nombre, puedeResolver = false, onCambio }: { s: Solicitud; no
               <span>Comentario (obligatorio si deniegas)</span>
               <input type="text" maxLength={500} value={comentario} onChange={(e) => setComentario(e.target.value)} />
             </label>
+            {s.tipo === 'publicar_formato' && <p className="nota">Antes de aprobar, abre el formato y revisa el borrador sin cambiarlo. Al aprobar se publica tal como está; si el gestor lo cambió después de pedirlo, no se podrá aprobar y conviene denegar para que lo pida de nuevo.</p>}
+            {s.tipo === 'retirar_formato' && <p className="nota">Al aprobar, el formato deja de estar vigente: no se podrán hacer inspecciones nuevas con él. Las inspecciones ya hechas no cambian.</p>}
             {s.tipo === 'corregir_inspeccion' && <p className="nota">Al aprobar se aplica la corrección pedida; el servidor la valida como cualquier corrección. Si no pasa la validación, la solicitud sigue pendiente y puedes denegarla.</p>}
             <Aviso>{error}</Aviso>
             <div className="acciones">

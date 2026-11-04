@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardCheck, ClipboardList, Home, X } from 'lucide-react'
+import { UsersRound, CalendarDays, ClipboardCheck, ClipboardList, Home, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { type CopiaLocal, leerCopia } from './inspecciones/campo'
 import { listarInspecciones } from './inspecciones/datos'
@@ -89,6 +89,11 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
           {equipoSso && (
             <button type="button" onClick={ir_('/formatos')}>
               <ClipboardCheck size={18} aria-hidden="true" /> Formatos
+            </button>
+          )}
+          {perfil.empresaId && (
+            <button type="button" onClick={ir_('/equipo')}>
+              <UsersRound size={18} aria-hidden="true" /> Equipo de SST
             </button>
           )}
         </nav>

@@ -1,6 +1,6 @@
 # Pruebas de la etapa 2: usuario gestor, facultades y solicitudes
 
-Fecha: 2026-11-03T17:17:01.327Z · Base: crc-dev · Datos FICTICIOS (empresa D) · **147 de 147 correctas**
+Fecha: 2026-11-04T00:51:24.575Z · Base: crc-dev · Datos FICTICIOS (empresa D) · **147 de 147 correctas**
 
 ## 1. El rol nuevo y sus permisos
 

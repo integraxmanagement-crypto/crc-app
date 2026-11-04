@@ -37,6 +37,7 @@ import { InfoEmpresa, MenuPerfil, MiInformacion } from './perfil/Perfil'
 import { ir, useRuta } from './ruta'
 import { elegirSede, useSedeActiva, validarSede } from './sedeActiva'
 import { type Perfil, esAdminDeEmpresa, puede, useSesion } from './sesion'
+import { EquipoSst } from './equipo/EquipoSst'
 import { Solicitudes } from './solicitudes/Solicitudes'
 import { Intentos } from './usuarios/Intentos'
 import { Listas } from './usuarios/Listas'
@@ -86,6 +87,9 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
 
       {esEquipoSso(perfil) && perfil.empresaId && <AvancePasst empresaId={perfil.empresaId} online={online} />}
       {esEquipoSso(perfil) && perfil.empresaId && <PendientesMes empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
+
+      {/* Quien no es del equipo SSO ve primero a quién acudir (etapa 4, 04/11/2026). */}
+      {!esEquipoSso(perfil) && perfil.empresaId && <EquipoSst inicio online={online} />}
 
       {/* Debajo de los atrasados: mis hallazgos por cerrar (pedido del dueño, 29/10/2026). */}
       {perfil.empresaId && <MisHallazgos empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
@@ -185,7 +189,7 @@ function PantallasFormatos({ empresaId, partes, rutas, perfil }: { empresaId: st
   const puedePublicar = perfil.esDueno || perfil.rolCodigo === 'admin_empresa'
   if (partes[0] === 'activos') return <Activos key={empresaId} empresaId={empresaId} rutas={rutas} puedeEditar={puedeEditar} esDueno={perfil.esDueno} />
   if (partes[1])
-    return <Editor key={partes[1]} plantillaId={partes[1]} rutas={rutas} puedeEditar={puedeEditar} puedePublicar={puedePublicar} />
+    return <Editor key={partes[1]} plantillaId={partes[1]} rutas={rutas} puedeEditar={puedeEditar} puedePublicar={puedePublicar} solicita={perfil.rolCodigo === 'gestor' && !puedePublicar} />
   return <Formatos key={empresaId} empresaId={empresaId} rutas={rutas} puedeEditar={puedeEditar} />
 }
 
@@ -252,6 +256,8 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     const rutas: Rutas = { formatos: '/formatos', activos: '/activos', volver: null }
     return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
   }
+  // Conoce al equipo de SST (etapa 4): todas las cuentas de una empresa; el gestor además escribe su propio WhatsApp.
+  if (ruta[0] === 'equipo' && perfil.empresaId) return <EquipoSst online={online} esGestor={perfil.rolCodigo === 'gestor'} />
   // Solicitudes de cambio del gestor y su respuesta (etapa 2).
   if (ruta[0] === 'solicitudes' && perfil.empresaId && (esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor'))
     return <Solicitudes cuenta={perfil.id} resuelve={puede(perfil, 'solicitudes.resolver')} online={online} />
@@ -342,4 +348,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.9.4 · Usuario gestor, facultades y solicitudes de cambio'
+const VERSION = 'Versión 0.9.5 · Solicitudes de formatos, equipo de SST y roles adicionales'

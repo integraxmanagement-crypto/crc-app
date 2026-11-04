@@ -1,4 +1,4 @@
-import { ArrowLeft, FileSpreadsheet, KeyRound, Pencil, Search, UserCheck, UserMinus, UserPlus, UserRoundCheck } from 'lucide-react'
+import { ArrowLeft, FileSpreadsheet, KeyRound, Pencil, Search, UserCheck, Tag, UserMinus, UserPlus, UserRoundCheck } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from '../empresas/campos'
 import { normalizar } from '../empresas/datos'
@@ -7,7 +7,7 @@ import { sedeActiva } from '../sedeActiva'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
 import { EnBloque } from './EnBloque'
 import {
-  type ContrasenaDada, type Cuenta, darFacultad, ES_ADMIN, FACULTADES, leerFacultades, type Listas, NOMBRE_ROL, quitarFacultad, type Rol, actualizarPersona, asignarSedes, cesarCuenta, confirmarSigue,
+  type ContrasenaDada, type Cuenta, darEtiqueta, darFacultad, ETIQUETAS, type EtiquetaPersona, leerEtiquetas, quitarEtiqueta, ES_ADMIN, FACULTADES, leerFacultades, type Listas, NOMBRE_ROL, quitarFacultad, type Rol, actualizarPersona, asignarSedes, cesarCuenta, confirmarSigue,
   crearCuenta, darContrasena, leerListas, leerSedesActivas, listarContrasenasDadas, listarCuentas, reactivarCuenta, unidadesAsignables,
 } from './datos'
 
@@ -322,7 +322,7 @@ function NuevaCuenta({
 function PanelCuenta({
   cuenta: c, esDueno, esGestor, puedeFacultades, listas, sedes, todasLasSedes, onCerrar, onListo,
 }: { cuenta: Cuenta; esDueno: boolean; esGestor: boolean; puedeFacultades: boolean; listas: Listas; sedes: SedeLista[]; todasLasSedes: SedeLista[]; onCerrar: () => void; onListo: (c?: Clave) => void }) {
-  const [accion, setAccion] = useState<'menu' | 'corregir' | 'clave' | 'cesar' | 'facultades'>('menu')
+  const [accion, setAccion] = useState<'menu' | 'corregir' | 'clave' | 'cesar' | 'facultades' | 'etiquetas'>('menu')
   const [nombres, setNombres] = useState(c.personas?.apellidos_nombres ?? '')
   const [ingreso, setIngreso] = useState(c.fecha_ingreso)
   const [rol, setRol] = useState<Rol>(c.rol)
@@ -407,6 +407,11 @@ function PanelCuenta({
                   <UserRoundCheck size={18} aria-hidden="true" /> Facultades
                 </button>
               )}
+              {c.rol !== 'admin_empresa' && c.rol !== 'admin_sede' && (
+                <button className="btn-sec" type="button" onClick={() => setAccion('etiquetas')}>
+                  <Tag size={18} aria-hidden="true" /> Roles adicionales
+                </button>
+              )}
               <button className="btn-sec btn-sec-peligro" type="button" onClick={() => setAccion('cesar')}>
                 <UserMinus size={18} aria-hidden="true" /> Cesar
               </button>
@@ -464,6 +469,7 @@ function PanelCuenta({
       )}
 
       {accion === 'facultades' && <PanelFacultades cuenta={c} onVolver={() => setAccion('menu')} />}
+      {accion === 'etiquetas' && <PanelEtiquetas cuenta={c} onVolver={() => setAccion('menu')} />}
 
       {accion === 'clave' && (
         <div className="form">
@@ -547,6 +553,60 @@ function PanelFacultades({ cuenta: c, onVolver }: { cuenta: Cuenta; onVolver: ()
             onChange={(e) => void cambiar(f.permiso, e.target.checked)} />
           <span>{f.titulo}<small className="ayuda"> {f.ayuda}</small></span>
         </label>
+      ))}
+      <Aviso>{error}</Aviso>
+      <div className="acciones"><button className="btn-link" type="button" onClick={onVolver}>Volver</button></div>
+    </fieldset>
+  )
+}
+
+/** Roles adicionales (miembro del comité, brigadista, monitor de seguridad u otro): son etiquetas informativas y NO dan ningún permiso. */
+function PanelEtiquetas({ cuenta: c, onVolver }: { cuenta: Cuenta; onVolver: () => void }) {
+  const [puestas, setPuestas] = useState<EtiquetaPersona[] | null>(null)
+  const [otro, setOtro] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  useEffect(() => {
+    void leerEtiquetas(c.id).then(setPuestas, (e) => setError((e as Error).message))
+  }, [c.id])
+  async function cambiar(codigo: string, poner: boolean) {
+    setError(null)
+    setOcupado(true)
+    try {
+      if (poner) await darEtiqueta(c.id, codigo, codigo === 'otro' ? otro.trim() : null)
+      else await quitarEtiqueta(c.id, codigo)
+      setPuestas(await leerEtiquetas(c.id))
+      if (codigo === 'otro') setOtro('')
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+  const hay = (codigo: string) => puestas?.find((x) => x.etiqueta === codigo)
+  return (
+    <fieldset className="form sedes-cuenta">
+      <legend>Roles adicionales de {c.personas?.apellidos_nombres}</legend>
+      <p className="nota">Son solo etiquetas para reconocer a la persona. <b>No le dan ningún permiso nuevo.</b></p>
+      {!puestas ? <p className="nota">Cargando…</p> : ETIQUETAS.map((e) => e.codigo !== 'otro' ? (
+        <label key={e.codigo} className="check">
+          <input type="checkbox" checked={!!hay(e.codigo)} disabled={ocupado} onChange={(ev) => void cambiar(e.codigo, ev.target.checked)} />
+          <span>{e.titulo}</span>
+        </label>
+      ) : (
+        <div key={e.codigo}>
+          {hay('otro') ? (
+            <label className="check">
+              <input type="checkbox" checked disabled={ocupado} onChange={() => void cambiar('otro', false)} />
+              <span>Otro: {hay('otro')?.detalle}</span>
+            </label>
+          ) : (
+            <div className="fila2">
+              <Campo etiqueta="Otro (escribe cuál)" value={otro} maxLength={60} onChange={(ev) => setOtro(ev.target.value)} placeholder="Ej.: primeros auxilios" />
+              <button className="btn-sec" type="button" disabled={ocupado || otro.trim().length < 3} onClick={() => void cambiar('otro', true)}>Agregar</button>
+            </div>
+          )}
+        </div>
       ))}
       <Aviso>{error}</Aviso>
       <div className="acciones"><button className="btn-link" type="button" onClick={onVolver}>Volver</button></div>

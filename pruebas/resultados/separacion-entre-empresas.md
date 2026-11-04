@@ -1,6 +1,6 @@
 # Prueba de separación entre empresas · CRC tareas 3.1, 3.2, 3.3 y 3.6
 
-Ejecutada: 3/11/2026, 8:46:57 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 3/11/2026, 7:53:34 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 106 de 106 pruebas pasaron.**
 
@@ -32,11 +32,11 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 |---|---|---|
 | ✅ Pasa | Usuario A2: solo ve su propia ficha | 1 ficha(s) |
 | ✅ Pasa | Usuario A2: NO recibe la lista de personas de su empresa |  |
-| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 27 personas |
+| ✅ Pasa | Gestor A: recibe la lista de personas activas de A | 45 personas |
 | ✅ Pasa | Gestor A: la lista trae solo nombres, puesto y área (sin documento) | apellidos_nombres, area, persona_id, puesto |
 | ✅ Pasa | Gestor A: la lista no incluye a nadie de B |  |
-| ✅ Pasa | Gestor A: lee las fichas de las personas de A y ninguna de B | 32 fichas |
-| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 34 fichas |
+| ✅ Pasa | Gestor A: lee las fichas de las personas de A y ninguna de B | 54 fichas |
+| ✅ Pasa | Administrador A: ve las fichas de las personas de A | 56 fichas |
 | ✅ Pasa | Administrador A: ninguna ficha es de B |  |
 
 ## 3. Un administrador de A no puede crear ni leer cuentas de B
@@ -140,10 +140,10 @@ Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | Hay cargas registradas en A para probar | 33 cargas en total |
-| ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 30 |
+| ✅ Pasa | Hay cargas registradas en A para probar | 60 cargas en total |
+| ✅ Pasa | ADMIN_A ve el registro de cargas solo de su empresa | 57 |
 | ✅ Pasa | ADMIN_B: no ve cargas de A | 1 visibles |
-| ✅ Pasa | GESTOR_A: no ve cargas de A | 0 visibles |
+| ✅ Pasa | GESTOR_A: de las cargas de A solo ve las que hizo él | 2 visibles |
 | ✅ Pasa | USUARIO_A2: no ve cargas de A | 0 visibles |
 | ✅ Pasa | GESTOR_B: no ve cargas de A | 1 visibles |
 | ✅ Pasa | USUARIO_B: no ve cargas de A | 0 visibles |

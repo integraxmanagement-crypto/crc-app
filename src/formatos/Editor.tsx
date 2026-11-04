@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion as Caja } from '../empresas/campos'
 import { ExcelFormato } from '../inspecciones/ExcelFormato'
 import { ir } from '../ruta'
+import { hayPendiente, solicitarCambio } from '../solicitudes/datos'
 import {
   type Lista, type Logo, NOMBRE_ESTADO, NOMBRE_FRECUENCIA, type Plantilla, type TipoActivo, type Version, cambiarVigenciaPlantilla,
   descartarBorrador, guardarBorrador, guardarPlantilla, leerPlantilla, listarListas, listarTipos, listarTiposBase, nuevoBorrador,
@@ -39,8 +40,8 @@ function prefijo(r: Receta) {
  * al publicarlo queda congelado. Las plantillas base de CRC se ven, pero no se editan desde una empresa.
  */
 export function Editor({
-  plantillaId, rutas, puedeEditar, puedePublicar,
-}: { plantillaId: string; rutas: Rutas; puedeEditar: boolean; puedePublicar: boolean }) {
+  plantillaId, rutas, puedeEditar, puedePublicar, solicita,
+}: { plantillaId: string; rutas: Rutas; puedeEditar: boolean; puedePublicar: boolean; solicita: boolean }) {
   const [plantilla, setPlantilla] = useState<Plantilla | null>(null)
   const [versiones, setVersiones] = useState<Version[]>([])
   const [verId, setVerId] = useState<string | null>(null)
@@ -53,6 +54,8 @@ export function Editor({
   const [ok, setOk] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [probar, setProbar] = useState(false)
+  const [motivo, setMotivo] = useState('')
+  const [pendiente, setPendiente] = useState(false)
 
   const cargar = useCallback(
     async (elegir?: string) => {
@@ -66,6 +69,7 @@ export function Editor({
         setTipo(ts.find((t) => t.id === p.tipo_activo_id) ?? null)
         const v = vs.find((x) => x.id === elegir) ?? vs.find((x) => x.estado === 'borrador') ?? vs.find((x) => x.estado === 'vigente') ?? vs[0]
         setVerId(v?.id ?? null)
+        setPendiente(solicita && v?.estado === 'borrador' ? await hayPendiente('publicar_formato', v.id).catch(() => false) : false)
         setReceta(v ? structuredClone(v.receta) : null)
         setEnc({
           codigo_formato: v?.codigo_formato ?? '',
@@ -79,7 +83,7 @@ export function Editor({
         setError((e as Error).message)
       }
     },
-    [plantillaId],
+    [plantillaId, solicita],
   )
   useEffect(() => void cargar(), [cargar])
 
@@ -150,6 +154,21 @@ export function Editor({
       await publicarVersion(version.id)
       await cargar(version.id)
     }, `v${version.numero} publicada: queda congelada y es la que se usará en las inspecciones nuevas.`)
+  }
+
+  /** El gestor no publica: guarda el borrador y pide al administrador general que lo publique (etapa 3). */
+  function pedirPublicar() {
+    if (!version) return
+    if (problemas.length) return setError('Antes de pedir la publicación, corrige lo que aparece en «Revisión del formato».')
+    if (!enc.codigo_formato.trim() || !enc.version_formato.trim() || !enc.fecha_aprobacion)
+      return setError('Para pedir la publicación, completa el código, la versión y la fecha de aprobación del formato.')
+    if (motivo.trim().length < 3) return setError('Escribe el motivo: es lo primero que lee el administrador.')
+    void hacer(async () => {
+      await guardarBorrador(version.id, datosBorrador())
+      await solicitarCambio('publicar_formato', version.id, {}, motivo.trim())
+      setSucio(false)
+      ir('/solicitudes')
+    }, 'Solicitud enviada al administrador.')
   }
 
   function descartar() {
@@ -252,7 +271,24 @@ export function Editor({
           </button>
         )}
       </div>
-      {editable && !puedePublicar && <p className="nota">Puedes guardar el borrador; lo publica un administrador de la empresa.</p>}
+      {editable && !puedePublicar && !solicita && <p className="nota">Puedes guardar el borrador; lo publica un administrador de la empresa.</p>}
+      {editable && solicita && (
+        <div className="subform">
+          {pendiente ? (
+            <p className="nota">Ya pediste publicar este borrador y espera la respuesta del administrador. Si lo cambias ahora, el administrador no podrá aprobarlo y tendrás que pedirlo de nuevo.</p>
+          ) : (
+            <>
+              <p className="nota">Puedes guardar el borrador y pedir al administrador que lo publique. Hasta que lo apruebe, las inspecciones siguen usando la versión vigente.</p>
+              <Campo etiqueta="Motivo para el administrador" value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} />
+              <div className="acciones">
+                <button className="btn-sec" type="button" disabled={ocupado} onClick={pedirPublicar}>
+                  <Send size={18} aria-hidden="true" /> Pedir publicar v{version.numero}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {probar && <Prueba receta={receta} subtipos={subtipos} campos={tipo?.campos ?? []} listas={listas} />}
 
@@ -270,7 +306,7 @@ export function Editor({
         </label>
       )}
 
-      {!esBase && puedeEditar && <DatosPlantilla plantilla={plantilla} onCambio={() => void cargar(version.id)} />}
+      {!esBase && puedeEditar && <DatosPlantilla plantilla={plantilla} puedePublicar={puedePublicar} solicita={solicita} onCambio={() => void cargar(version.id)} />}
 
       <Caja titulo="Encabezado de esta versión">
         <p className="nota">Razón social, RUC, domicilio y actividad salen solos de la ficha de la empresa.</p>
@@ -335,7 +371,7 @@ function claveSeccion(r: Receta) {
   for (let n = 1; ; n++) if (!r.secciones.some((s) => s.clave === `seccion-${n}`)) return `seccion-${n}`
 }
 
-function DatosPlantilla({ plantilla, onCambio }: { plantilla: Plantilla; onCambio: () => void }) {
+function DatosPlantilla({ plantilla, puedePublicar, solicita, onCambio }: { plantilla: Plantilla; puedePublicar: boolean; solicita: boolean; onCambio: () => void }) {
   const [abierto, setAbierto] = useState(false)
   const [nombre, setNombre] = useState(plantilla.nombre)
   const [descripcion, setDescripcion] = useState(plantilla.descripcion ?? '')
@@ -360,6 +396,19 @@ function DatosPlantilla({ plantilla, onCambio }: { plantilla: Plantilla; onCambi
     }
   }
 
+  /** El gestor no retira un formato: lo pide y lo decide el administrador general (etapa 3). */
+  async function pedirRetiro() {
+    const m = window.prompt('¿Por qué se retira este formato? Se lo enviamos al administrador.')
+    if (m == null) return
+    if (m.trim().length < 3) return setError('Escribe el motivo.')
+    try {
+      await solicitarCambio('retirar_formato', plantilla.id, {}, m.trim())
+      ir('/solicitudes')
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   return (
     <Caja
       titulo="Datos del formato"
@@ -369,9 +418,16 @@ function DatosPlantilla({ plantilla, onCambio }: { plantilla: Plantilla; onCambi
             <button className="btn-link" type="button" onClick={() => setAbierto(true)}>
               <Pencil size={16} aria-hidden="true" /> Editar
             </button>
-            <button className="btn-link" type="button" onClick={() => void alternar()}>
-              {plantilla.vigente ? 'Desactivar' : 'Activar'}
-            </button>
+            {puedePublicar && (
+              <button className="btn-link" type="button" onClick={() => void alternar()}>
+                {plantilla.vigente ? 'Desactivar' : 'Activar'}
+              </button>
+            )}
+            {solicita && plantilla.vigente && (
+              <button className="btn-link" type="button" onClick={() => void pedirRetiro()}>
+                Pedir retirar
+              </button>
+            )}
           </span>
         ) : null
       }
