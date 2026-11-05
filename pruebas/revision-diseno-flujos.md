@@ -123,3 +123,57 @@ Pruebas: 694 de 694 (nuevas: `pruebas/passt-area.mjs` 11 y 10 más en `excel-ins
 | 89 | El texto visible «hallazgo» pasa a «plan de acción» en toda la aplicación (menús, pestañas, tarjetas, botones, avisos y editor de formatos); los nombres internos, rutas y tablas no cambian | varios `.tsx` | No |
 | — | Puntos 2 (reformulación de usuarios y sedes) y 3 (evidencias y vínculos del PASST) del 30/10: alcance nuevo, sin construir; análisis en `pruebas/alcance-nuevo-usuarios-y-passt.md` | — | Sí, cuando se decidan |
 | — | Etapa 1 del punto 2 (sedes y administrador de sede): solo el diseño, sin construir; pendiente de aprobación. Cambiaría `vinculos`, `roles`, `permisos` y `sedes` (tablas de los módulos de contratistas y medio ambiente: aviso dado al dueño) | `pruebas/diseno-etapa1-sedes.md` | Sí, cuando se apruebe |
+
+---
+
+# Revisión de diseño y flujos · 05/11/2026
+
+Alcance: solo diseño, textos, orden y recorridos dentro de lo que ya existe. No se tocó ninguna tabla, permiso, rol ni consulta a Supabase. **Nada está publicado ni en commit**: todo está como cambios sin commit, junto con lo anterior sin publicar (ingreso con etiquetas flotantes, esqueletos de carga y menú fijo en escritorio).
+Método: crítica con las skills de diseño (impeccable, frontend-ui-engineering, design-taste-frontend como criterio, dataviz para los indicadores), auditoría de accesibilidad (`pruebas/auditoria-accesibilidad.md`) y capturas en 390, 768, 1024 y 1440 px con cuentas ficticias de crc-dev.
+Capturas antes y después: `pruebas/capturas-diseno/comparacion.html` (abrir en el navegador) y las carpetas `antes` y `despues`.
+
+## Crítica de las pantallas actuales (resumen)
+- **Jerarquía:** el inicio mezcla una tarjeta (programa anual) con tres secciones de texto suelto; a 1440 px las dos columnas se desalineaban. Los títulos secundarios están bien, pero el texto de apoyo es muy pequeño en las tarjetas de planes de acción (11 px).
+- **Barra superior en celular:** el teléfono de emergencias **no se veía** (una regla antigua lo escondía) y varios botones medían menos de 24 px.
+- **Color y contraste:** enlaces en azul de navegador dentro de sismos; magnitud 4 con texto blanco sobre ámbar (2,6:1); número de la campana (3,9:1); barras y anillos de avance casi invisibles sobre blanco (fondo 1,1:1) y ámbar de 2,7:1.
+- **Controles:** listas desplegables y casillas con aspecto del navegador, distintas del resto de los campos; casillas de 13 px.
+- **Textos:** «formato(s)», «activo(s)», «recibida(s)», «foto(s)», «plan(es) de acción»…, un punto doble («p. m..») y «hace 3 día(s)».
+- **Recorridos:** el menú no indicaba en qué página estaba la persona y no había forma de saltar la barra con el teclado.
+- **Estados:** vacío y error razonables; la carga era texto «Cargando…» (resuelto antes con esqueletos).
+
+## Lista de cambios (qué y por qué)
+1. **Teléfono de emergencias visible en celular.** Una regla de celular escondía el último ícono de cada botón de la barra para quitar la flechita del perfil, y al teléfono (que solo tiene un ícono) también lo escondía. Ahora se ve. *Por qué:* en una emergencia no se podía llegar a los números desde el celular.
+2. **Botones de la barra de 44 px** (campana, teléfono, perfil y el botón de las tres líneas) y el selector de sede se acota en celular para que todo quepa sin desbordar. *Por qué:* tamaño táctil mínimo; antes medían 14 a 38 px.
+3. **El botón de perfil tiene nombre** («Mi perfil y cuenta») aunque en celular solo se vea el ícono. *Por qué:* un lector de pantalla no lo anunciaba.
+4. **Número de la campana con contraste 5,2:1** (rojo más oscuro). *Por qué:* estaba en 3,9:1.
+5. **Enlace «Saltar al contenido»** al llegar con el teclado, y el contenido recibe el foco. *Por qué:* quien usa teclado debía pasar por la barra y el menú en cada pantalla.
+6. **Menú con la página actual resaltada** (franja teal y letra en negrita, anunciada como «página actual») y botones de 44 px. *Por qué:* orientación; antes no se sabía dónde se estaba.
+7. **Enlaces dentro del texto en el teal de la marca**, con subrayado fino. *Por qué:* «Detalle USGS» y «IGP» salían en azul de navegador, fuera del sistema visual.
+8. **Listas desplegables de sismos y de avance con el mismo estilo de los campos** (contorno 3:1, 44 px, flecha propia) y **casillas y botones de opción de 24 px con el color de marca**. *Por qué:* un solo sistema visual y tamaño táctil.
+9. **Inicio: las tres secciones de resumen (pendientes, atrasados y planes de acción) pasan a tarjetas** iguales a la del programa anual, con el mismo ancho y aire. *Por qué:* jerarquía y alineación en las 2 y 3 columnas.
+10. **Magnitud de sismos con texto legible:** texto oscuro sobre el ámbar y el naranja cuando el blanco no llega a 4,5:1. *Por qué:* contraste.
+11. **Gráficos de avance (anillo y barras por objetivo):** pista visible sobre blanco (de 1,1:1 a 1,3:1 ya distingue la forma), ámbar de avance bajo más oscuro (de 2,7:1 a 4:1) y teal para lo logrado. *Por qué:* criterio de dataviz: la barra y el anillo se leen sin depender de un color pálido. El número y la meta ya estaban escritos (no depende solo del color).
+12. **Textos con plural correcto en unos 45 lugares** («1 foto», «3 fotos»; «1 inspección por enviar», «2 inspecciones esperan…»; «hace 1 día»; «equipo listo»/«equipos listos») y el aviso de datos guardados dice ahora «Guardado en este dispositivo: 1 formato y 116 equipos. Actualizado el 5/11, 02:58 p. m.». *Por qué:* lenguaje claro y sin signos raros.
+13. **Micro-interacciones discretas:** las tarjetas que se tocan (tipos de inspección, fuentes de planes de acción y lista de empresas) suben 2 px al pasar el cursor y bajan al presionar; el botón secundario cambia al pasar y se hunde al presionar; todo se apaga con «reducir movimiento».
+14. *(Sin publicar, hechos antes en esta misma rama)* Ingreso con etiqueta flotante, validación del documento y ojo de la contraseña; esqueletos de carga en todas las pantallas; menú fijo a la izquierda desde 1100 px, inicio en 2 columnas desde 900 px (3 desde 1600 px) y contenido más ancho en escritorio.
+
+## Verificación
+- Compilación, tipos y linter sin errores nuevos. Capturas antes y después de 11 pantallas en 390, 768, 1024 y 1440 px, con la cuenta ficticia de administrador general (empresa D) y la del dueño (Empresas).
+- Barra superior en 390 px medida en el navegador: sin desbordes (el documento mide 390 px de ancho) y todos los botones de 44 px.
+- No se hizo captura «antes» del detalle de una inspección (la pantalla se agregó al guion después de los cambios); en esa pantalla solo cambian los textos de plural.
+- Revisión de desbordes laterales: 9 pantallas × 4 anchos (390, 768, 1024, 1440) con la cuenta del administrador general: **0 desbordes**.
+- No se cambió ninguna pantalla que no sea de diseño ni se tocó una consulta.
+
+## Pendiente (no hecho) y propuestas que necesitan tu decisión
+| # | Propuesta | Por qué no se hizo | Esfuerzo |
+|---|---|---|---|
+| A | **Modo oscuro** de las pantallas y los gráficos (dataviz lo pide). | Alcance nuevo: se decide con Cowork. | Alto |
+| B | **Rediseñar la grilla de semanas del PASST** para dedos (44 px; hoy unos 230 controles de 24 a 44 px). | Es un cambio de recorrido, no solo de estilo. | Medio |
+| C | **Firma con alternativa de teclado** («escribir mi nombre» o aviso de que exige dedo o mouse). | Función nueva. | Medio |
+| D | **Atrapar el foco en las ventanas emergentes.** | Cambia el comportamiento. | Bajo |
+| E | **Selector de sede en celular de 390 px:** el texto «Todas las sedes» se corta («Todas las s…»). Opciones: un ícono de sedes que abra la lista, o un título más corto («Todas»). | Cambio de recorrido. | Bajo |
+| F | **Listas en dos columnas en escritorio** (planes de acción, empresas) y mostrar más información por tarjeta de plan de acción. | Conviene verlo con datos reales del cliente. | Medio |
+| G | Mostrar la pantalla **«Restablecer en bloque»** a los administradores (ya acordado en otra revisión). | Es una función. | Bajo |
+| H | Textos que siguen con «(s)» en pantallas poco usadas: `Detalle` y `Programa` ya corregidos; quedan a revisar los textos dentro de los formatos y de las plantillas. | Son contenidos de formatos del cliente. | Bajo |
+
+Los puntos 1 a 4 de la auditoría (campana, emergencias, contraste, saltar al contenido) quedaron **resueltos en esta revisión**; los pendientes de la auditoría (B, C y D arriba, más la prueba con lector de pantalla real) esperan tu decisión.

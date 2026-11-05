@@ -36,7 +36,7 @@ export function FormatosIncompletos({ empresaId, rutaFormatos }: { empresaId: st
   return (
     <div className="alerta-formatos" role="alert">
       <p>
-        <TriangleAlert size={18} aria-hidden="true" /> <b>{lista.length} formato(s) o programa(s) sin código, versión o fecha de aprobación.</b> Esos datos van en el
+        <TriangleAlert size={18} aria-hidden="true" /> <b>{lista.length} {lista.length === 1 ? 'formato o programa sin' : 'formatos o programas sin'} código, versión o fecha de aprobación.</b> Esos datos van en el
         encabezado del Excel y del PDF.
       </p>
       <ul>

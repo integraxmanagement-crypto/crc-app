@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { ArrowLeft, CalendarCheck2, ClipboardList } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Aviso } from '../empresas/campos'
@@ -72,7 +73,7 @@ export function MisActividades({ empresaId, cuenta, online }: { empresaId: strin
               <CalendarCheck2 aria-hidden="true" className={f.vencidas.length ? 'icono-mal' : ''} />
               <div>
                 <b>{f.numero} {f.texto}</b>
-                {f.vencidas.length > 0 && <span className="chip chip-mal">{f.vencidas.length} vencida(s)</span>}
+                {f.vencidas.length > 0 && <span className="chip chip-mal">{plural(f.vencidas.length, 'vencida', 'vencidas')}</span>}
                 <small>
                   {f.programa.nombre} · Esta semana: {f.estaSemana} · Próxima: {f.proxima ? `semana ${f.proxima}` : '—'} · Cumplimiento a la fecha: {f.pct}
                 </small>

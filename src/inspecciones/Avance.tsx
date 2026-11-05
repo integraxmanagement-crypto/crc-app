@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { ArrowLeft, CalendarRange, Eye, FileSpreadsheet, FileText, PenLine } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -138,7 +139,7 @@ export function Avance({ empresaId, cuenta, online }: { empresaId: string; cuent
 }
 
 function Barra({ hechos, total }: { hechos: number; total: number | null }) {
-  if (total == null) return <small><b>{hechos}</b> inspección(es) en el período</small>
+  if (total == null) return <small><b>{hechos}</b> {hechos === 1 ? 'inspección' : 'inspecciones'} en el período</small>
   const pct = porcentaje(hechos, total)
   return (
     <span className="avance">
@@ -215,7 +216,7 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
       if (vista) setVistaPdf(vista)
       setAviso(
         r.hoja
-          ? `Excel listo: ${r.filas} fila(s)${r.agregadas ? `; se agregaron ${r.agregadas} porque el formato tenía espacio para ${r.usadasDelFormato}` : ''}.`
+          ? `Excel listo: ${plural(r.filas, 'fila', 'filas')}${r.agregadas ? `; se agregaron ${r.agregadas} porque el formato tenía espacio para ${r.usadasDelFormato}` : ''}.`
           : 'El Excel no tiene una fila modelo con marcas {{fila.…}}: solo se llenó el encabezado.',
       )
     } catch (e) {
@@ -314,7 +315,7 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
                         {f.codigo ? `${f.codigo} · ` : ''}N.º {f.inspeccion_numero}
                       </b>
                       {f.resultado && <span className={`chip ${f.hallazgos ? 'chip-aviso' : 'chip-ok'}`}>{f.resultado}</span>}
-                      {f.hallazgos > 0 && <span className="chip chip-mal">{f.hallazgos} plan(es) de acción</span>}
+                      {f.hallazgos > 0 && <span className="chip chip-mal">{plural(f.hallazgos, 'plan de acción', 'planes de acción')}</span>}
                       <small>
                         {fechaCorta(f.fecha!)}
                         {nombreUbicacion(f.ubicacion_id) ? ` · ${nombreUbicacion(f.ubicacion_id)}` : ''}

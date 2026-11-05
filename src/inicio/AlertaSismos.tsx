@@ -10,6 +10,11 @@ import {
 type Estado = { tipo: 'cargando' } | { tipo: 'vivo'; en: number } | { tipo: 'error'; mensaje: string }
 const MAGNITUDES = [[0, 'Todos'], [3, '3.0+'], [4, '4.0+'], [5, '5.0+']] as const
 const PERIODOS = [[1, 'Últimas 24 h'], [3, 'Últimos 3 días'], [7, 'Últimos 7 días'], [30, 'Últimos 30 días']] as const
+function textoSobre(hex: string) {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+  const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+  return 1.05 / (l + 0.05) >= 4.5 ? '#ffffff' : '#0b2233'
+}
 const escapar = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 /**
@@ -132,7 +137,7 @@ export default function AlertaSismos({ online }: { online: boolean }) {
           {visibles.map((s) => (
             <li key={s.id}>
               <button type="button" onClick={() => enfocar(s)}>
-                <span className="sismos-mag" style={{ background: colorPorMagnitud(s.mag) }}>{s.mag.toFixed(1)}</span>
+                <span className="sismos-mag" style={{ background: colorPorMagnitud(s.mag), color: textoSobre(colorPorMagnitud(s.mag)) }}>{s.mag.toFixed(1)}</span>
                 <span className="sismos-texto">
                   <b>{formatearLugar(s.place)}</b>
                   <small>{formatearFechaHora(s.time)} ({hace(s.time)})</small>

@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -80,7 +81,7 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
           'Revisando el equipo…'
         ) : copia ? (
           <>
-            Datos en este equipo: {copia.formatos.length} formato(s) y {copia.activos.length} activo(s), bajados el {hora(copia.bajada_en)}.
+            Guardado en este dispositivo: {plural(copia.formatos.length, 'formato', 'formatos')} y {plural(copia.activos.length, 'equipo', 'equipos')}. Actualizado el {hora(copia.bajada_en)}
           </>
         ) : (
           <>Este equipo todavía no tiene los datos para inspeccionar sin señal.</>
@@ -107,12 +108,12 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
         <p className="nota">
           {online ? (
             <>
-              <CloudUpload size={16} aria-hidden="true" /> {porEnviar} inspección(es) por enviar.{' '}
+              <CloudUpload size={16} aria-hidden="true" /> {plural(porEnviar, 'inspección', 'inspecciones')} por enviar.{' '}
               <button className="btn-link" type="button" onClick={() => void sincronizar(cuenta, true)}>Enviar ahora</button>
             </>
           ) : (
             <>
-              <CloudOff size={16} aria-hidden="true" /> Sin señal: {porEnviar} inspección(es) esperan para enviarse. No cierres sesión en este equipo.
+              <CloudOff size={16} aria-hidden="true" /> Sin señal: {plural(porEnviar, 'inspección', 'inspecciones')} {porEnviar === 1 ? 'espera' : 'esperan'} para enviarse. No cierres sesión en este equipo.
             </>
           )}
         </p>
@@ -143,7 +144,7 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
                     <b>{f.plantilla.nombre}</b>
                     <small>
                       {NOMBRE_FRECUENCIA[f.plantilla.frecuencia]}
-                      {n != null ? ` · ${n} recibida(s)` : ''}
+                      {n != null ? ` · ${plural(n, 'recibida', 'recibidas')}` : ''}
                     </small>
                     {medio > 0 && <span className="chip chip-aviso">{medio} a medio llenar</span>}
                   </button>
@@ -180,7 +181,7 @@ export function ListaRecibidas({ recibidas, error, online }: { recibidas: Resume
             </b>
             {i.estado === 'anulada' && <span className="chip chip-gris">Anulada</span>}
             {i.resultado && <span className={`chip ${i.hallazgos.length ? 'chip-aviso' : 'chip-ok'}`}>{i.resultado}</span>}
-            {i.hallazgos.length > 0 && <span className="chip chip-mal">{i.hallazgos.length} plan(es) de acción</span>}
+            {i.hallazgos.length > 0 && <span className="chip chip-mal">{plural(i.hallazgos.length, 'plan de acción', 'planes de acción')}</span>}
             <small>
               {fechaCorta(i.fecha)} · {i.activo_foto ? i.activo_foto.codigo : (i.sedes?.nombre ?? '')}
               {i.puntaje != null ? ` · ${i.puntaje} %` : ''}
@@ -206,7 +207,7 @@ export function FilaBorrador({ b }: { b: Borrador }) {
         <b>{b.nombre_formato}</b>
         <span className="chip chip-aviso">A medio llenar</span>
         <small>
-          {b.activo_foto ? b.activo_foto.codigo : 'Área'} · {fechaCorta(b.fecha)} · guardada {hora(b.actualizado_en)} · {b.fotos.length} foto(s)
+          {b.activo_foto ? b.activo_foto.codigo : 'Área'} · {fechaCorta(b.fecha)} · guardada {hora(b.actualizado_en)} · {plural(b.fotos.length, 'foto', 'fotos')}
         </small>
       </div>
       <span className="lista-acciones">
@@ -247,7 +248,7 @@ export function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
         </b>
         <span className={`chip ${clase}`}>{texto}</span>
         <small>
-          {c.borrador.activo_foto ? c.borrador.activo_foto.codigo : 'Área'} · cerrada {hora(c.cerrada_en)} · {c.borrador.fotos.length} foto(s)
+          {c.borrador.activo_foto ? c.borrador.activo_foto.codigo : 'Área'} · cerrada {hora(c.cerrada_en)} · {plural(c.borrador.fotos.length, 'foto', 'fotos')}
           {c.estado === 'pendiente' && c.error ? ` · ${c.error}${online ? ' Se reintentará sola.' : ''}` : ''}
         </small>
         {c.estado === 'atencion' && (

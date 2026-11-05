@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { ArrowLeft, CalendarDays, Eye, FilePlus2, FileSpreadsheet, FileText, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -217,7 +218,7 @@ function TablaPorMes({ plantillaId, online, descargas = false }: { plantillaId: 
       <Aviso>{error}</Aviso>
       {!online ? <p className="nota">Se ve con señal.</p> : !lista ? <p className="nota">Cargando…</p> : !lista.length ? <p className="nota">No hay inspecciones en {elegido.etiqueta}.</p> : (
         <>
-          <p className="nota">{lista.length} inspección(es) en {elegido.etiqueta}, en {filas.length} lugar(es).</p>
+          <p className="nota">{plural(lista.length, 'inspección', 'inspecciones')} en {elegido.etiqueta}, en {plural(filas.length, 'lugar', 'lugares')}.</p>
           <div className="tabla-scroll">
             <table className="tabla-catastro">
               <thead><tr><th>Área</th><th>Ubicación</th><th>Cantidad</th><th>Registros</th></tr></thead>
@@ -305,7 +306,7 @@ function ResultadosEficacia({ nombre, copia, online }: { nombre: string; copia: 
         <div className="tarjeta-ext">
           <small>Eficacia promedio del programa</small>
           <b>{promedio == null ? '—' : `${promedio} %`}</b>
-          <span>{conResultado.length} área(s) con resultado, de enero a {MESES_TXT[mes - 1]} de {anio}; promedio de la inspección más reciente de cada una</span>
+          <span>{plural(conResultado.length, 'área', 'áreas')} con resultado, de enero a {MESES_TXT[mes - 1]} de {anio}; promedio de la inspección más reciente de cada una</span>
         </div>
       </div>
       <Seccion titulo="Resultado por área">

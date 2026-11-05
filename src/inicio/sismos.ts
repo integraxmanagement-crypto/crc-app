@@ -61,7 +61,7 @@ export function hace(ms: number, ahora = Date.now()) {
   if (min < 1) return 'hace instantes'
   if (min < 60) return `hace ${min} min`
   if (min < 1440) return `hace ${Math.floor(min / 60)} h ${min % 60} min`
-  return `hace ${Math.floor(min / 1440)} día(s)`
+  return `hace ${Math.floor(min / 1440)} ${Math.floor(min / 1440) === 1 ? 'día' : 'días'}`
 }
 
 const RUMBO: Record<string, string> = { N: 'N', S: 'S', E: 'E', W: 'O' }

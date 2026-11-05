@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { ArrowLeft, Ban, FileSpreadsheet, FileText, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -312,7 +313,7 @@ function HojaImpresa({ d, copia, nombre }: { d: Detalle; copia: CopiaLocal | nul
   const secciones = v ? seccionesVisibles(v.receta, i.activo_foto?.subtipo ?? null) : []
   const valor = (p: Punto, r: Respuesta | undefined) => {
     const x = r?.valor
-    if (p.tipo === 'foto') return `${d.archivos.filter((a) => a.punto_clave === p.clave).length} foto(s)`
+    if (p.tipo === 'foto') return plural(d.archivos.filter((a) => a.punto_clave === p.clave).length, 'foto', 'fotos')
     if (x == null || x === '') return ''
     if (p.tipo === 'cumple') return TEXTO[String(x)]
     if (p.tipo === 'si_no') return x === 'si' ? 'Sí' : 'No'
@@ -388,7 +389,7 @@ function RespuestaVista({ p, r, fotos, nombre }: { p: Punto; r: Respuesta | unde
   return (
     <div className={`prueba-punto ${v === 'no' ? 'no-cumple' : ''}`}>
       <p>
-        <code>{p.clave}</code> {p.texto}: <b>{p.tipo === 'foto' ? `${fotos.length} foto(s)` : texto}</b>
+        <code>{p.clave}</code> {p.texto}: <b>{p.tipo === 'foto' ? plural(fotos.length, 'foto', 'fotos') : texto}</b>
       </p>
       {r?.obs && <small>Observación: {r.obs}</small>}
       {r?.accion?.texto && <small>Acción: {r.accion.texto}{r.accion.responsable ? ` · ${nombre(r.accion.responsable)}` : ''}{r.accion.plazo ? ` · plazo ${fechaPeru(r.accion.plazo)}` : ''}</small>}

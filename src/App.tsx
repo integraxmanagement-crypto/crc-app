@@ -315,11 +315,12 @@ export default function App() {
     const gestion = Gestion({ perfil: sesion.perfil, ruta, online })
     return (
       <main className="screen gestion">
+        <button className="saltar" type="button" onClick={() => document.getElementById('contenido')?.focus()}>Saltar al contenido</button>
         <Barra perfil={sesion.perfil} firmas={firmas} online={online} />
         {gestion ? (
-          <section key={sedeElegida} className="panel panel-ancho">{gestion}</section>
+          <section key={sedeElegida} id="contenido" tabIndex={-1} className="panel panel-ancho">{gestion}</section>
         ) : (
-          <section key={sedeElegida} className="panel panel-inicio">
+          <section key={sedeElegida} id="contenido" tabIndex={-1} className="panel panel-inicio">
             <Inicio perfil={sesion.perfil} online={online} />
           </section>
         )}

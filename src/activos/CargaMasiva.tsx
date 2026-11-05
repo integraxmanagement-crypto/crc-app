@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { Download, Upload } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorExcel } from '../carga/xlsx'
@@ -110,7 +111,7 @@ export function CargaMasivaEquipos({ empresaId, empresaNombre, tipoId, exigirTod
           {revision && revision.errores.length > 0 && (
             <div className="alerta-formatos" role="alert">
               <p>
-                <b>Hay {revision.errores.length} fila(s) con errores de {revision.filas}.</b> Corrígelas en el Excel y vuelve a subirlo. No se cargó ningún equipo.
+                <b>{revision.errores.length === 1 ? 'Hay 1 fila con errores' : `Hay ${revision.errores.length} filas con errores`} de {revision.filas}.</b> Corrígelas en el Excel y vuelve a subirlo. No se cargó ningún equipo.
               </p>
               <ul>
                 {revision.errores.slice(0, 60).map((e) => (
@@ -121,26 +122,26 @@ export function CargaMasivaEquipos({ empresaId, empresaNombre, tipoId, exigirTod
                   </li>
                 ))}
               </ul>
-              {revision.errores.length > 60 && <p className="nota">…y {revision.errores.length - 60} fila(s) más.</p>}
+              {revision.errores.length > 60 && <p className="nota">…y {plural(revision.errores.length - 60, 'fila', 'filas')} más.</p>}
             </div>
           )}
           {revision && !revision.errores.length && (
             <>
-              <p className="aviso-ok">El Excel está bien: {revision.listos.length} equipo(s) listos para cargar.</p>
+              <p className="aviso-ok">El Excel está bien: {plural(revision.listos.length, 'equipo listo', 'equipos listos')} para cargar.</p>
               <div className="acciones">
                 <button className="btn" type="button" disabled={Boolean(ocupado)} onClick={() => void cargar()}>
-                  Cargar {revision.listos.length} equipo(s)
+                  Cargar {plural(revision.listos.length, 'equipo', 'equipos')}
                 </button>
               </div>
             </>
           )}
           {resultado && (
             <>
-              {resultado.cargados > 0 && <p className="aviso-ok">Se cargaron {resultado.cargados} equipo(s).</p>}
+              {resultado.cargados > 0 && <p className="aviso-ok">{resultado.cargados === 1 ? 'Se cargó 1 equipo.' : `Se cargaron ${resultado.cargados} equipos.`}</p>}
               {resultado.fallas.length > 0 && (
                 <div className="alerta-formatos" role="alert">
                   <p>
-                    <b>No se pudieron cargar {resultado.fallas.length} fila(s).</b> Corrígelas y vuelve a subir solo esas filas.
+                    <b>{resultado.fallas.length === 1 ? 'No se pudo cargar 1 fila.' : `No se pudieron cargar ${resultado.fallas.length} filas.`}</b> Corrígelas y vuelve a subir solo esas filas.
                   </p>
                   <ul>
                     {resultado.fallas.map((f) => (

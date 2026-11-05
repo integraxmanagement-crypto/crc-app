@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { FileSpreadsheet, Trash2, Upload } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -39,7 +40,7 @@ export function ExcelFormato({ plantillaId, empresaId, receta, puedeEditar }: { 
       if (e) throw new Error(mensaje(e))
       await rpc<void>('registrar_excel', { p_plantilla: plantillaId, p_ruta: ruta, p_nombre: archivo.name, p_bytes: archivo.size, p_marcas: marcas })
       const raras = marcasDesconocidas(marcas, receta)
-      setOk(`Excel guardado con ${marcas.length} marca(s).${raras.length ? ` Estas no corresponden a este formato y quedarán en blanco: ${raras.join(', ')}.` : ''}`)
+      setOk(`Excel guardado con ${plural(marcas.length, 'marca', 'marcas')}.${raras.length ? ` Estas no corresponden a este formato y quedarán en blanco: ${raras.join(', ')}.` : ''}`)
       cargar()
     } catch (e) {
       setError((e as Error).message)
@@ -83,7 +84,7 @@ export function ExcelFormato({ plantillaId, empresaId, receta, puedeEditar }: { 
             <div>
               <b>{excel.nombre_archivo}</b>
               <small>
-                {excel.marcas.length} marca(s) · subido el {new Date(excel.subido_en).toLocaleDateString('es-PE')}
+                {plural(excel.marcas.length, 'marca', 'marcas')} · subido el {new Date(excel.subido_en).toLocaleDateString('es-PE')}
                 {raras.length ? ` · sin dato en este formato: ${raras.join(', ')}` : ''}
               </small>
             </div>

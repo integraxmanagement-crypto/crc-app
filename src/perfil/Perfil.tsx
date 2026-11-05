@@ -21,7 +21,7 @@ export function MenuPerfil({ perfil }: { perfil: Perfil }) {
 
   return (
     <div className="perfil-menu" ref={caja}>
-      <button type="button" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto((a) => !a)}>
+      <button type="button" aria-haspopup="menu" aria-expanded={abierto} aria-label="Mi perfil y cuenta" onClick={() => setAbierto((a) => !a)}>
         <UserRound size={18} aria-hidden="true" /> <span>Perfil</span> <ChevronDown size={14} aria-hidden="true" />
       </button>
       {abierto && (

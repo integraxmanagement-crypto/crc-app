@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -149,7 +150,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           <button type="button" className={`tarjeta-ext ${porVencer.length ? 'aviso' : ''}`} aria-pressed={vista === 'vencer'} onClick={() => alternar('vencer')}>
             <small>Por vencer</small>
             <b>{porVencer.length}</b>
-            <span>vencen este mes o el próximo{vencidos.length ? ` · ${vencidos.length} ya vencido(s)` : ''}</span>
+            <span>vencen este mes o el próximo{vencidos.length ? ` · ${vencidos.length} ${vencidos.length === 1 ? 'ya vencido' : 'ya vencidos'}` : ''}</span>
           </button>
         )}
       </div>
@@ -555,7 +556,7 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
       if (!r) return setAviso('Este formato no tiene un Excel de la organización. Súbelo en el formato.')
       const vista = await entregarRegistro(r.bytes, como, `Inspección ${nombreArchivo}- ${elegido.clave}`)
       if (vista) setVistaPdf(vista)
-      setAviso(`Registro listo: ${r.filas} equipo(s)${r.agregadas ? `; se agregaron ${r.agregadas} filas al formato` : ''}.`)
+      setAviso(`Registro listo: ${plural(r.filas, 'equipo', 'equipos')}${r.agregadas ? `; se agregaron ${r.agregadas} filas al formato` : ''}.`)
     } catch (e) {
       setError(`No se pudo armar el registro: ${(e as Error).message}`)
     } finally {

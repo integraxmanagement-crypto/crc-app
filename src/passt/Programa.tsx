@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileSpreadsheet, FileText, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -605,7 +606,7 @@ function Calendario({ d, arbol, puedeCambiar, pideCambios, permisos, nombre, for
                       {visibles.map((s) => {
                         const e = estado(n.id, s.semana)
                         const clase = e?.ejecutada ? (e.programada ? 'c-e' : 'c-x') : e?.vencida ? 'c-v' : ''
-                        const titulo = e?.inspecciones ? `${e.inspecciones} inspección(es)` : e?.manual ? 'Marcada a mano' : e?.vencida ? 'Vencida' : ''
+                        const titulo = e?.inspecciones ? plural(e.inspecciones, 'inspección', 'inspecciones') : e?.manual ? 'Marcada a mano' : e?.vencida ? 'Vencida' : ''
                         return (
                           <td key={s.semana} className={`celda ${clase} ${esHoy(s) ? 'col-hoy' : ''}`} title={titulo}>
                             {(puedeMarcar(n) && !e?.inspecciones) || n.plantilla_id ? (
@@ -683,7 +684,7 @@ function MarcaManual({ programa, actividad, semana, estado, puedeMarcar, registr
       <b>Semana {semana} · {actividad.texto}</b>
       {estado?.inspecciones ? (
         <>
-          <p className="nota">Esta semana ya tiene {estado.inspecciones} inspección(es) del formato vinculado: se marcó sola.</p>
+          <p className="nota">Esta semana ya tiene {plural(estado.inspecciones, 'inspección', 'inspecciones')} del formato vinculado: se marcó {estado.inspecciones === 1 ? 'sola' : 'solas'}.</p>
           <Aviso>{error}</Aviso>
           <div className="acciones">
             {generar}

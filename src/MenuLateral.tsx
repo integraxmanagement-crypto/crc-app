@@ -2,7 +2,7 @@ import { UsersRound, CalendarDays, ClipboardCheck, ClipboardList, Home, X } from
 import { useEffect, useState } from 'react'
 import { type CopiaLocal, leerCopia } from './inspecciones/campo'
 import { listarInspecciones } from './inspecciones/datos'
-import { ir } from './ruta'
+import { ir, useRuta } from './ruta'
 import type { Perfil } from './sesion'
 import { Logo } from './marca/Logo'
 
@@ -12,6 +12,9 @@ import { Logo } from './marca/Logo'
  */
 export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { perfil: Perfil; equipoSso: boolean; online: boolean; abierto: boolean; onCerrar: () => void }) {
   const [masUsadas, setMasUsadas] = useState<{ id: string; nombre: string }[]>([])
+  const ruta = useRuta()
+  // La página en la que está la persona se resalta en el menú (y se anuncia como «página actual»).
+  const aqui = (activo: boolean) => (activo ? { className: 'activo', 'aria-current': 'page' as const } : {})
 
   // Las cuatro inspecciones más usadas: las que más registros tienen; sin señal (o sin registros), por orden alfabético.
   useEffect(() => {
@@ -61,17 +64,17 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
           </button>
         </div>
         <nav>
-          <button type="button" onClick={ir_('/')}>
+          <button type="button" onClick={ir_('/')} {...aqui(ruta.length === 0)}>
             <Home size={18} aria-hidden="true" /> Inicio
           </button>
           {equipoSso && (
-            <button type="button" onClick={ir_('/passt')}>
+            <button type="button" onClick={ir_('/passt')} {...aqui(ruta[0] === 'passt')}>
               <CalendarDays size={18} aria-hidden="true" /> Programa anual de SST
             </button>
           )}
           {equipoSso && (
             <>
-              <button type="button" onClick={ir_('/inspecciones')}>
+              <button type="button" onClick={ir_('/inspecciones')} {...aqui(ruta[0] === 'inspecciones')}>
                 <ClipboardList size={18} aria-hidden="true" /> Inspecciones
               </button>
               <ul className="menu-sub">
@@ -87,12 +90,12 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
             </>
           )}
           {equipoSso && (
-            <button type="button" onClick={ir_('/formatos')}>
+            <button type="button" onClick={ir_('/formatos')} {...aqui(ruta[0] === 'formatos' || ruta[0] === 'activos')}>
               <ClipboardCheck size={18} aria-hidden="true" /> Formatos
             </button>
           )}
           {perfil.empresaId && (
-            <button type="button" onClick={ir_('/equipo')}>
+            <button type="button" onClick={ir_('/equipo')} {...aqui(ruta[0] === 'equipo')}>
               <UsersRound size={18} aria-hidden="true" /> Equipo de SST
             </button>
           )}

@@ -3364,6 +3364,239 @@ button.tarjeta-ext {
   gap: 0.2rem;
   font-size: 0.75rem;
 }
+/* ───── Revisión de diseño y flujos (05/11/2026) ───── */
+:root {
+  --borde-campo: #7f94a3; /* contorno de campos: 3:1 sobre blanco */
+  --pista: #e3eaef; /* fondo de las barras y anillos de avance, visible sobre blanco */
+  --aviso-grafico: #b26f00; /* ámbar de avance bajo: 4:1 sobre blanco (el anterior daba 2,7:1) */
+}
+
+/* Enlaces dentro del texto: del color de marca, no el azul del navegador */
+a:not([class]) {
+  color: var(--teal-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:not([class]):hover {
+  color: var(--blue);
+}
+
+/* Barra superior en el celular: los botones no se aplastan (el teléfono de emergencias quedaba en 14 px) y miden 44 px */
+.barra > nav {
+  min-width: 0;
+}
+
+.barra > nav button svg {
+  flex: none;
+}
+
+.barra > nav > button,
+.barra > nav .perfil-menu > button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .selector-sede select {
+    max-width: 7.5rem;
+  }
+
+  /* La regla de celular que esconde la flechita del perfil escondía también el teléfono de emergencias (su único ícono) */
+  .perfil-menu > button svg:only-child {
+    display: inline-block;
+  }
+}
+
+.campana-numero {
+  background: #c4343a; /* el rojo anterior daba 3,9:1 con el texto blanco */
+}
+
+/* «Saltar al contenido»: solo se ve al llegar con el teclado */
+.saltar {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--blue);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgb(11 34 51 / 0.3);
+  transform: translateY(-200%);
+  transition: transform 0.15s var(--ease-out);
+}
+
+.saltar:focus {
+  transform: none;
+}
+
+#contenido:focus {
+  outline: none;
+}
+
+/* Menú: la página actual se resalta y los botones miden 44 px */
+.menu-lateral nav > button {
+  min-height: 2.75rem;
+}
+
+.menu-lateral nav > button.activo {
+  background: rgb(255 255 255 / 16%);
+  box-shadow: inset 3px 0 0 var(--teal);
+  font-weight: 700;
+}
+
+.menu-sub button {
+  min-height: 2.5rem;
+}
+
+/* Listas desplegables y casillas sueltas, con el mismo aspecto que el resto de los campos */
+.sismos-controles select,
+.avance-passt-cab select {
+  min-height: 2.75rem;
+  padding: 0 2.25rem 0 0.8rem;
+  border: 1px solid var(--borde-campo);
+  border-radius: 10px;
+  background-color: var(--surface);
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 1.2rem) 50%, calc(100% - 0.85rem) 50%;
+  background-size: 0.35rem 0.35rem;
+  background-repeat: no-repeat;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  appearance: none;
+}
+
+.sismos-controles select:focus-visible,
+.avance-passt-cab select:focus-visible {
+  outline: 3px solid var(--teal-ink);
+  outline-offset: 2px;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1.5rem;
+  height: 1.5rem;
+  accent-color: var(--teal-ink);
+}
+
+/* Inicio: las tres secciones de resumen son tarjetas como la del programa anual, con un mismo ancho y aire */
+.pendientes.resumen {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+}
+
+.pendientes.resumen h2 {
+  font-size: 1rem;
+}
+
+.avance-passt {
+  margin-bottom: 1rem;
+}
+
+.panel.panel-inicio > .saludo {
+  margin-bottom: 1.25rem;
+}
+
+/* Tarjetas que se pueden tocar: suben 2 px al pasar el cursor y bajan al presionar */
+.tarjetas-tipos button,
+.lista-empresas button {
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s, border-color 0.2s;
+}
+
+.tarjetas-tipos button:hover,
+.lista-empresas button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -8px rgb(11 34 51 / 0.35);
+}
+
+.tarjetas-tipos button:active,
+.lista-empresas button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.tarjetas-tipos button {
+  min-height: 5.5rem;
+  font-size: 0.9375rem;
+}
+
+.tarjetas-tipos small {
+  font-size: 0.8125rem;
+}
+
+.btn-sec {
+  transition: background-color 0.2s, border-color 0.2s, transform 0.2s var(--ease-out);
+}
+
+.btn-sec:hover {
+  border-color: var(--blue);
+  background: #eaf1f5;
+}
+
+.btn-sec:active {
+  transform: scale(0.98);
+}
+
+/* Gráficos y avances: pista visible sobre blanco, ámbar con contraste y texto sobre cada color de sismo */
+.anillo-fondo {
+  stroke: var(--pista);
+}
+
+.anillo[data-tono='bajo'] .anillo-valor,
+.mes-obj-barra span {
+  stroke: var(--aviso-grafico);
+}
+
+.mes-obj-barra {
+  background: var(--pista);
+}
+
+.mes-obj-barra span {
+  background: var(--aviso-grafico);
+}
+
+.mes-obj-barra span[data-bien='true'] {
+  background: var(--teal);
+}
+
+.sismos-texto a {
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saltar,
+  .tarjetas-tipos button,
+  .lista-empresas button {
+    transition: none;
+  }
+
+  .tarjetas-tipos button:hover,
+  .lista-empresas button:hover {
+    transform: none;
+  }
+}
+
+/* El botón de las tres líneas también mide 44 px */
+.barra-menu {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+@media (max-width: 480px) {
+  .selector-sede select {
+    max-width: 6.75rem;
+  }
+}
+
 /* Selector de sede en el celular (390 px): «Todas las sedes» ya no se corta. La barra gana espacio y el selector ocupa lo que sobra. */
 @media (max-width: 480px) {
   .barra {

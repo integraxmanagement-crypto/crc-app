@@ -1,3 +1,4 @@
+import { plural } from '../plural'
 import { Bell, Inbox, ListChecks, PenLine } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { db } from '../empresas/datos'
@@ -63,7 +64,7 @@ export function Campana({ firmas, cuenta, online, resuelve = false, solicita = f
 
   return (
     <div className="perfil-menu campana" ref={caja}>
-      <button type="button" aria-haspopup="menu" aria-expanded={abierto} title="Avisos" aria-label={total ? `Avisos: ${total} pendiente(s)` : 'Avisos'} onClick={() => setAbierto((a) => !a)}>
+      <button type="button" aria-haspopup="menu" aria-expanded={abierto} title="Avisos" aria-label={total ? `Avisos: ${plural(total, 'pendiente', 'pendientes')}` : 'Avisos'} onClick={() => setAbierto((a) => !a)}>
         <Bell size={18} aria-hidden="true" />
         {total > 0 && <span className="campana-numero">{total > 99 ? '99+' : total}</span>}
       </button>
@@ -74,17 +75,17 @@ export function Campana({ firmas, cuenta, online, resuelve = false, solicita = f
           </p>
           {hallazgos > 0 && (
             <button type="button" role="menuitem" onClick={elegir('/hallazgos')}>
-              <ListChecks size={18} aria-hidden="true" /> Tienes {hallazgos} plan(es) de acción asignado(s) por cerrar
+              <ListChecks size={18} aria-hidden="true" /> Tienes {hallazgos === 1 ? '1 plan de acción asignado' : `${hallazgos} planes de acción asignados`} por cerrar
             </button>
           )}
           {solicitudes > 0 && (
             <button type="button" role="menuitem" onClick={elegir('/solicitudes')}>
-              <Inbox size={18} aria-hidden="true" /> {resuelve ? `Tienes ${solicitudes} solicitud(es) o aviso(s) de los gestores` : `Tienes ${solicitudes} respuesta(s) a tus solicitudes`}
+              <Inbox size={18} aria-hidden="true" /> {resuelve ? `Tienes ${solicitudes === 1 ? '1 solicitud o aviso' : `${solicitudes} solicitudes o avisos`} de los gestores` : `Tienes ${solicitudes} respuesta(s) a tus solicitudes`}
             </button>
           )}
           {firmas > 0 && (
             <button type="button" role="menuitem" onClick={elegir('/firmas')}>
-              <PenLine size={18} aria-hidden="true" /> Tienes {firmas} firma(s) pendiente(s)
+              <PenLine size={18} aria-hidden="true" /> Tienes {firmas === 1 ? '1 firma pendiente' : `${firmas} firmas pendientes`}
             </button>
           )}
           {total === 0 && <p className="campana-vacia">No tienes avisos.</p>}
