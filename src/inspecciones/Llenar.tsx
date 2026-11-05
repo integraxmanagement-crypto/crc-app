@@ -1,11 +1,14 @@
 import { ArrowLeft, Camera, Check, PenLine, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { SelectorArea } from '../SelectorArea'
+import type { Unidad } from '../usuarios/datos'
+import { type CondicionAbierta, condicionesAbiertasIpf, enlaceFotoCondicion } from '../condiciones/datos'
 import { Aviso } from '../empresas/campos'
 import { type Fila, type Respuesta, evaluar, puntoVisible, textoVencido, repetibleActivo, seccionesVisibles, sinOcultas } from '../formatos/motor'
 import type { Punto } from '../formatos/receta'
 import { useOnline } from '../hooks'
 import { ir } from '../ruta'
-import { type Borrador, type CopiaLocal, type Firmante, type FotoLocal, cerrar, guardarBorrador, guardarFoto, leerArchivo, leerBorrador, leerCopia, quitarArchivo } from './campo'
+import { type Borrador, type CopiaLocal, type Firmante, type FotoLocal, bajarCopia, cerrar, guardarBorrador, guardarFoto, leerArchivo, leerBorrador, leerCopia, quitarArchivo } from './campo'
 import { BuscarFirmante } from './BuscarFirmante'
 import { PanelFirma } from './Firma'
 import { faltanFirmantes, hoyLocal } from './ayudas'
@@ -90,6 +93,21 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
     })
   }
 
+  // IPF: condiciones abiertas de la matriz para esta fecha, área y ubicación (pedido del dueño, 05/11/2026).
+  const esIpf = Boolean(b?.receta.secciones.some((s) => s.clave === 'condiciones' && s.puntos[0]?.clave.startsWith('IPF-C')))
+  const claveAbiertas = b && esIpf && b.unidad_id ? `${b.sede_id}|${b.fecha}|${b.unidad_id}|${b.ubicacion_id ?? ''}` : null
+  const [abiertasDe, setAbiertasDe] = useState<{ clave: string; lista: CondicionAbierta[] } | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [textoArea, setTextoArea] = useState<string | null>(null)
+  const sedeB = b?.sede_id, fechaB = b?.fecha, uniB = b?.unidad_id, ubiB = b?.ubicacion_id
+  useEffect(() => {
+    if (!claveAbiertas || !sedeB || !fechaB || !navigator.onLine) return
+    let vivo = true
+    condicionesAbiertasIpf(sedeB, fechaB, uniB ?? null, ubiB ?? null).then((lista) => { if (vivo) setAbiertasDe({ clave: claveAbiertas, lista }) }, () => {})
+    return () => { vivo = false }
+  }, [claveAbiertas, sedeB, fechaB, uniB, ubiB])
+  const abiertas = abiertasDe && abiertasDe.clave === claveAbiertas ? abiertasDe.lista : null
+
   const contados = useMemo(() => (b ? conFotos(b) : null), [b])
   const ev = useMemo(
     () =>
@@ -163,6 +181,35 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
     }
     return '—'
   }
+  async function extrapolar() {
+    if (!abiertas || !b) return
+    setError(null)
+    const yaTraidas = new Set((b.filas.condiciones ?? []).map((f) => String(f._condicion?.valor ?? '')))
+    const nuevas = abiertas.filter((c) => !yaTraidas.has(c.id))
+    if (!nuevas.length) return setAviso('Ya están todas las condiciones abiertas de esta área.')
+    const base = (b.filas.condiciones ?? []).length
+    cambiar((x) => ({
+      ...x,
+      respuestas: sinOcultas(x.receta, { ...x.respuestas, 'IPF-01': { valor: 'si' } }),
+      filas: {
+        ...x.filas,
+        condiciones: [...(x.filas.condiciones ?? []), ...nuevas.map((c): Fila => ({
+          'IPF-C01': { valor: c.peligro ?? '' }, 'IPF-C02': { valor: c.riesgo ?? '' }, 'IPF-C04': { valor: c.plan_accion ?? '' },
+          'IPF-C05': { valor: c.responsable ?? '' }, 'IPF-C06': { valor: c.fecha_programada ?? '' }, _condicion: { valor: c.id },
+        }))],
+      },
+    }))
+    setAviso(`Se trajeron ${nuevas.length} ${nuevas.length === 1 ? 'condición' : 'condiciones'} de la matriz. Quita las filas que no quieras.`)
+    for (const [k, c] of nuevas.entries()) {
+      if (!c.evidencia) continue
+      try {
+        const blob = await (await fetch(await enlaceFotoCondicion(c.evidencia))).blob()
+        await agregarFoto('IPF-C03', base + k, new File([blob], 'evidencia.jpg', { type: blob.type || 'image/jpeg' }))
+      } catch {
+        // Sin la foto de la matriz: se puede tomar otra en el IPF.
+      }
+    }
+  }
   const fotosDe = (punto: string, fila: number | null) => b.fotos.filter((f) => f.punto_clave === punto && f.fila === fila)
 
   const punto = (p: Punto, r: Respuesta | undefined, fila: number | null, onCambio: (r: Respuesta) => void) => (
@@ -183,15 +230,48 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
         </p>
       </header>
 
+      {!b.activo_foto && copia && (
+        <div className="fila3">
+          <label className="field">
+            <span>Sede</span>
+            <select value={b.sede_id} onChange={(e) => cambiar((x) => ({ ...x, sede_id: e.target.value, ubicacion_id: null }))}>
+              {copia.sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </label>
+          <SelectorArea empresaId={b.empresa_id} unidades={copia.unidades as Unidad[]} online={navigator.onLine} etiqueta="Área"
+            texto={textoArea ?? copia.unidades.find((u) => u.id === b.unidad_id)?.nombre ?? ''} elegido={b.unidad_id}
+            onCambio={(t, id) => { setTextoArea(t); cambiar((x) => ({ ...x, unidad_id: id })) }}
+            onUnidadesCambio={() => void bajarCopia(cuenta, b.empresa_id).then(setCopia, () => {})} />
+          <label className="field">
+            <span>Ubicación <em className="opcional">(opcional)</em></span>
+            <select value={b.ubicacion_id ?? ''} onChange={(e) => cambiar((x) => ({ ...x, ubicacion_id: e.target.value || null }))}>
+              <option value="">— Sin ubicación —</option>
+              {copia.ubicaciones.filter((u) => u.sede_id === b.sede_id).map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
       <label className="field campo-fecha">
         <span>Fecha de la inspección</span>
         <input type="date" value={b.fecha} max={hoyLocal()} onChange={(e) => e.target.value && cambiar((x) => ({ ...x, fecha: e.target.value }))} />
       </label>
+      {aviso && <p className="aviso-ok" role="status">{aviso}</p>}
       {ev.vencidos.length > 0 && <p className="aviso-suave">Inoperativo por: {ev.vencidos.map((c) => textoVencido(c, receta)).join('; ')}.</p>}
 
       {secciones.map((s) => (
         <div key={s.clave} className="prueba-seccion">
           <h3>{s.titulo}</h3>
+          {esIpf && s.clave === 'pregunta' && abiertas && abiertas.length > 0 && (
+            <p className="aviso-suave">Esta área tiene {abiertas.length} {abiertas.length === 1 ? 'condición abierta' : 'condiciones abiertas'} en la matriz de condiciones: aquí debes marcar «Sí».</p>
+          )}
+          {esIpf && s.clave === 'condiciones' && (
+            <div className="acciones">
+              <button className="btn-sec" type="button" disabled={!abiertas} onClick={() => void extrapolar()}>
+                Extrapolar condiciones de la matriz{abiertas ? ` (${abiertas.length})` : ''}
+              </button>
+              {!abiertas && <small className="ayuda">{b.unidad_id ? (navigator.onLine ? 'Buscando las condiciones abiertas del área…' : 'Necesitas señal para traer las condiciones de la matriz.') : 'Elige el área de la inspección para traer sus condiciones abiertas.'}</small>}
+            </div>
+          )}
           {s.repetible ? (
             repetibleActivo(s, contados!.respuestas) ? (
               <>
@@ -222,8 +302,13 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
               <p className="nota">Este bloque aparece cuando se contesta «Sí» en la pregunta que lo activa.</p>
             )
           ) : (
-            s.puntos.filter((p) => puntoVisible(p, b.respuestas)).map((p) => punto(p, b.respuestas[p.clave], null, (r) =>
-              cambiar((x) => ({ ...x, respuestas: sinOcultas(receta, { ...x.respuestas, [p.clave]: r }) }))))
+            s.puntos.filter((p) => puntoVisible(p, b.respuestas)).map((p) => punto(p, b.respuestas[p.clave], null, (r) => {
+              if (p.clave === 'IPF-01' && r.valor === 'no' && abiertas?.length) {
+                setAviso(null)
+                return setError(`Esta área tiene ${abiertas.length} ${abiertas.length === 1 ? 'condición abierta' : 'condiciones abiertas'} en la matriz (pendientes o atrasadas): en esta pregunta debes marcar «Sí».`)
+              }
+              cambiar((x) => ({ ...x, respuestas: sinOcultas(receta, { ...x.respuestas, [p.clave]: r }) }))
+            }))
           )}
         </div>
       ))}

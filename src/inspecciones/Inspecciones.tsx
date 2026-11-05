@@ -12,6 +12,7 @@ import { type Borrador, type CopiaLocal, type EnCola, type FormatoLocal, bajarCo
 import { type ResumenInspeccion, conFrecuencias, frecuenciasActuales, listarInspecciones } from './datos'
 import { espacioLleno, hoyLocal, ordenarUnidades, useUso } from './ayudas'
 import { esBombaIncendio } from './BombasIncendio'
+import { esInspeccionDirecta } from './directa'
 
 const fechaCorta = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
 const hora = (iso: string) => new Date(iso).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -58,6 +59,16 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
 
   const porEnviar = cola.filter((c) => c.estado === 'pendiente' || c.estado === 'enviando').length
   const conAtencion = cola.filter((c) => c.estado === 'atencion').length
+
+  // IPF y LOTO: al pulsar «Nueva inspección» no se muestra esta pantalla: se abre directo el formato para llenar (05/11/2026).
+  if (preset && copia?.formatos.some((x) => x.plantilla.id === preset.plantilla && esInspeccionDirecta(x.version.receta))) {
+    return (
+      <div className="detalle">
+        <p className="nota">Abriendo la inspección…</p>
+        <NuevaInspeccion copia={copia} cuenta={cuenta} preset={preset} onCancelar={() => ir('/inspecciones')} />
+      </div>
+    )
+  }
 
   return (
     <div className="detalle">
@@ -322,7 +333,8 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
     if (!f) return setError('Elige el formato.')
     const activo = f.plantilla.aplica_a === 'activo' ? copia.activos.find((a) => a.id === activoId) : null
     if (f.plantilla.aplica_a === 'activo' && !activo) return setError('Elige el activo que vas a inspeccionar.')
-    if (!activo && !sede) return setError('Elige la sede.')
+    const sedeFinal = sede || copia.sedes[0]?.id || ''
+    if (!activo && !sedeFinal) return setError('Elige la sede.')
     const tipo = activo ? copia.tipos.find((t) => t.id === activo.tipo_id) : null
     const ahora = new Date().toISOString()
     const b: Borrador = {
@@ -333,7 +345,7 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
       version_id: f.version.id,
       nombre_formato: f.plantilla.nombre,
       receta: f.version.receta,
-      sede_id: activo ? activo.sede_id : sede,
+      sede_id: activo ? activo.sede_id : sedeFinal,
       unidad_id: activo ? activo.unidad_id : unidad || null,
       ubicacion_id: activo ? activo.ubicacion_id : ubicacion || null,
       activo_id: activo?.id ?? null,
@@ -361,7 +373,7 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
 
   // Con un equipo ya elegido (desde la pantalla de extintores), la inspección empieza sola.
   useEffect(() => {
-    if (preset?.activo && copia.activos.some((x) => x.id === preset.activo)) void crear()
+    if ((preset?.activo && copia.activos.some((x) => x.id === preset.activo)) || (preset && f && esInspeccionDirecta(f.version.receta))) void crear()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
