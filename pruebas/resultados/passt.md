@@ -1,6 +1,6 @@
 # Pruebas del Programa Anual de SST (tarea 3.4-E)
 
-Fecha: 2026-11-05T15:29:12.429Z · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: 45 de 2026 · **undefined de undefined correctas**
+Fecha: 2026-11-05T21:33:04.273Z · Base: crc-dev · Datos FICTICIOS · Semana de la prueba: 45 de 2026 · **undefined de undefined correctas**
 
 ## 1. Quién ve y quién crea
 
@@ -48,9 +48,9 @@ Fecha: 2026-11-05T15:29:12.429Z · Base: crc-dev · Datos FICTICIOS · Semana de
 ## 4. Lo ejecutado: por inspección y a mano
 
 - ❌ Sin inspecciones, nada ejecutado por inspección
-- ❌ El administrador (no el responsable) inspecciona con resultado «Inoperativo» — {"id":"466edc0c-26df-4325-aa44-b6c912c18a17","estado":"grabada","huella":"848656086835ae228dd6d35e1712661903824f636a1f1f547d5203ee7efc78d6","numero":187}
-- ❌ La semana queda ejecutada sola, con cualquier inspector y resultado — [{"actividad_id":"cae9f22d-1ab2-43ea-afbe-f72062e4709d","semana":45,"inspecciones":1,"ultima":"466edc0c-26df-4325-aa44-b6c912c18a17"}]
-- ❌ La actividad muestra el hallazgo abierto de su inspección — [{"actividad_id":"cae9f22d-1ab2-43ea-afbe-f72062e4709d","abiertos":1,"vencidos":0}]
+- ❌ El administrador (no el responsable) inspecciona con resultado «Inoperativo» — {"id":"0b1347f0-87af-4f45-8c5e-aa2e01eed504","estado":"grabada","huella":"1f820cdeb3bb138cacb5ff8ba607085f009711e19c71d3ee399bc2c5f0d6c085","numero":194}
+- ❌ La semana queda ejecutada sola, con cualquier inspector y resultado — [{"actividad_id":"1c5d930e-7439-478b-818e-37229ace5030","semana":45,"inspecciones":1,"ultima":"0b1347f0-87af-4f45-8c5e-aa2e01eed504"}]
+- ❌ La actividad muestra el hallazgo abierto de su inspección — [{"actividad_id":"1c5d930e-7439-478b-818e-37229ace5030","abiertos":1,"vencidos":0}]
 - ❌ El gestor no marca una actividad que no es suya — No autorizado
 - ❌ El responsable no marca a mano una actividad vinculada a un formato — No autorizado
 - ❌ Sin explicar qué se hizo no se marca
@@ -108,7 +108,7 @@ Fecha: 2026-11-05T15:29:12.429Z · Base: crc-dev · Datos FICTICIOS · Semana de
 
 ## N.º de trabajadores de la empresa (automático o manual)
 
-- ❌ En modo automático se cuenta el personal activo de la empresa — 61 / 61
+- ❌ En modo automático se cuenta el personal activo de la empresa — 73 / 73
 - ❌ El gestor no cambia el modo ni el número — No autorizado
 - ❌ En modo manual hay que escribir la cantidad — Escribe la cantidad de trabajadores
 - ❌ El administrador pone el modo manual con su número

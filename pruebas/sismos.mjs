@@ -28,7 +28,7 @@ comprobar('Aviso con «Solo Perú»: no cuenta el de Ecuador', sismoParaAlerta(l
 comprobar('Semáforo de magnitud', colorPorMagnitud(6.2) === '#b3261e' && colorPorMagnitud(5) === '#d9641e' && colorPorMagnitud(4.3) === '#c99a12' && colorPorMagnitud(2) === '#3d7a5a')
 comprobar('Distancia a Lima (Ica, unos 270 km)', Math.abs(distanciaDeLima(-14.07, -75.73) - 270) < 15, `${distanciaDeLima(-14.07, -75.73)}`)
 comprobar('«hace …»', hace(AHORA - 30_000, AHORA) === 'hace instantes' && hace(AHORA - 12 * 60_000, AHORA) === 'hace 12 min'
-  && hace(AHORA - 185 * 60_000, AHORA) === 'hace 3 h 5 min' && hace(AHORA - 2 * 86_400_000, AHORA) === 'hace 2 día(s)')
+  && hace(AHORA - 185 * 60_000, AHORA) === 'hace 3 h 5 min' && hace(AHORA - 2 * 86_400_000, AHORA) === 'hace 2 días' && hace(AHORA - 86_400_000, AHORA) === 'hace 1 día')
 comprobar('Lugar en español', formatearLugar('45 km SW of Ica, Peru') === '45 km al SO de Ica, Peru' && formatearLugar('Off the coast of Ecuador') === 'Off the coast of Ecuador' && formatearLugar('') === 'Ubicación sin datos')
 comprobar('Fecha y hora de Lima', /10:00:00/.test(formatearFechaHora(AHORA)), formatearFechaHora(AHORA))
 

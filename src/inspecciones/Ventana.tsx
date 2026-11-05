@@ -6,7 +6,7 @@ const ENFOCABLES = 'a[href],button:not([disabled]),input:not([disabled]):not([ty
 
 /**
  * Ventana emergente. Con el teclado: al abrirse lleva el foco a su primer campo o botón, Tab y Mayús+Tab dan la vuelta dentro de ella
- * (no se sale hacia la pantalla de atrás), Escape la cierra y al cerrarse el foco vuelve al botón que la abrió (06/11/2026).
+ * (no se sale hacia la pantalla de atrás), Escape la cierra y al cerrarse el foco vuelve al botón que la abrió (05/11/2026).
  */
 export function Ventana({ titulo, onCerrar, children }: { titulo: string; onCerrar: () => void; children: ReactNode }) {
   const caja = useRef<HTMLDivElement>(null)

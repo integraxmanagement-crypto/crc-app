@@ -1,4 +1,4 @@
-// Prueba de las reglas de reintento de la cola de envío de inspecciones (nivel 2, 06/11/2026): tope de 12 intentos y espera mínima de 30 s.
+// Prueba de las reglas de reintento de la cola de envío de inspecciones (nivel 2, 05/11/2026): tope de 12 intentos y espera mínima de 30 s.
 // Son funciones puras (src/inspecciones/cola.ts): no usa la base de datos ni cuentas. Uso: node pruebas/cola.mjs
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { comprobar, resultados, resumen } from './comun.mjs'

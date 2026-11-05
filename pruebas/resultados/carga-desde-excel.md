@@ -1,6 +1,6 @@
 # Carga de personal desde Excel — prueba final (tarea 3.6)
 
-Fecha: 5/11/2026, 10:22:12 a. m. (hora de Lima). Solo datos ficticios; esta prueba no graba nada.
+Fecha: 5/11/2026, 4:49:50 p. m. (hora de Lima). Solo datos ficticios; esta prueba no graba nada.
 
 Archivo: `pruebas/excel/CRC_prueba_carga_25_filas_FICTICIO.xlsx` (se crea con `pruebas/excel/crear_excel_prueba.py`).
 

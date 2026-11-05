@@ -15,7 +15,7 @@ const REQUISITOS: [RegExp | ((c: string) => boolean), string][] = [
   [(c) => [...c].some((x) => SIMBOLOS_SUPABASE.includes(x)), 'un símbolo (por ejemplo - ! # ?)'],
 ]
 
-/** Intentos como máximo para dar con una contraseña inicial válida (06/11/2026). Casi siempre basta el primero. */
+/** Intentos como máximo para dar con una contraseña inicial válida (05/11/2026). Casi siempre basta el primero. */
 export const INTENTOS_MAXIMOS_CONTRASENA = 50
 
 /** Una contraseña al azar de 12 caracteres (puede no cumplir las reglas: quien la pide la revisa). */

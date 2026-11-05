@@ -1,4 +1,4 @@
-// Reglas de reintento de la cola de envío de inspecciones (06/11/2026). Son funciones puras, sin acceso a la base ni al navegador,
+// Reglas de reintento de la cola de envío de inspecciones (05/11/2026). Son funciones puras, sin acceso a la base ni al navegador,
 // para poder probarlas solas (pruebas/cola.mjs). Aprobado por el dueño tras la revisión de llamadas en cadena y reintentos.
 
 /** Reintentos automáticos antes de pasar a «necesita atención»: con las esperas de abajo son unas 6 horas. */

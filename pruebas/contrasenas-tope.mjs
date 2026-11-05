@@ -1,4 +1,4 @@
-// Prueba del tope de 50 intentos al generar contraseñas iniciales al azar (nivel 2, 06/11/2026). No usa la base de datos ni cuentas.
+// Prueba del tope de 50 intentos al generar contraseñas iniciales al azar (nivel 2, 05/11/2026). No usa la base de datos ni cuentas.
 // Uso: node pruebas/contrasenas-tope.mjs
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { comprobar, resultados, resumen } from './comun.mjs'

@@ -1,6 +1,6 @@
 # Usuarios y roles por empresa · CRC tarea 3.3
 
-Ejecutada: 5/11/2026, 10:21:24 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 5/11/2026, 5:00:37 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 82 de 82 pruebas pasaron.**
 
@@ -12,7 +12,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 68 personas visibles |
+| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 96 personas visibles |
 | ✅ Pasa | ADMIN_A ve 0 cuentas de B |  |
 | ✅ Pasa | ADMIN_A no puede crear una cuenta en B | 403 No autorizado |
 | ✅ Pasa | ADMIN_A no puede cesar a USUARIO_B | No autorizado |
@@ -83,7 +83,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve los intentos | 3133 intentos |
+| ✅ Pasa | El dueño ve los intentos | 3607 intentos |
 | ✅ Pasa | ADMIN_A ve 0 intentos |  |
 | ✅ Pasa | GESTOR_A ve 0 intentos |  |
 | ✅ Pasa | USUARIO_A2 ve 0 intentos |  |
