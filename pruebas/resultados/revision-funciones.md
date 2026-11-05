@@ -1,6 +1,6 @@
 # Resultado: arreglos de la revisión de funciones del servidor
 
-Fecha: 2026-11-05 15:30 UTC · 22 de 22 pasaron.
+Fecha: 2026-11-05 15:36 UTC · 25 de 25 pasaron · con --restablecer.
 
 - ✅ Con la dirección inventada bloqueada (30 fallos, ver ip-ingreso.sql) el intento NO sale bloqueado: se usa la dirección real (HTTP 400)
 - ✅ El intento quedó anotado una vez, como fallo
@@ -24,3 +24,6 @@ Fecha: 2026-11-05 15:30 UTC · 22 de 22 pasaron.
 - ✅ Administrador de la sede 2: los usuarios de la sede 1 no se tocan (0 resultados) (HTTP 200, 0 resultados)
 - ✅ Administrador de sede: a los administradores no los toca (0 resultados) (HTTP 200, 0 resultados)
 - ✅ El rescate sigue exigiendo la clave secreta: con otra cosa, 401 y nada cambia (HTTP 401)
+- ✅ Administrador de la sede 2 restablece en bloque a los usuarios gestores: solo el de su sede (USUGES_C2) (1 resultado(s))
+- ✅ No toca al usuario gestor de la sede 1 (USUGES_C1)
+- ✅ USUGES_C2 quedó con una contraseña nueva guardada en el archivo local (no se imprime) (HTTP 200)
