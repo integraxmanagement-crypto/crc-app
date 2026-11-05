@@ -132,6 +132,7 @@ function Fila({ s, nombre, puedeResolver = false, onCambio }: { s: Solicitud; no
             </label>
             {s.tipo === 'publicar_formato' && <p className="nota">Antes de aprobar, abre el formato y revisa el borrador sin cambiarlo. Al aprobar se publica tal como está; si el gestor lo cambió después de pedirlo, no se podrá aprobar y conviene denegar para que lo pida de nuevo.</p>}
             {s.tipo === 'retirar_formato' && <p className="nota">Al aprobar, el formato deja de estar vigente: no se podrán hacer inspecciones nuevas con él. Las inspecciones ya hechas no cambian.</p>}
+            {s.tipo === 'cambio_columnas_condiciones' && <p className="nota">Al aprobar se hace el cambio en las columnas de la matriz de condiciones de esa sede. Si denegas, la matriz queda como está.</p>}
             {s.tipo === 'corregir_inspeccion' && <p className="nota">Al aprobar se aplica la corrección pedida; el servidor la valida como cualquier corrección. Si no pasa la validación, la solicitud sigue pendiente y puedes denegarla.</p>}
             <Aviso>{error}</Aviso>
             <div className="acciones">

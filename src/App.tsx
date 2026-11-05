@@ -11,6 +11,7 @@ import { Editor } from './formatos/Editor'
 import { Formatos, type Rutas } from './formatos/Formatos'
 import { ListaEmpresas } from './empresas/ListaEmpresas'
 import { useInstall, useOnline } from './hooks'
+import { Condiciones } from './condiciones/Condiciones'
 import { Hallazgos } from './hallazgos/Hallazgos'
 import { MisActividades } from './passt/MisActividades'
 import { ProgramaAnual } from './passt/Programa'
@@ -251,6 +252,9 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
         permisos={{ editar: puede(perfil, 'passt.editar') || esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor', admin: esAdminDeEmpresa(perfil) || puede(perfil, 'passt.reprogramar'), general: perfil.rolCodigo === 'admin_empresa', cuenta: perfil.id, solicita: perfil.rolCodigo === 'gestor' && !puede(perfil, 'passt.reprogramar') }} />
     return <Programas empresaId={perfil.empresaId} online={online} sedesPropias={perfil.rolCodigo === 'admin_empresa' ? null : perfil.sedes} />
   }
+  // Gestión de condiciones: administrador general, administrador de sede y gestor (la base de datos decide lo que cada uno hace).
+  if (ruta[0] === 'condiciones' && perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? ''))
+    return <Condiciones empresaId={perfil.empresaId} sedes={perfil.sedes} rolCodigo={perfil.rolCodigo ?? ''} online={online} />
   if (ruta[0] === 'hallazgos' && perfil.empresaId)
     return <Hallazgos key={ruta[1] ?? 'todos'} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} inspeccionId={ruta[1]} />
   if ((ruta[0] === 'formatos' || ruta[0] === 'activos') && esEquipoSso(perfil) && perfil.empresaId) {

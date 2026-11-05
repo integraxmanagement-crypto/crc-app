@@ -5,7 +5,7 @@
 import { corregirInspeccion } from '../inspecciones/datos'
 import { db, mensaje, rpc } from '../empresas/datos'
 
-export type TipoSolicitud = 'anular_inspeccion' | 'corregir_inspeccion' | 'cambio_programa' | 'publicar_formato' | 'retirar_formato'
+export type TipoSolicitud = 'anular_inspeccion' | 'corregir_inspeccion' | 'cambio_programa' | 'publicar_formato' | 'retirar_formato' | 'cambio_columnas_condiciones'
 export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'denegada' | 'comunicada'
 
 export type Solicitud = {
