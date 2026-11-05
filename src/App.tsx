@@ -1,3 +1,4 @@
+import { Esqueleto } from './Esqueleto'
 import { Building2, CircleCheck, Download, Menu, ShieldCheck, Smartphone } from 'lucide-react'
 import { type ReactNode, Suspense, lazy, useEffect, useState } from 'react'
 import { Activos } from './activos/Activos'
@@ -296,7 +297,7 @@ export default function App() {
 
   let contenido: ReactNode
   if (sesion.fase === 'cargando') {
-    contenido = <p className="lede">Cargando…</p>
+    contenido = <Esqueleto forma="formulario" />
   } else if (sesion.fase === 'fuera') {
     contenido = <Ingreso aviso={sesion.aviso} onIngreso={setClaveIngreso} />
   } else if (sesion.perfil.debeCambiarContrasena) {

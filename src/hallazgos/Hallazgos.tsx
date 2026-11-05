@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { AlertTriangle, ArrowLeft, Camera, CheckCircle2, ChevronDown, ChevronUp, Eye, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -84,7 +85,7 @@ export function Hallazgos({ empresaId, cuenta, gestiona, online, inspeccionId, f
       {!online ? (
         <p className="aviso-suave">Los planes de acción se ven y se cierran con señal (v1).</p>
       ) : !lista ? (
-        !error && <p className="nota">Cargando…</p>
+        !error && <Esqueleto forma="lista" />
       ) : (
         fuente === null ? (
           <Fuentes lista={lista} onElegir={setFuente} />
@@ -290,7 +291,7 @@ function PanelHallazgo({ h, gestiona, cuenta, personas, nombre, onCambio }: {
 
       <Seccion titulo="Historial">
         {!historial ? (
-          <p className="nota">Cargando…</p>
+          <Esqueleto forma="lista" filas={2} />
         ) : (
           <ul className="historial">
             {historial.map((c) => (

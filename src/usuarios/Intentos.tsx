@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { Search } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo } from '../empresas/campos'
@@ -74,7 +75,7 @@ export function Intentos() {
 
       <Aviso>{error}</Aviso>
       {intentos === null ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" />
       ) : (
         <>
           <p className="nota">

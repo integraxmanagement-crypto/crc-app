@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, CalendarCheck2, ClipboardList } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Aviso } from '../empresas/campos'
@@ -63,7 +64,7 @@ export function MisActividades({ empresaId, cuenta, online }: { empresaId: strin
       {!online ? (
         <p className="aviso-suave">Se ve con señal.</p>
       ) : !filas ? (
-        !error && <p className="nota">Cargando…</p>
+        !error && <Esqueleto forma="lista" />
       ) : !filas.length ? (
         <p className="nota">No tienes actividades a tu cargo en los programas de este año.</p>
       ) : (

@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, CalendarDays, Eye, FilePlus2, FileSpreadsheet, FileText, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -67,7 +68,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
         <ArrowLeft size={18} aria-hidden="true" /> Inspecciones
       </button>
       {copia === undefined ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" />
       ) : !copia || !formato ? (
         <Aviso>No se encontró este tipo de inspección en este equipo. Vuelve a Inspecciones y pulsa «Actualizar».</Aviso>
       ) : (
@@ -216,7 +217,7 @@ function TablaPorMes({ plantillaId, online, descargas = false }: { plantillaId: 
         </select>
       </label>
       <Aviso>{error}</Aviso>
-      {!online ? <p className="nota">Se ve con señal.</p> : !lista ? <p className="nota">Cargando…</p> : !lista.length ? <p className="nota">No hay inspecciones en {elegido.etiqueta}.</p> : (
+      {!online ? <p className="nota">Se ve con señal.</p> : !lista ? <Esqueleto forma="lista" /> : !lista.length ? <p className="nota">No hay inspecciones en {elegido.etiqueta}.</p> : (
         <>
           <p className="nota">{plural(lista.length, 'inspección', 'inspecciones')} en {elegido.etiqueta}, en {plural(filas.length, 'lugar', 'lugares')}.</p>
           <div className="tabla-scroll">
@@ -272,7 +273,7 @@ function ResultadosEficacia({ nombre, copia, online }: { nombre: string; copia: 
   }, [nombre, online])
 
   if (!online) return <p className="nota">Los resultados se ven con señal.</p>
-  if (!lista) return error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>
+  if (!lista) return error ? <Aviso>{error}</Aviso> : <Esqueleto forma="detalle" />
 
   // Desde el inicio del año hasta el mes elegido; de cada área, la más reciente en ese rango (la lista viene de la más nueva a la más antigua).
   const hasta = `${anio}-${String(mes).padStart(2, '0')}-31`
@@ -352,7 +353,7 @@ function ResultadosHallazgos({ empresaId, nombre, online }: { empresaId: string;
     if (online) listarHallazgos(empresaId).then(setLista, (e) => setError((e as Error).message))
   }, [empresaId, online])
   if (!online) return <p className="nota">Los resultados se ven con señal.</p>
-  if (!lista) return error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>
+  if (!lista) return error ? <Aviso>{error}</Aviso> : <Esqueleto forma="detalle" />
 
   const todos = lista.filter((h) => h.plantillas?.nombre === nombre && h.estado !== 'anulado')
   const cerrados = todos.filter((h) => h.estado === 'cerrado').length

@@ -3364,6 +3364,103 @@ button.tarjeta-ext {
   gap: 0.2rem;
   font-size: 0.75rem;
 }
+
+.sismos-esq {
+  padding: 0.8rem;
+}
+
+/* ───── Adaptación a cada tamaño de pantalla (05/11/2026) ─────
+   Celular (< 900 px): una columna y menú de cajón. Tablet (900 a 1099 px): el inicio pasa a dos columnas, el menú sigue siendo cajón.
+   Escritorio (≥ 1100 px): menú fijo a la izquierda, el contenido aprovecha el ancho y la barra superior deja solo lo que no está en el menú.
+   Pantalla muy ancha (≥ 1600 px): el contenido crece un poco más, sin estirarse hasta ser ilegible. */
+
+/* El inicio tenía un ancho distinto antes y después de cargar el mapa de sismos; ahora es estable */
+.panel.panel-inicio {
+  max-width: 64rem;
+}
+
+@media (min-width: 640px) {
+  .panel.panel-ancho,
+  .panel.panel-inicio {
+    padding-inline: 1.75rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .panel.panel-inicio {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 0 1.5rem;
+  }
+
+  .panel.panel-inicio > .saludo,
+  .panel.panel-inicio > .sismos,
+  .panel.panel-inicio > .install,
+  .panel.panel-inicio > .install-note,
+  .panel.panel-inicio > .esq {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1100px) {
+  :root {
+    --ancho-menu: 16.5rem;
+  }
+
+  /* Menú fijo a la izquierda: ya no es un cajón con botón de tres líneas */
+  .screen.gestion {
+    padding-left: var(--ancho-menu);
+  }
+
+  .menu-lateral {
+    z-index: 11;
+    width: var(--ancho-menu);
+    transform: none;
+    visibility: visible;
+    box-shadow: none;
+    border-right: 1px solid rgb(255 255 255 / 12%);
+    transition: none;
+  }
+
+  .menu-fondo,
+  .barra-menu,
+  .barra-marca,
+  .menu-cab button {
+    display: none;
+  }
+
+  .menu-cab {
+    justify-content: flex-start;
+    min-height: 4.5rem;
+  }
+
+  .barra {
+    padding-inline: 1.5rem;
+  }
+
+  .panel.panel-ancho {
+    max-width: 72rem;
+    padding-inline: 2rem;
+  }
+
+  .panel.panel-inicio {
+    max-width: 76rem;
+    padding-inline: 2rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .panel.panel-ancho {
+    max-width: 84rem;
+  }
+
+  .panel.panel-inicio {
+    max-width: 88rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* ───── Revisión de diseño y flujos (05/11/2026) ───── */
 :root {
   --borde-campo: #7f94a3; /* contorno de campos: 3:1 sobre blanco */

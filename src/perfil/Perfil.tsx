@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, Building2, ChevronDown, Database, Inbox, LogOut, UserRound, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Aviso, Dato, Seccion } from '../empresas/campos'
@@ -174,7 +175,7 @@ function FichaEmpresa({ empresaId, online }: { empresaId: string; online: boolea
       {!online ? (
         <p className="aviso-suave">Se ve con señal.</p>
       ) : !datos ? (
-        !error && <p className="nota">Cargando…</p>
+        !error && <Esqueleto forma="detalle" />
       ) : !empresa ? (
         <p className="nota">No se encontró la empresa.</p>
       ) : (

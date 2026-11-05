@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, FileSpreadsheet, KeyRound, Pencil, Search, UserCheck, Tag, UserMinus, UserPlus, UserRoundCheck } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo, ClaveUnica, Seccion, SelectorLista } from '../empresas/campos'
@@ -104,7 +105,7 @@ export function Usuarios({ empresaId, esDueno, miId, sedesPropias, onVolver, rol
       <header className="detalle-cab fila-entre">
         <div>
           <h1>Usuarios</h1>
-          <p>{cuentas ? `${cuenta('activo')} activos · ${cuenta('cesado')} cesados` : 'Cargando…'}</p>
+          <p>{cuentas ? `${cuenta('activo')} activos · ${cuenta('cesado')} cesados` : <Esqueleto forma="linea" ancho="9rem" />}</p>
         </div>
         {!creando && (
           <div className="acciones">
@@ -547,7 +548,7 @@ function PanelFacultades({ cuenta: c, onVolver }: { cuenta: Cuenta; onVolver: ()
       ) : (
         <p className="nota">Sin marcas se comporta como un usuario. Cada marca vale solo en las sedes de la cuenta.</p>
       )}
-      {!marcadas ? <p className="nota">Cargando…</p> : lista.map((f) => (
+      {!marcadas ? <Esqueleto forma="lista" /> : lista.map((f) => (
         <label key={f.permiso} className="check">
           <input type="checkbox" checked={marcadas.includes(f.permiso)} disabled={ocupado !== null}
             onChange={(e) => void cambiar(f.permiso, e.target.checked)} />
@@ -588,7 +589,7 @@ function PanelEtiquetas({ cuenta: c, onVolver }: { cuenta: Cuenta; onVolver: () 
     <fieldset className="form sedes-cuenta">
       <legend>Roles adicionales de {c.personas?.apellidos_nombres}</legend>
       <p className="nota">Son solo etiquetas para reconocer a la persona. <b>No le dan ningún permiso nuevo.</b></p>
-      {!puestas ? <p className="nota">Cargando…</p> : ETIQUETAS.map((e) => e.codigo !== 'otro' ? (
+      {!puestas ? <Esqueleto forma="lista" /> : ETIQUETAS.map((e) => e.codigo !== 'otro' ? (
         <label key={e.codigo} className="check">
           <input type="checkbox" checked={!!hay(e.codigo)} disabled={ocupado} onChange={(ev) => void cambiar(e.codigo, ev.target.checked)} />
           <span>{e.titulo}</span>

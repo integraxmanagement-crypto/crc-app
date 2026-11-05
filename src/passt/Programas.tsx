@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { CalendarDays, Copy, FilePlus2, ListTodo } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo, Seccion } from '../empresas/campos'
@@ -69,7 +70,7 @@ export function Programas({ empresaId, online, sedesPropias }: { empresaId: stri
       {form && <FormPrograma empresaId={empresaId} sedes={sedesPropias ?? sedes} puedeGeneral={sedesPropias === null} origen={form.modo === 'duplicar' ? form.origen : null} onCancelar={() => setForm(null)} />}
       <Seccion titulo="Programas">
         {!lista ? (
-          online && !error && <p className="nota">Cargando…</p>
+          online && !error && <Esqueleto forma="lista" />
         ) : !lista.length ? (
           <p className="nota">Todavía no hay programas. Crea el de este año.</p>
         ) : (

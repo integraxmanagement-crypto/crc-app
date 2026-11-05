@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { FileSpreadsheet, Trash2, Upload } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -76,7 +77,7 @@ export function ExcelFormato({ plantillaId, empresaId, receta, puedeEditar }: { 
       <Aviso>{error}</Aviso>
       <Aviso tipo="ok">{ok}</Aviso>
       {excel === undefined ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" filas={2} />
       ) : excel ? (
         <ul className="lista">
           <li>

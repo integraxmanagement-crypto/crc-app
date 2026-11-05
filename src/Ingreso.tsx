@@ -1,5 +1,6 @@
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
+import { CampoClave, CampoFlotante, type EstadoCampo, SelectorFlotante } from './CamposIngreso'
 import { TIPOS_DOCUMENTO, type TipoDocumento, ingresar, normalizarDocumento } from './sesion'
 
 /** Pantalla de ingreso: tipo de documento, número y contraseña. Nada de correo ni teléfono. */
@@ -7,12 +8,26 @@ export function Ingreso({ aviso, onIngreso }: { aviso?: string; onIngreso: (clav
   const [tipo, setTipo] = useState<TipoDocumento>('dni')
   const [numero, setNumero] = useState('')
   const [clave, setClave] = useState('')
-  const [verClave, setVerClave] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
   const tipoDoc = TIPOS_DOCUMENTO.find((t) => t.codigo === tipo)!
   const esDni = tipo === 'dni'
+
+  // Validación en vivo del documento: pista roja mientras no sea válido (desde que empieza a escribir) y un visto cuando lo es.
+  const limpio = normalizarDocumento(numero)
+  const estadoDoc: EstadoCampo = !numero ? 'neutro' : tipoDoc.patron.test(limpio) ? 'valido' : 'invalido'
+  const faltan = (esDni ? 8 : 6) - limpio.length
+  const pistaDoc =
+    estadoDoc !== 'invalido'
+      ? undefined
+      : !/^[A-Z0-9]*$/.test(limpio)
+        ? 'Usa solo letras y números.'
+        : faltan > 0
+          ? esDni
+            ? `Faltan ${faltan} ${faltan === 1 ? 'dígito' : 'dígitos'}.`
+            : `Faltan ${faltan} ${faltan === 1 ? 'carácter' : 'caracteres'} (${tipoDoc.ayuda}).`
+          : `Revisa el número (${tipoDoc.ayuda}).`
 
   async function enviar(e: FormEvent) {
     e.preventDefault()
@@ -39,53 +54,29 @@ export function Ingreso({ aviso, onIngreso }: { aviso?: string; onIngreso: (clav
     <form className="form" onSubmit={enviar} noValidate>
       <h2 className="form-title">Ingresar</h2>
 
-      <label className="field">
-        <span>Tipo de documento</span>
-        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoDocumento)}>
-          {TIPOS_DOCUMENTO.map((t) => (
-            <option key={t.codigo} value={t.codigo}>
-              {t.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
+      <SelectorFlotante etiqueta="Tipo de documento" value={tipo} onChange={(e) => setTipo(e.target.value as TipoDocumento)}>
+        {TIPOS_DOCUMENTO.map((t) => (
+          <option key={t.codigo} value={t.codigo}>
+            {t.nombre}
+          </option>
+        ))}
+      </SelectorFlotante>
 
-      <label className="field">
-        <span>Número de documento</span>
-        <input
-          value={numero}
-          onChange={(e) => setNumero(esDni ? e.target.value.replace(/\D/g, '') : e.target.value.toUpperCase())}
-          inputMode={esDni ? 'numeric' : 'text'}
-          autoComplete="username"
-          autoCapitalize="characters"
-          spellCheck={false}
-          maxLength={esDni ? 8 : 12}
-          placeholder={tipoDoc.ayuda}
-          required
-        />
-      </label>
+      <CampoFlotante
+        etiqueta="Número de documento"
+        value={numero}
+        onChange={(e) => setNumero(esDni ? e.target.value.replace(/D/g, '') : e.target.value.toUpperCase())}
+        estado={estadoDoc}
+        pista={pistaDoc}
+        inputMode={esDni ? 'numeric' : 'text'}
+        autoComplete="username"
+        autoCapitalize="characters"
+        spellCheck={false}
+        maxLength={esDni ? 8 : 12}
+        required
+      />
 
-      <label className="field">
-        <span>Contraseña</span>
-        <span className="field-pass">
-          <input
-            type={verClave ? 'text' : 'password'}
-            value={clave}
-            onChange={(e) => setClave(e.target.value)}
-            autoComplete="current-password"
-            maxLength={64}
-            required
-          />
-          <button
-            type="button"
-            className="field-eye"
-            onClick={() => setVerClave((v) => !v)}
-            aria-label={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-          >
-            {verClave ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-          </button>
-        </span>
-      </label>
+      <CampoClave etiqueta="Contraseña" valor={clave} onCambio={setClave} autoComplete="current-password" maxLength={64} required />
 
       <p className="alert" role="alert" aria-live="polite" hidden={!mensaje}>
         {mensaje}

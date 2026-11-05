@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { type ReactNode, useState } from 'react'
 import { Aviso } from '../empresas/campos'
 import { Ventana } from '../inspecciones/Ventana'
@@ -32,7 +33,7 @@ export function SeccionResumen({ icono, titulo, etiqueta, cantidad, tono, vacio,
         )}
       </div>
       <Aviso>{error}</Aviso>
-      {!online ? <p className="nota">{sinSenal}</p> : cargando ? !error && <p className="nota">Cargando…</p> : cantidad === 0 ? <p className="nota">{vacio}</p> : null}
+      {!online ? <p className="nota">{sinSenal}</p> : cargando ? !error && <Esqueleto forma="lista" filas={2} /> : cantidad === 0 ? <p className="nota">{vacio}</p> : null}
       {abierta && (
         <Ventana titulo={tituloDetalle} onCerrar={() => setAbierta(false)}>
           {children}

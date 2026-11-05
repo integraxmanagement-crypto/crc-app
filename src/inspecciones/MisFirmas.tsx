@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { Eye, PenLine } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Aviso } from '../empresas/campos'
@@ -45,7 +46,7 @@ export function MisFirmas({ cuenta, online }: { cuenta: string; online: boolean 
       {!online ? (
         <p className="nota">Para firmar necesitas señal.</p>
       ) : !firmas ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" filas={2} />
       ) : !firmas.length ? (
         <p className="nota">No tienes firmas pendientes.</p>
       ) : (

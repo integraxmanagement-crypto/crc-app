@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -92,7 +93,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   useEffect(cargarSemana, [cargarSemana])
 
   if (!online) return <p className="nota">La pantalla de {N.p} necesita señal. Sin señal, empieza una inspección desde «Nueva inspección» en Inspecciones.</p>
-  if (!activos || !filas || !ultimas) return <>{error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>}</>
+  if (!activos || !filas || !ultimas) return <>{error ? <Aviso>{error}</Aviso> : <Esqueleto forma="lista" />}</>
 
   const total = filas.length
   const hechos = filas.filter((f) => f.inspeccion_id).length

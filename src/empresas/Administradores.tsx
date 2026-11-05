@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { UserPlus } from 'lucide-react'
 import { type FormEvent, useEffect, useState } from 'react'
 import { TIPOS_DOCUMENTO, type TipoDocumento, normalizarDocumento } from '../sesion'
@@ -78,7 +79,7 @@ export function Administradores({ empresaId, puedeCrear, sedes }: { empresaId: s
       }
     >
       {lista === null ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" filas={2} />
       ) : lista.length === 0 ? (
         <p className="nota">Todavía no tiene administrador.</p>
       ) : (

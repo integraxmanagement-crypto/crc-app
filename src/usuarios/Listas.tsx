@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -48,7 +49,7 @@ export function Listas({ empresaId, onVolver }: { empresaId: string; onVolver: (
           <EditorPuestos empresaId={empresaId} items={listas.puestos} onCambio={cargar} />
         </div>
       ) : (
-        !error && <p className="nota">Cargando…</p>
+        !error && <Esqueleto forma="lista" />
       )}
     </div>
   )

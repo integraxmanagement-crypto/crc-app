@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, Boxes, History, Pencil, Plus, Tags } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion } from '../empresas/campos'
@@ -74,7 +75,7 @@ export function Activos({ empresaId, rutas, puedeEditar, esDueno }: { empresaId:
       </nav>
       <Aviso>{error}</Aviso>
       {!contexto ? (
-        !error && <p className="nota">Cargando…</p>
+        !error && <Esqueleto forma="lista" />
       ) : pestana === 'activos' ? (
         <ListaActivos ctx={contexto} onIrTipos={() => setPestana('tipos')} />
       ) : pestana === 'tipos' ? (
@@ -179,7 +180,7 @@ function ListaActivos({ ctx, onIrTipos }: { ctx: Contexto; onIrTipos: () => void
       )}
       {baja && <FormBaja activo={baja} onListo={() => (setBaja(null), cargar())} onCancelar={() => setBaja(null)} />}
       {!activos ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" />
       ) : visibles.length === 0 ? (
         <p className="nota">{verBaja ? 'No hay activos dados de baja.' : 'Todavía no hay activos de este tipo.'}</p>
       ) : (

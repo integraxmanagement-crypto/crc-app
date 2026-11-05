@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, ClipboardCheck, FilePlus2, FileSpreadsheet, FileText, ListChecks, Search, Upload } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CargaMasivaEquipos } from '../activos/CargaMasiva'
@@ -50,7 +51,7 @@ export function BombasIncendio({ empresaId, cuenta, gestiona, online, abrir }: {
         <p>Electrobomba y motobomba: cada bomba se inspecciona una vez por semana, según el programa anual de SST.</p>
       </header>
       {copia === undefined ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" />
       ) : !copia || !formatos.length ? (
         <Aviso>No hay formatos de bomba contra incendio en este equipo. Vuelve a Inspecciones y pulsa «Actualizar».</Aviso>
       ) : !online ? (
@@ -95,7 +96,7 @@ function Panel({ abrir, empresaId, cuenta, gestiona, online, copia, formatos }: 
   }, [empresaId, formatos, sede, periodo])
   useEffect(cargar, [cargar, version])
 
-  if (!grupos) return <>{error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>}</>
+  if (!grupos) return <>{error ? <Aviso>{error}</Aviso> : <Esqueleto forma="lista" />}</>
 
   const total = grupos.reduce((n, g) => n + g.filas.length, 0)
   const hechos = grupos.reduce((n, g) => n + g.filas.filter((f) => f.inspeccion_id).length, 0)

@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, Boxes, ClipboardCheck, ListChecks, Pencil, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { fijarCaducidadAdmin, fijarEquipoSst, leerCaducidadAdmin, leerEquipoSstEmpresa } from '../equipo/datos'
@@ -102,7 +103,7 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
         </button>
       </div>
     )
-  if (!datos) return <p className="nota">Cargando…</p>
+  if (!datos) return <Esqueleto forma="detalle" />
   const { empresa, sedes, contactos } = datos
   if (!empresa) return <Aviso>No se encontró la empresa, o no tienes permiso para verla.</Aviso>
 

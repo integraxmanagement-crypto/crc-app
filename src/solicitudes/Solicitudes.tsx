@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, Check, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -55,7 +56,7 @@ export function Solicitudes({ cuenta, resuelve, online }: { cuenta: string; resu
           : 'Lo que pides al administrador y su respuesta. Mientras está por resolver, no cambia nada.'}</p>
       </header>
       <Aviso>{error}</Aviso>
-      {!online ? <p className="nota">Las solicitudes se ven con señal.</p> : !lista ? <p className="nota">Cargando…</p> : (
+      {!online ? <p className="nota">Las solicitudes se ven con señal.</p> : !lista ? <Esqueleto forma="lista" /> : (
         <>
           {resuelve && (
             <Seccion titulo={`Por resolver (${porResolver.length})`}>

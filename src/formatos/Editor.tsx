@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowDown, ArrowLeft, ArrowUp, FlaskConical, Lock, Pencil, Plus, Save, Send, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion as Caja } from '../empresas/campos'
@@ -213,7 +214,7 @@ export function Editor({
           <ArrowLeft size={18} aria-hidden="true" /> Formatos
         </button>
         <Aviso>{error}</Aviso>
-        {!error && <p className="nota">Cargando…</p>}
+        {!error && <Esqueleto forma="detalle" />}
       </div>
     )
   }

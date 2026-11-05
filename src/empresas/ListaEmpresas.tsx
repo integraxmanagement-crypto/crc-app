@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { Building2, ChevronRight, Plus, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ir } from '../ruta'
@@ -24,7 +25,7 @@ export function ListaEmpresas() {
       <header className="detalle-cab fila-entre">
         <div>
           <h1>Empresas</h1>
-          <p>{empresas ? `${empresas.length} registradas` : 'Cargando…'}</p>
+          <p>{empresas ? `${empresas.length} registradas` : <Esqueleto forma="linea" ancho="7rem" />}</p>
         </div>
         <button className="btn" type="button" onClick={() => ir('/empresas/nueva')}>
           <Plus size={20} aria-hidden="true" /> Nueva empresa
@@ -56,6 +57,7 @@ export function ListaEmpresas() {
             </button>
           </li>
         ))}
+        {!empresas && !error && <li className="vacio"><Esqueleto forma="lista" filas={4} /></li>}
         {empresas && !visibles.length && <li className="vacio">Ninguna empresa coincide.</li>}
       </ul>
     </div>

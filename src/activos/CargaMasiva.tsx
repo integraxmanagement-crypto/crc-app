@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { Download, Upload } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorExcel } from '../carga/xlsx'
@@ -92,7 +93,7 @@ export function CargaMasivaEquipos({ empresaId, empresaNombre, tipoId, exigirTod
     <Ventana titulo={`Cargar equipos · ${ctx?.tipo.nombre ?? ''}`} onCerrar={onCerrar}>
       <Aviso>{error ?? errCtx}</Aviso>
       {!ctx ? (
-        !(error ?? errCtx) && <p className="nota">Cargando…</p>
+        !(error ?? errCtx) && <Esqueleto forma="lista" />
       ) : (
         <>
           <p className="nota">

@@ -4,6 +4,7 @@ import { type CopiaLocal, leerCopia } from './inspecciones/campo'
 import { listarInspecciones } from './inspecciones/datos'
 import { ir, useRuta } from './ruta'
 import type { Perfil } from './sesion'
+import { useEscritorio } from './useEscritorio'
 import { Logo } from './marca/Logo'
 
 /**
@@ -12,13 +13,16 @@ import { Logo } from './marca/Logo'
  */
 export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { perfil: Perfil; equipoSso: boolean; online: boolean; abierto: boolean; onCerrar: () => void }) {
   const [masUsadas, setMasUsadas] = useState<{ id: string; nombre: string }[]>([])
+  // En pantalla de escritorio el menú está siempre a la vista (fijo a la izquierda); en celular y tablet es un cajón que se abre.
+  const escritorio = useEscritorio()
   const ruta = useRuta()
   // La página en la que está la persona se resalta en el menú (y se anuncia como «página actual»).
   const aqui = (activo: boolean) => (activo ? { className: 'activo', 'aria-current': 'page' as const } : {})
+  const visible = abierto || escritorio
 
   // Las cuatro inspecciones más usadas: las que más registros tienen; sin señal (o sin registros), por orden alfabético.
   useEffect(() => {
-    if (!abierto || !equipoSso || !perfil.empresaId) return
+    if (!visible || !equipoSso || !perfil.empresaId) return
     let vivo = true
     ;(async () => {
       const copia: CopiaLocal | undefined = await leerCopia(perfil.id, perfil.empresaId!)
@@ -39,14 +43,14 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
     return () => {
       vivo = false
     }
-  }, [abierto, equipoSso, online, perfil.id, perfil.empresaId])
+  }, [visible, equipoSso, online, perfil.id, perfil.empresaId])
 
   useEffect(() => {
-    if (!abierto) return
+    if (!abierto || escritorio) return
     const tecla = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar()
     window.addEventListener('keydown', tecla)
     return () => window.removeEventListener('keydown', tecla)
-  }, [abierto, onCerrar])
+  }, [abierto, escritorio, onCerrar])
 
   const ir_ = (ruta: string) => () => {
     onCerrar()
@@ -56,7 +60,7 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
   return (
     <>
       <div className={`menu-fondo ${abierto ? 'abierto' : ''}`} onClick={onCerrar} aria-hidden="true" />
-      <aside className={`menu-lateral ${abierto ? 'abierto' : ''}`} aria-label="Menú principal" aria-hidden={!abierto} inert={!abierto}>
+      <aside className={`menu-lateral ${abierto ? 'abierto' : ''}`} aria-label="Menú principal" aria-hidden={!visible} inert={!visible}>
         <div className="menu-cab">
           <Logo fondo="oscuro" />
           <button type="button" aria-label="Cerrar el menú" onClick={onCerrar}>

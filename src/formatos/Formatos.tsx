@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, ClipboardCheck, Copy, Eye, FilePlus2, Pencil } from 'lucide-react'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { Aviso, Campo, Seccion } from '../empresas/campos'
@@ -111,7 +112,7 @@ export function Formatos({ empresaId, rutas, puedeEditar }: { empresaId: string;
       >
         {nueva && <NuevaPlantilla empresaId={empresaId} tipos={tipos} rutas={rutas} onCancelar={() => setNueva(false)} />}
         {!propias ? (
-          !error && <p className="nota">Cargando…</p>
+          !error && <Esqueleto forma="lista" />
         ) : propias.length === 0 ? (
           <p className="nota">Todavía no hay formatos. Copia una plantilla base de abajo y adáptala.</p>
         ) : (

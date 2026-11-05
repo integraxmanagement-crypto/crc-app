@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, Ban, FileSpreadsheet, FileText, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -74,7 +75,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto
   }, [copia])
 
   if (!online && !d) return <p className="nota">El detalle se ve con señal.</p>
-  if (!d) return error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>
+  if (!d) return error ? <Aviso>{error}</Aviso> : <Esqueleto forma="detalle" />
 
   const i = d.inspeccion
   const v = i.plantillas_versiones

@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -168,7 +169,7 @@ const GRUPO_BOMBAS = (formatos: FormatoLocal[]): FormatoLocal => ({
 /** Las inspecciones ya recibidas por el servidor, de un tipo de formato (o de todos). */
 export function ListaRecibidas({ recibidas, error, online }: { recibidas: ResumenInspeccion[] | null; error: string | null; online: boolean }) {
   if (!online) return <p className="nota">Se ven con señal.</p>
-  if (!recibidas) return error ? null : <p className="nota">Cargando…</p>
+  if (!recibidas) return error ? null : <Esqueleto forma="lista" />
   if (!recibidas.length) return <p className="nota">Todavía no hay inspecciones recibidas.</p>
   return (
     <ul className="lista">

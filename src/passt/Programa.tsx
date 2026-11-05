@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileSpreadsheet, FileText, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -89,7 +90,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
   }, [vistaPdf])
 
   if (!online && !d) return <p className="nota">El programa anual se ve con señal.</p>
-  if (!d) return error ? <Aviso>{error}</Aviso> : <p className="nota">Cargando…</p>
+  if (!d) return error ? <Aviso>{error}</Aviso> : <Esqueleto forma="detalle" />
 
   const p = d.programa
   const generalDeVarias = !p.sede_id && variasSedes

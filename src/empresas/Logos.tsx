@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ImageUp, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Aviso, Seccion } from './campos'
@@ -119,7 +120,7 @@ function CajaLogo({
   return (
     <figure className="logo-caja">
       <div className={`logo-fondo logo-${tipo}`}>
-        {pendiente ? <img src={pendiente.vista} alt={`Vista previa del logo ${tipo}`} /> : url ? <img src={url} alt={`Logo ${tipo}`} /> : <span className="vacio">{ruta ? 'Cargando…' : 'Sin logo'}</span>}
+        {pendiente ? <img src={pendiente.vista} alt={`Vista previa del logo ${tipo}`} /> : url ? <img src={url} alt={`Logo ${tipo}`} /> : ruta ? <Esqueleto forma="bloque" /> : <span className="vacio">Sin logo</span>}
       </div>
       <figcaption>
         {titulo}

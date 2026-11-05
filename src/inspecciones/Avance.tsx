@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, CalendarRange, Eye, FileSpreadsheet, FileText, PenLine } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -77,7 +78,7 @@ export function Avance({ empresaId, cuenta, online }: { empresaId: string; cuent
         </p>
       </header>
       {copia === undefined ? (
-        <p className="nota">Cargando…</p>
+        <Esqueleto forma="lista" />
       ) : !copia ? (
         <p className="nota">Este equipo todavía no tiene los datos de la empresa. Conéctate una vez para bajarlos.</p>
       ) : (

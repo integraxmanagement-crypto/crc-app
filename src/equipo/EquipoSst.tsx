@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, MessageCircle, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion } from '../empresas/campos'
@@ -102,7 +103,7 @@ export function EquipoSst({ online, inicio = false, puedeEditar = false, esGener
   const acciones = { editar: (n: Nodo) => setEditor({ modo: 'editar', nodo: n }), rama: (n: Nodo) => setEditor({ modo: 'agregar', padre: n }), quitar: (n: Nodo) => void quitar(n) }
 
   const contenido = habilitado === false ? <p className="nota">Esta sección no está habilitada para tu empresa. Si la quieres, pídesela a Integrax.</p>
-    : !nodos ? <p className="nota">{online ? 'Cargando…' : 'El equipo se ve con señal.'}</p>
+    : !nodos ? (online ? <Esqueleto forma="organigrama" /> : <p className="nota">El equipo se ve con señal.</p>)
     : !nodos.length ? <p className="nota">Todavía no se ha armado el organigrama del equipo de SST.</p>
     : <div className="org-arbol" role="tree" aria-label="Organigrama del equipo de SST"><Rama lista={arbol} numeros={numeros} puedeNodo={puedeNodo} acciones={acciones} /></div>
 

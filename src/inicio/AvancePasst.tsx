@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Aviso } from '../empresas/campos'
@@ -62,7 +63,7 @@ export function AvancePasst({ empresaId, online }: { empresaId: string; online: 
       {!online ? (
         <p className="nota">El avance del programa se ve con señal.</p>
       ) : !programas ? (
-        !error && <p className="nota">Cargando…</p>
+        !error && <Esqueleto forma="tarjetas" filas={1} />
       ) : !programas.length ? (
         <p className="nota">
           Todavía no hay un programa vigente de {anio}.{' '}
@@ -71,7 +72,7 @@ export function AvancePasst({ empresaId, online }: { empresaId: string; online: 
           </button>
         </p>
       ) : !meses || !d ? (
-        !error && <p className="nota">Cargando…</p>
+        !error && <Esqueleto forma="tarjetas" filas={1} />
       ) : (
         <Carrusel key={id} meses={meses} meta={Number(d.programa.meta_cumplimiento)} anio={anio} mesActual={mesDeHoy(anio, hoy)} programaId={d.programa.id} />
       )}

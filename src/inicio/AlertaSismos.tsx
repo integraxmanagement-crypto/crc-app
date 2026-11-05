@@ -1,3 +1,4 @@
+import { Esqueleto } from '../Esqueleto'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { ExternalLink, RefreshCw, TriangleAlert } from 'lucide-react'
@@ -10,6 +11,7 @@ import {
 type Estado = { tipo: 'cargando' } | { tipo: 'vivo'; en: number } | { tipo: 'error'; mensaje: string }
 const MAGNITUDES = [[0, 'Todos'], [3, '3.0+'], [4, '4.0+'], [5, '5.0+']] as const
 const PERIODOS = [[1, 'Últimas 24 h'], [3, 'Últimos 3 días'], [7, 'Últimos 7 días'], [30, 'Últimos 30 días']] as const
+/** Blanco u oscuro, el que dé contraste de 4,5:1 o más sobre el color de fondo. */
 function textoSobre(hex: string) {
   const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
   const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
@@ -134,6 +136,7 @@ export default function AlertaSismos({ online }: { online: boolean }) {
       <div className="sismos-cuerpo">
         <div className="sismos-mapa" ref={nodoMapa} role="region" aria-label="Mapa de sismos" />
         <ul className="sismos-lista">
+          {online && estado.tipo === 'cargando' && <li className="sismos-esq"><Esqueleto forma="lista" filas={4} /></li>}
           {visibles.map((s) => (
             <li key={s.id}>
               <button type="button" onClick={() => enfocar(s)}>
