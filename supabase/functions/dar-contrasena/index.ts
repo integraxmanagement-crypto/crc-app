@@ -1,7 +1,8 @@
 // Da una contraseña nueva (tarea 3.3, decisión 2A). Tres formas:
 //  · Individual: { persona_id }. El administrador, a gestores y usuarios de SU empresa; el dueño, a cualquiera.
 //    La regla la decide la base de datos (puedo_dar_contrasena), no este archivo.
-//  · En bloque: { empresa_id, roles: [...] }. Solo el dueño de la plataforma (plan de rescate).
+//  · En bloque: { empresa_id, roles: [...] }. El dueño (cualquier empresa) y los administradores general y de sede
+//    (solo su empresa y las personas que la forma individual les deja: puedo_dar_contrasena).
 //  · Rescate: { tipo_documento, numero_documento } con la clave privada en lugar de una sesión.
 //    Solo para cuentas de dueños de la plataforma; la usa herramientas/rescate-dueno.mjs desde la computadora.
 // Siempre: 12 caracteres al azar mostrados una sola vez, cambio obligatorio al ingresar, sesiones cerradas
@@ -12,7 +13,7 @@ import {
   clienteAdmin, clienteComo, esClavePrivada, leerJson, normalizarDocumento, quienLlama, responder,
 } from '../_compartido/http.ts'
 
-const ROLES = ['admin_empresa', 'gestor', 'usuario']
+const ROLES = ['admin_empresa', 'admin_sede', 'gestor', 'usuario_gestor', 'usuario']
 const MAXIMO_EN_BLOQUE = 300
 const A_LA_VEZ = 5
 
@@ -69,20 +70,42 @@ Deno.serve(async (req) => {
     return responder(req, 200, { apellidos_nombres: persona.apellidos_nombres, contrasena })
   }
 
-  // ── En bloque: solo el dueño de la plataforma ──
+  // ── En bloque ──
+  // El dueño de la plataforma: cualquier empresa activa. El administrador general y el de sede (decisión del dueño,
+  // 05/11/2026): solo su empresa, y de cada persona decide la misma regla que la forma individual
+  // (puedo_dar_contrasena: roles que puede asignar, sus sedes, nunca a sí mismo). Gestores y usuarios gestores no
+  // tienen el permiso «cuentas.contrasena» (ni como facultad): reciben 403.
   if (typeof d.empresa_id === 'string' && Array.isArray(d.roles)) {
+    const como = clienteComo(llamada.token)
     const { data: dueno } = await admin.from('duenos_plataforma').select('persona_id')
       .eq('persona_id', llamada.usuario.id).maybeSingle()
     const roles = d.roles.filter((r): r is string => typeof r === 'string' && ROLES.includes(r))
-    if (!dueno || !roles.length) return responder(req, 403, { error: 'No autorizado' })
+    if (!roles.length) return responder(req, 403, { error: 'No autorizado' })
+    if (!dueno) {
+      const { data: permisos } = await como.rpc('mis_permisos')
+      const { data: yo } = await admin.from('vinculos').select('empresa_id')
+        .eq('persona_id', llamada.usuario.id).eq('estado', 'activo').maybeSingle()
+      if (!Array.isArray(permisos) || !permisos.includes('cuentas.contrasena') || !yo || yo.empresa_id !== d.empresa_id) {
+        return responder(req, 403, { error: 'No autorizado' })
+      }
+    }
 
     const { data: empresa } = await admin.from('empresas').select('estado').eq('id', d.empresa_id).maybeSingle()
     if (!empresa || empresa.estado !== 'activa') return responder(req, 400, { error: 'La empresa no está activa' })
 
-    const { data: vinculos, error } = await admin.from('vinculos')
+    const { data: candidatos, error } = await admin.from('vinculos')
       .select('id, rol, persona_id, personas!inner(tipo_documento, numero_documento, apellidos_nombres)')
       .eq('empresa_id', d.empresa_id).eq('estado', 'activo').in('rol', roles).neq('persona_id', llamada.usuario.id)
     if (error) return responder(req, 500, { error: 'No se pudo leer la lista de personas' })
+
+    // Solo quedan las personas a las que quien llama puede dar contraseña (misma regla que la forma individual).
+    const vinculos: NonNullable<typeof candidatos> = []
+    const lista = candidatos ?? []
+    for (let i = 0; i < lista.length; i += A_LA_VEZ * 2) {
+      const tanda = lista.slice(i, i + A_LA_VEZ * 2)
+      const respuestas = await Promise.all(tanda.map((v) => como.rpc('puedo_dar_contrasena', { p_persona: v.persona_id })))
+      tanda.forEach((v, k) => { if (!respuestas[k].error && respuestas[k].data === v.id) vinculos.push(v) })
+    }
     if (!vinculos.length) return responder(req, 200, { resultados: [] })
     if (vinculos.length > MAXIMO_EN_BLOQUE) {
       return responder(req, 400, { error: `Son ${vinculos.length} cuentas; el máximo por vez es ${MAXIMO_EN_BLOQUE}. Elige menos roles.` })

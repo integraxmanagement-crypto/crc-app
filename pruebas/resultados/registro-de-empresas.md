@@ -1,6 +1,6 @@
 # Pruebas del registro de empresas · CRC tarea 3.2
 
-Ejecutadas: 4/11/2026, 4:52:21 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutadas: 5/11/2026, 10:24:58 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
 **Resultado: 74 de 74 pruebas pasaron.**
 

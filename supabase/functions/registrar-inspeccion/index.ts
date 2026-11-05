@@ -77,6 +77,10 @@ Deno.serve(async (req) => {
   const d = await leerJson(req, MAXIMO_CUERPO)
   if (!d) return responder(req, 400, { error: 'Datos no válidos o demasiado grandes' })
   const por = llamada.usuario.id
+  // Empresa de quien llama. Se compara ANTES de leer el formato o la inspección: lo de otra empresa responde
+  // igual que si no existiera y no se lee nada más (revisión de funciones del 05/11/2026).
+  const { data: miVinculo } = await admin.from('vinculos').select('empresa_id').eq('persona_id', por).eq('estado', 'activo').maybeSingle()
+  const miEmpresa = (miVinculo?.empresa_id as string | undefined) ?? null
   const respuestas = (d.respuestas && typeof d.respuestas === 'object' ? d.respuestas : {}) as Record<string, Respuesta>
   const filas = (d.filas && typeof d.filas === 'object' ? d.filas : {}) as Record<string, Record<string, Respuesta>[]>
   const observacion = typeof d.observacion === 'string' ? d.observacion.slice(0, 4000) : null
@@ -84,6 +88,8 @@ Deno.serve(async (req) => {
   // ───── Corregir una inspección cerrada ─────
   if (d.modo === 'corregir') {
     if (typeof d.id !== 'string' || !UUID.test(d.id)) return responder(req, 400, { error: 'Falta la inspección' })
+    const { data: deLaInspeccion } = await admin.from('inspecciones').select('empresa_id').eq('id', d.id).maybeSingle()
+    if (!deLaInspeccion || !miEmpresa || deLaInspeccion.empresa_id !== miEmpresa) return responder(req, 403, { error: 'No autorizado' })
     const { data: i } = await admin.from('inspecciones').select('id, version_id, fecha, activo_foto, empresa_id').eq('id', d.id).maybeSingle()
     if (!i) return responder(req, 403, { error: 'No autorizado' })
     const { data: v } = await admin.from('plantillas_versiones').select('receta').eq('id', i.version_id).single()
@@ -115,6 +121,11 @@ Deno.serve(async (req) => {
     return r.error ? errorBase(req, r.error) : responder(req, 200, r.data)
   }
 
+  // Sin vínculo activo: el mismo rechazo que da la base de datos (una cuenta cesada no sube datos, D-27).
+  if (!miEmpresa) return responder(req, 403, { error: 'Tu cuenta está inhabilitada: la inspección no se puede recibir' })
+  // Primero solo de qué empresa es el formato; la receta se lee después, si es de la empresa de quien llama.
+  const { data: deQuien } = await admin.from('plantillas_versiones').select('empresa_id').eq('id', versionId).maybeSingle()
+  if (!deQuien || !deQuien.empresa_id || deQuien.empresa_id !== miEmpresa) return responder(req, 422, { error: 'El formato no existe' })
   const { data: version } = await admin.from('plantillas_versiones').select('id, plantilla_id, empresa_id, receta').eq('id', versionId).maybeSingle()
   if (!version || !version.empresa_id) return responder(req, 422, { error: 'El formato no existe' })
   const receta = version.receta as Receta

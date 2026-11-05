@@ -1,4 +1,4 @@
-# Etapa 3: solicitudes de formatos del gestor (2026-11-04)
+# Etapa 3: solicitudes de formatos del gestor (2026-11-05)
 
 Empresa D (ficticia). Resultado: 73 de 73.
 
@@ -23,8 +23,8 @@ Empresa D (ficticia). Resultado: 73 de 73.
 - ✅ No se pide sobre algo que no existe — No autorizado
 - ✅ Un tipo de solicitud inventado se rechaza — Tipo de solicitud no válido
 - ✅ El gestor pide publicar el formato nuevo
-- ✅ Queda pendiente, sin sede (es de toda la empresa) y con el nombre del formato — pendiente Publicar el formato nuevo «Prueba solicitud formato 2885cc»
-- ✅ El título dice que es un formato nuevo — Publicar el formato nuevo «Prueba solicitud formato 2885cc»
+- ✅ Queda pendiente, sin sede (es de toda la empresa) y con el nombre del formato — pendiente Publicar el formato nuevo «Prueba solicitud formato f48eb8»
+- ✅ El título dice que es un formato nuevo — Publicar el formato nuevo «Prueba solicitud formato f48eb8»
 - ✅ No se puede pedir dos veces lo mismo mientras está pendiente — Ya hay una solicitud pendiente para este borrador
 
 ## 3. Quién ve y quién resuelve
@@ -59,7 +59,7 @@ Empresa D (ficticia). Resultado: 73 de 73.
 - ✅ El gestor abre un borrador nuevo del formato publicado
 - ✅ El gestor cambia el borrador
 - ✅ Pide publicar el cambio
-- ✅ El título dice que es un cambio de un formato existente — Publicar un cambio del formato «Prueba solicitud formato 2885cc» (versión 2)
+- ✅ El título dice que es un cambio de un formato existente — Publicar un cambio del formato «Prueba solicitud formato f48eb8» (versión 2)
 - ✅ El gestor retoca el borrador después de pedir
 - ✅ Aprobar un borrador que cambió después de la solicitud se rechaza — El borrador cambió después de la solicitud: revísalo o deniega para que lo pida de nuevo
 - ✅ …y nada se publicó ni se resolvió
@@ -79,7 +79,7 @@ Empresa D (ficticia). Resultado: 73 de 73.
 - ✅ Un gestor de otra empresa no pide retirar este formato — No autorizado
 - ✅ No se pide retirar un formato base de CRC — No autorizado
 - ✅ El gestor pide retirar el formato
-- ✅ Queda pendiente, sin sede, con el nombre del formato — Retirar el formato «Prueba solicitud formato 2885cc»
+- ✅ Queda pendiente, sin sede, con el nombre del formato — Retirar el formato «Prueba solicitud formato f48eb8»
 - ✅ No se pide dos veces — Ya hay una solicitud pendiente para retirar este formato
 - ✅ El administrador de sede no resuelve el retiro — No autorizado
 - ✅ El administrador general aprueba el retiro

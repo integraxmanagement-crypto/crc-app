@@ -238,7 +238,7 @@ Aparte de los 5 roles está el **dueño de la plataforma** (Integrax), que no es
 5. Configuración que se hace a mano en el panel de Supabase (no está en las migraciones): registro libre apagado; reglas mínimas de contraseña; *Auth Hook* «Customize Access Token» → `public.portero_ingreso`; *IP Address Forwarding* activado; y, en plan Pro, la protección contra contraseñas filtradas (ver §13).
 6. En la caducidad de contraseña: quitar la excepción de las empresas ficticias (en `crc-dev` está apagada para ellas).
 7. Un proyecto de Vercel para producción con sus variables, y pasar Vercel a un plan que permita uso comercial.
-8. **Cambiar el origen permitido de las funciones:** hoy el código acepta llamadas solo desde la dirección publicada actual y desde `localhost`. La dirección de producción hay que agregarla en el código común de las funciones.
+8. **Cambiar el origen permitido de las funciones:** hoy el código acepta llamadas solo desde la dirección publicada actual y desde `localhost`. La dirección de producción hay que agregarla en el código común de las funciones (`_compartido/http.ts`). **Pendiente anotado para la tarea 1.8 del Gantt (entorno limpio, D-34)**; no se cambia antes (decisión del dueño, 05/11/2026).
 9. Ensayar el plan de rescate de `CRC_PIMIENTA` (decisión del dueño: se ensaya en el entorno limpio, no en `crc-dev`).
 10. Crear al primer dueño de la plataforma y la empresa piloto real.
 
@@ -359,7 +359,7 @@ Las librerías de terceros que cada una usa por dentro no se revisaron una por u
 15. **Claves antiguas de Supabase** (`anon` / `service_role`) dejan de funcionar a fines de 2026: las funciones ya usan las nuevas, pero hay que confirmar que todo sigue al apagarlas.
 16. **La ficha de empresa no guarda historial** de cambios (sí lo guardan personas, activos, hallazgos, PASST y facultades).
 17. **Excel:** las firmas a mano no salen como imagen en todos los casos; las fórmulas que apuntan a filas que se corren no se ajustan.
-18. **Funciones del servidor sin la revisión automática de sesión de Supabase:** cada una revisa la sesión por su cuenta; conviene confirmarlo en una revisión de seguridad (ver §4).
+18. **Funciones del servidor sin la revisión automática de sesión de Supabase:** cada una revisa la sesión por su cuenta. Revisado una por una el 05/11/2026 y corregidos los detalles encontrados (ver `pruebas/revision-funciones-servidor.md`).
 19. **Tabla de prueba `prueba_conexion`** legible sin sesión: no tiene datos sensibles, pero se puede borrar.
 
 ---
@@ -463,7 +463,7 @@ sequenceDiagram
 1. Región exacta donde corren las funciones del servidor de Supabase.
 2. Región o ubicación de Vercel y de GitHub.
 3. Si el proyecto `crc-dev` tiene alguna copia automática de la base (el README dice que no; una nota interna dice que sí).
-4. Que cada función del servidor revise la sesión por su cuenta (están con `verify_jwt` apagado).
+4. ~~Que cada función del servidor revise la sesión por su cuenta (están con `verify_jwt` apagado).~~ Confirmado el 05/11/2026 (`pruebas/revision-funciones-servidor.md`).
 5. Procedimiento escrito para revertir un cambio de base de datos.
 6. Licencias y términos de uso de los datos del USGS y de las teselas de Esri.
 7. Listado completo de librerías internas (dependencias de las dependencias) y sus licencias, si el cliente lo pide.

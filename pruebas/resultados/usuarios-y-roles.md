@@ -1,8 +1,8 @@
 # Usuarios y roles por empresa · CRC tarea 3.3
 
-Ejecutada: 4/11/2026, 4:50:25 p. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
+Ejecutada: 5/11/2026, 10:21:24 a. m. (hora de Lima) · Proyecto Supabase `crc-dev` · Solo datos ficticios.
 
-**Resultado: 81 de 81 pruebas pasaron.**
+**Resultado: 82 de 82 pruebas pasaron.**
 
 Cada prueba ingresa con una persona de prueba por la misma puerta que usa la app e intenta ver o hacer lo que no le corresponde. Las contraseñas nunca se imprimen.
 
@@ -12,7 +12,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 56 personas visibles |
+| ✅ Pasa | ADMIN_A no ve a ninguna persona de B | 68 personas visibles |
 | ✅ Pasa | ADMIN_A ve 0 cuentas de B |  |
 | ✅ Pasa | ADMIN_A no puede crear una cuenta en B | 403 No autorizado |
 | ✅ Pasa | ADMIN_A no puede cesar a USUARIO_B | No autorizado |
@@ -53,7 +53,8 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 | ✅ Pasa | USUARIO_A2 no puede corregir datos de otras personas | No autorizado |
 | ✅ Pasa | USUARIO_A2 no puede editar las listas de áreas y puestos | No autorizado |
 | ✅ Pasa | USUARIO_A2 no puede restablecer en bloque | 403 |
-| ✅ Pasa | Tampoco el administrador puede restablecer en bloque (solo el dueño) | 403 |
+| ✅ Pasa | El administrador no puede restablecer en bloque en otra empresa | 403 |
+| ✅ Pasa | En bloque, el administrador no alcanza a otros administradores (0 cuentas) | 200, 0 cuentas |
 | ✅ Pasa | Sin iniciar sesión no se puede dar contraseñas | 401 |
 | ✅ Pasa | El rescate no funciona con la clave pública de la app | 401 |
 
@@ -82,7 +83,7 @@ El borrado automático de los intentos de más de 90 días se comprueba aparte, 
 
 | Resultado | Prueba | Detalle |
 |---|---|---|
-| ✅ Pasa | El dueño ve los intentos | 2743 intentos |
+| ✅ Pasa | El dueño ve los intentos | 3133 intentos |
 | ✅ Pasa | ADMIN_A ve 0 intentos |  |
 | ✅ Pasa | GESTOR_A ve 0 intentos |  |
 | ✅ Pasa | USUARIO_A2 ve 0 intentos |  |

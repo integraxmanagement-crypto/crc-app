@@ -1,6 +1,6 @@
 # Prueba del equipo de SST y las etiquetas (etapa 4)
 
-Fecha: 2026-11-04 · Solo datos ficticios en crc-dev.
+Fecha: 2026-11-05 · Solo datos ficticios en crc-dev.
 
 ## 1. El gestor escribe su propio WhatsApp (opcional); nadie más lo escribe
 

@@ -50,7 +50,19 @@ Deno.serve(async (req) => {
   if (permiso.error || permiso.data !== true) return responder(req, 403, { error: 'No autorizado' })
   if (d.modo === 'grabar' && !sedes.length) return responder(req, 400, { error: 'Elige la sede de esta carga' })
 
-  const resultado = await revisar(admin, empresaId, filas, sedes)
+  // Sedes de quien carga: null si ve toda la empresa (dueño de la plataforma o administrador general).
+  // Sirve para no mostrar nombres de personas de otras sedes en la vista previa.
+  let misSedes: Set<string> | null = null
+  const { data: dueno } = await admin.from('duenos_plataforma').select('persona_id').eq('persona_id', llamada.usuario.id).maybeSingle()
+  if (!dueno) {
+    const { data: yo } = await admin.from('vinculos').select('id, rol').eq('persona_id', llamada.usuario.id).eq('estado', 'activo').maybeSingle()
+    if (yo?.rol !== 'admin_empresa') {
+      const { data: mias } = yo ? await admin.from('vinculos_sedes').select('sede_id').eq('vinculo_id', yo.id) : { data: [] }
+      misSedes = new Set((mias ?? []).map((s) => s.sede_id as string))
+    }
+  }
+
+  const resultado = await revisar(admin, empresaId, filas, sedes, misSedes)
 
   if (d.modo === 'revisar') return responder(req, 200, resultado)
   if (d.modo !== 'grabar') return responder(req, 400, { error: 'Modo no válido' })

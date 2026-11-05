@@ -132,3 +132,27 @@ Los cambios 1 a 4 tocan solo el código de las funciones, no tablas compartidas 
 
 - `dar-contrasena`: comprobé que lo publicado coincide con el repositorio.
 - Las otras 5: revisé las fechas. Después de cada publicación solo cambiaron, en el código común, una ayuda nueva (para el rescate), el tamaño máximo del mensaje y el texto de una etiqueta («No genera plan de acción»). Nada de eso toca la sesión ni los permisos. **No las comparé letra por letra:** se puede hacer si el dueño lo pide.
+
+---
+
+## Correcciones aplicadas (05/11/2026, solo en `crc-dev`)
+
+Pedido del dueño del 05/11/2026. No se publicó ninguna versión de la app: solo funciones del servidor y pruebas.
+
+| # | Hallazgo | Qué se encontró al diagnosticar | Qué se hizo | Función publicada |
+|---|---|---|---|---|
+| 1 | Dirección de internet en `ingresar` | Se probó con un documento ficticio inexistente: con un `X-Forwarded-For` inventado (una dirección o dos), la función anotó siempre la dirección real. La plataforma de Supabase reemplaza ese encabezado antes de que llegue a la función, así que el valor que se usa ya es el confiable. | **Sin cambios en la función.** Se agregó una prueba permanente: con 30 fallos preparados para una dirección inventada (203.0.113.50, reservada para documentación), un intento que dice venir de ella **no** sale bloqueado y la dirección anotada es la real. El bloqueo por documento (5 fallos) no se tocó. | — (sigue la versión 4) |
+| 2 | `registrar-inspeccion` leía el formato antes de comprobar la empresa | Confirmado. | Primero se mira la empresa de quien llama. Si el formato (o la inspección, al corregir) no es de esa empresa, responde igual que si no existiera («El formato no existe» / «No autorizado») y no se lee nada más. Una cuenta sin vínculo activo recibe el mismo rechazo de siempre («Tu cuenta está inhabilitada»). | **versión 4** |
+| 3 | Vista previa de `carga-personal` mostraba el nombre de alguien de otra sede | Confirmado. | Si quien carga no ve toda la empresa y el documento es de una persona activa con alguna sede que no es suya, la fila sale en error con «Este documento ya existe en otra sede de la empresa: no puedes cambiarlo desde esta carga.», sin nombre ni identificador. El administrador general y el dueño la siguen viendo como antes. | **versión 8** |
+| 4 | Restablecer en bloque | La lista de roles a restablecer no incluía `admin_sede` ni `usuario_gestor` (la pantalla del dueño sí los ofrecía, pero el servidor los descartaba sin avisar). | **Decisión del dueño (05/11/2026): «También admin de sede».** Se agregaron los dos roles. Además, el administrador general y el de sede pueden restablecer en bloque **solo en su empresa** y **solo a las personas que la forma individual les deja** (misma regla `puedo_dar_contrasena`: roles que pueden asignar, todas las sedes de la persona dentro de las suyas, nunca a sí mismos). Gestores y usuarios gestores reciben 403: no tienen el permiso `cuentas.contrasena` ni pueden recibirlo como facultad. El rescate del dueño no cambió. | **versión 2** |
+| 5 | Dirección de la app fija en el código | — | Sin cambios. Pendiente para la tarea 1.8 (entorno limpio `crc-prod`, D-34). | — |
+
+**Lo que falta en la app (no se publicó):** la pantalla «Restablecer en bloque» solo se le muestra al dueño de la plataforma. Para que el administrador general o el de sede la usen, hay que mostrarla también a ellos en *Usuarios*; eso es un cambio de la app y saldría en la próxima versión, cuando el dueño lo apruebe.
+
+**Pruebas nuevas:** `pruebas/revision-funciones.mjs` (22 comprobaciones; por defecto no cambia ninguna contraseña) y `pruebas/ip-ingreso.sql` (prepara y borra los 30 fallos ficticios). La parte que **sí** cambia una contraseña (`--restablecer`: el administrador de la sede 2 de la empresa D restablece en bloque a los usuarios gestores de su sede, solo USUGES_C2, y la prueba le pone enseguida una contraseña nueva guardada en el archivo local) **no se corrió**: toca una cuenta ficticia (personas) y espera el ok del dueño. Antes se comprobó en la base, sin cambiar nada, que esa regla deja al administrador de la sede 2 exactamente 1 gestor y 1 usuario gestor de su sede, y 0 usuarios, 0 administradores.
+
+**Incidente en las pruebas (05/11/2026), ya reparado.** La prueba antigua `usuarios.mjs` comprobaba que «el administrador no puede restablecer en bloque». Con la regla nueva esa llamada funcionó de verdad: el administrador ficticio de la empresa A restableció las contraseñas de los 35 usuarios ficticios de su empresa. No tocó administradores ni otras empresas, que es justo la regla nueva. Con el ok del dueño:
+- se repararon las dos cuentas que usan las pruebas (USUARIO_A2 y USUARIO_A3): contraseña nueva guardada en el archivo local;
+- se cambió la comprobación de `usuarios.mjs` por dos que no cambian contraseñas (otra empresa → 403; administradores → 0 cuentas).
+
+Las otras 33 cuentas son restos ficticios de cargas anteriores que ninguna prueba usa: quedan con «debe cambiar su contraseña».

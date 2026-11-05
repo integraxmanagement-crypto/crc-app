@@ -84,8 +84,15 @@ const fechaReal = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && !Number.is
 
 type Unidad = { id: string; nivel: string; padre_id: string | null; nombre: string; vigente: boolean }
 
-/** Revisa todas las filas para una empresa. `admin` es el cliente con permisos del servidor. */
-export async function revisar(admin: SupabaseClient, empresaId: string, entrada: Fila[], sedes: string[] = []): Promise<Resultado> {
+/** Mensaje para quien escribe el documento de alguien de su empresa que está en una sede que no es suya: sin datos personales. */
+export const OTRA_SEDE = 'Este documento ya existe en otra sede de la empresa: no puedes cambiarlo desde esta carga.'
+
+/**
+ * Revisa todas las filas para una empresa. `admin` es el cliente con permisos del servidor.
+ * `misSedes`: sedes de quien carga; null si ve toda la empresa (administrador general o dueño de la plataforma).
+ * Una persona activa de la empresa con alguna sede fuera de `misSedes` sale como error sin mostrar su nombre ni sus datos.
+ */
+export async function revisar(admin: SupabaseClient, empresaId: string, entrada: Fila[], sedes: string[] = [], misSedes: Set<string> | null = null): Promise<Resultado> {
   const [{ data: tiposDoc }, { data: puestos }, { data: unidades }] = await Promise.all([
     admin.from('tipos_documento').select('codigo, patron'),
     admin.from('puestos').select('id, nombre, vigente').eq('empresa_id', empresaId),
@@ -108,6 +115,16 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
   const { data: vinculos } = ids.length
     ? await admin.from('vinculos').select('id, persona_id, empresa_id, rol, estado, fecha_ingreso, puesto_id, unidad_id, actualizado_en, por_revisar_desde').in('persona_id', ids)
     : { data: [] }
+  // Sedes de los vínculos activos en esta empresa (solo hacen falta si quien carga no ve toda la empresa).
+  const activosAqui = (vinculos ?? []).filter((v) => v.empresa_id === empresaId && v.estado === 'activo').map((v) => v.id as string)
+  const { data: sedesVinculos } = misSedes && activosAqui.length
+    ? await admin.from('vinculos_sedes').select('vinculo_id, sede_id').in('vinculo_id', activosAqui)
+    : { data: [] }
+  const fueraDeMisSedes = (vinculoId: string) => {
+    if (!misSedes) return false
+    const suyas = (sedesVinculos ?? []).filter((s) => s.vinculo_id === vinculoId).map((s) => s.sede_id as string)
+    return !suyas.length || suyas.some((s) => !misSedes.has(s))
+  }
 
   const hoy = hoyLima()
   const maxFecha = sumarDias(hoy, 90)
@@ -207,6 +224,10 @@ export async function revisar(admin: SupabaseClient, empresaId: string, entrada:
         const activo = suyos.find((v) => v.estado === 'activo')
         if (activo && activo.empresa_id !== empresaId) {
           motivos.push('Esta persona tiene una cuenta activa en otra empresa: debe cesarse allí primero.')
+        } else if (activo && fueraDeMisSedes(activo.id as string)) {
+          // De otra sede: no se muestra su nombre actual ni qué cambiaría (decisión del dueño, 05/11/2026).
+          motivos.push(OTRA_SEDE)
+          delete r.persona_id
         } else if (activo) {
           r.vinculo_id = activo.id as string
           if (activo.por_revisar_desde) r.porRevisar = true

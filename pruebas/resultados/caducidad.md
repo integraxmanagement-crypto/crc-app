@@ -1,6 +1,6 @@
 # Prueba de la caducidad de contraseña de administradores (nivel 2, punto 3)
 
-Fecha: 2026-11-04 · Solo datos ficticios en crc-dev. Las fechas viejas se prueban en pruebas/caducidad.sql.
+Fecha: 2026-11-05 · Solo datos ficticios en crc-dev. Las fechas viejas se prueban en pruebas/caducidad.sql.
 
 ## 1. Interruptor por empresa: solo lo cambia el dueño de la plataforma
 

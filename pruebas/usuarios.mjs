@@ -146,8 +146,12 @@ for (const n of ['GESTOR_A', 'USUARIO_A2']) {
   comprobar(`${n} no puede restablecer en bloque`, bloque.estado === 403, `${bloque.estado}`)
 }
 {
-  const bloque = await llamarFuncion(adminA, 'dar-contrasena', { empresa_id: A.id, roles: ['usuario'] })
-  comprobar('Tampoco el administrador puede restablecer en bloque (solo el dueño)', bloque.estado === 403, `${bloque.estado}`)
+  // Desde el 05/11/2026 (decisión del dueño) el administrador sí restablece en bloque, pero solo en su empresa y a quienes
+  // podría dar contraseña uno por uno. Se prueba sin cambiar ninguna contraseña: otra empresa → 403; administradores → 0 cuentas.
+  const ajena = await llamarFuncion(adminA, 'dar-contrasena', { empresa_id: B.id, roles: ['usuario'] })
+  comprobar('El administrador no puede restablecer en bloque en otra empresa', ajena.estado === 403, `${ajena.estado}`)
+  const admins = await llamarFuncion(adminA, 'dar-contrasena', { empresa_id: A.id, roles: ['admin_empresa', 'admin_sede'] })
+  comprobar('En bloque, el administrador no alcanza a otros administradores (0 cuentas)', admins.estado === 200 && admins.datos?.resultados?.length === 0, `${admins.estado}, ${admins.datos?.resultados?.length ?? '?'} cuentas`)
   const sin = await llamarFuncion(cliente(), 'dar-contrasena', { persona_id: vinculoDe('USUARIO_A3').persona_id })
   comprobar('Sin iniciar sesión no se puede dar contraseñas', RECHAZO_FUNCION(sin), `${sin.estado}`)
   const rescate = await llamarFuncion(cliente(), 'dar-contrasena', { tipo_documento: 'dni', numero_documento: doc('DUENO') })
