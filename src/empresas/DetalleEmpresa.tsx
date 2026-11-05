@@ -1,5 +1,6 @@
 import { ArrowLeft, Boxes, ClipboardCheck, ListChecks, Pencil, Users } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { fijarCaducidadAdmin, fijarEquipoSst, leerCaducidadAdmin, leerEquipoSstEmpresa } from '../equipo/datos'
 import { ir } from '../ruta'
 import { Administradores } from './Administradores'
 import { Aviso, Dato, Seccion } from './campos'
@@ -10,6 +11,62 @@ import { FormFicha } from './FormFicha'
 import { Logos } from './Logos'
 import { Sedes } from './Sedes'
 import { Trabajadores } from './Trabajadores'
+
+/** Solo el dueño de la plataforma: enciende o apaga la caducidad de la contraseña de los administradores de la empresa (90 días). */
+function InterruptorCaducidad({ empresaId }: { empresaId: string }) {
+  const [activa, setActiva] = useState<boolean | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    leerCaducidadAdmin(empresaId).then(setActiva, (e) => setError((e as Error).message))
+  }, [empresaId])
+  async function cambiar(valor: boolean) {
+    setError(null)
+    try {
+      await fijarCaducidadAdmin(empresaId, valor)
+      setActiva(valor)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  return (
+    <Seccion titulo="Caducidad de contraseña de administradores">
+      <p className="nota">
+        Si está encendida, el administrador general y los administradores de sede de esta empresa deben cambiar su contraseña cada 90 días: al ingresar después del plazo, la app se la pide. No afecta a gestores, usuarios ni al dueño de la plataforma. Las cuentas actuales cuentan desde el día en que se activó la función.
+      </p>
+      <Aviso>{error}</Aviso>
+      <label className="sismos-casilla">
+        <input type="checkbox" checked={activa ?? true} disabled={activa === null} onChange={(e) => void cambiar(e.target.checked)} /> Caducidad a los 90 días encendida para esta empresa
+      </label>
+    </Seccion>
+  )
+}
+
+/** Solo el dueño de la plataforma: habilita o no «Conoce al equipo de SST» para la empresa (04/11/2026). */
+function InterruptorEquipoSst({ empresaId }: { empresaId: string }) {
+  const [habilitado, setHabilitado] = useState<boolean | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    leerEquipoSstEmpresa(empresaId).then(setHabilitado, (e) => setError((e as Error).message))
+  }, [empresaId])
+  async function cambiar(valor: boolean) {
+    setError(null)
+    try {
+      await fijarEquipoSst(empresaId, valor)
+      setHabilitado(valor)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  return (
+    <Seccion titulo="Conoce al equipo de SST">
+      <p className="nota">Muestra a las personas de la empresa el organigrama de su equipo de SST (puestos y nombres, que cambian los administradores y los gestores). Tú decides si esta empresa lo tiene.</p>
+      <Aviso>{error}</Aviso>
+      <label className="sismos-casilla">
+        <input type="checkbox" checked={habilitado ?? true} disabled={habilitado === null} onChange={(e) => void cambiar(e.target.checked)} /> Habilitado para esta empresa
+      </label>
+    </Seccion>
+  )
+}
 
 /**
  * Ficha completa de una empresa.
@@ -150,6 +207,9 @@ export function DetalleEmpresa({ empresaId, modo }: { empresaId: string; modo: '
       {general && <Contactos empresaId={empresa.id} contactos={contactos} editable onCambio={cargar} />}
       <Sedes empresaId={empresa.id} sedes={sedes} editable={esDueno} onCambio={cargar} />
       {general && <Administradores empresaId={empresa.id} puedeCrear={esDueno} sedes={sedes} />}
+
+      {esDueno && <InterruptorEquipoSst empresaId={empresa.id} />}
+      {esDueno && <InterruptorCaducidad empresaId={empresa.id} />}
 
       {esDueno && (
         <Seccion titulo="Estado de la empresa">

@@ -13,6 +13,7 @@ function seccion(titulo) {
 }
 const SIN_PERMISO = (r) => r.error?.code === '42501' || /permission denied|No autorizado|Ya no tienes acceso|solo el administrador|no puede|no se puede/i.test(r.error?.message ?? '') || r.estado === 403
 const HOY = new Date().toISOString().slice(0, 10)
+const INICIO = new Date(Date.now() - 2000).toISOString() // desde aquí es «de esta corrida»; la limpieza final borra solo lo que nació después
 const sha = (b) => createHash('sha256').update(b).digest('hex')
 
 // ───────────────────────────────────────────────
@@ -407,18 +408,34 @@ seccion('8. El gestor maneja el personal de su sede, con límites')
 {
   const doc = () => `43${randomInt(100000, 999999)}`
   const crear = (n, rol, sedes, documento = doc()) => llamarFuncion(s[n], 'crear-cuenta', { empresa_id: empresa, rol, tipo_documento: 'dni', numero_documento: documento, apellidos_nombres: `PRUEBA PERSONAL ${documento}, Ana (ficticia)`, fecha_ingreso: '2026-01-15', puesto: 'Prueba', area: 'Seguridad', sedes })
-  const u = await crear('GESTOR_C2', 'usuario', [S2])
-  comprobar('El gestor de la sede 2 crea un usuario en su sede', u.estado === 200, `${u.estado} ${u.datos?.error ?? ''}`)
-  const ug = await crear('GESTOR_C2', 'usuario_gestor', [S2])
-  comprobar('…y un usuario gestor', ug.estado === 200, `${ug.estado} ${ug.datos?.error ?? ''}`)
+  // Cuentas FIJAS (nivel 2, 04/11/2026): la prueba ya no crea cuentas nuevas en cada corrida. La primera vez el gestor las crea (y se comprueba);
+  // las siguientes se reutilizan: se buscan por documento y, si están cesadas, el gestor las reactiva.
+  const FIJO = { usuario: '43000091', usuario_gestor: '43000092' }
+  const fija = async (rol) => {
+    const p = (await dueno.from('personas').select('id').eq('tipo_documento', 'dni').eq('numero_documento', FIJO[rol]).maybeSingle()).data
+    const v = p ? (await dueno.from('vinculos').select('id, persona_id, estado').eq('persona_id', p.id).eq('empresa_id', empresa).maybeSingle()).data : null
+    if (!v) {
+      const r = await crear('GESTOR_C2', rol, [S2], FIJO[rol])
+      comprobar(rol === 'usuario' ? 'El gestor de la sede 2 crea un usuario en su sede (cuenta fija, solo la primera vez)' : '…y un usuario gestor (cuenta fija, solo la primera vez)', r.estado === 200, `${r.estado} ${r.datos?.error ?? ''}`)
+      return r.estado === 200 ? (await dueno.from('vinculos').select('id, persona_id').eq('empresa_id', empresa).eq('rol', rol).eq('estado', 'activo').order('creado_en', { ascending: false }).limit(1)).data[0] : null
+    }
+    if (v.estado !== 'activo') {
+      const r = await s.GESTOR_C2.rpc('reactivar_vinculo', { p_vinculo: v.id })
+      comprobar(`Se reutiliza la cuenta fija de ${rol === 'usuario' ? 'usuario' : 'usuario gestor'}: el gestor de su sede la reactiva`, !r.error, r.error?.message)
+    } else comprobar(`Se reutiliza la cuenta fija de ${rol === 'usuario' ? 'usuario' : 'usuario gestor'} (ya estaba activa)`, true)
+    return { id: v.id, persona_id: v.persona_id }
+  }
+  const u = await fija('usuario')
+  const ug = await fija('usuario_gestor')
+  const vincsAntes = (await dueno.from('vinculos').select('*', { count: 'exact', head: true }).eq('empresa_id', empresa)).count
   comprobar('No crea un gestor', (await crear('GESTOR_C2', 'gestor', [S2])).estado >= 400)
   comprobar('No crea un administrador de sede', (await crear('GESTOR_C2', 'admin_sede', [S2])).estado >= 400)
   comprobar('No crea un administrador general', (await crear('GESTOR_C2', 'admin_empresa', [])).estado >= 400)
   comprobar('No crea cuentas en la sede 1', (await crear('GESTOR_C2', 'usuario', [S1])).estado >= 400)
   comprobar('Un usuario gestor no crea cuentas', (await crear('USUGES_C1', 'usuario', [S1])).estado >= 400)
   comprobar('Un usuario no crea cuentas', (await crear('USUARIO_C1', 'usuario', [S1])).estado >= 400)
-  if (u.estado === 200) {
-    const vu = (await dueno.from('vinculos').select('id, persona_id').eq('empresa_id', empresa).eq('estado', 'activo').eq('rol', 'usuario').order('creado_en', { ascending: false }).limit(1)).data[0]
+  if (u) {
+    const vu = u
     const vistaG = (await s.GESTOR_C2.from('vinculos').select('id').eq('id', vu.id)).data ?? []
     comprobar('El gestor ve las cuentas de su sede', vistaG.length === 1)
     const cs = await s.GESTOR_C2.rpc('cesar_vinculo', { p_vinculo: vu.id, p_fecha_cese: HOY, p_motivo: 'Fin de la prueba (ficticio)' })
@@ -429,10 +446,9 @@ seccion('8. El gestor maneja el personal de su sede, con límites')
     const pw = await llamarFuncion(s.GESTOR_C2, 'dar-contrasena', { persona_id: vu.persona_id })
     comprobar('El gestor no da contraseñas nuevas', pw.estado >= 400, `${pw.estado} ${pw.datos?.error ?? ''}`)
   }
-  if (ug.estado === 200) {
-    const vg = (await dueno.from('vinculos').select('id').eq('empresa_id', empresa).eq('estado', 'activo').eq('rol', 'usuario_gestor').order('creado_en', { ascending: false }).limit(1)).data[0]
-    await s.GESTOR_C2.rpc('cesar_vinculo', { p_vinculo: vg.id, p_fecha_cese: HOY, p_motivo: 'Fin de la prueba (ficticio)' })
-  }
+  if (ug) await s.GESTOR_C2.rpc('cesar_vinculo', { p_vinculo: ug.id, p_fecha_cese: HOY, p_motivo: 'Fin de la prueba (ficticio)' })
+  const vincsDespues = (await dueno.from('vinculos').select('*', { count: 'exact', head: true }).eq('empresa_id', empresa)).count
+  comprobar('Las cuentas de personal no se acumulan: tras las pruebas negativas la empresa D no ganó vínculos', vincsDespues === vincsAntes, `${vincsAntes} → ${vincsDespues}`)
   comprobar('No cesa a otro gestor', SIN_PERMISO(await s.GESTOR_C2.rpc('cesar_vinculo', { p_vinculo: V.GESTOR_C1, p_fecha_cese: HOY, p_motivo: 'Intruso' })))
   comprobar('No cesa a un administrador', SIN_PERMISO(await s.GESTOR_C2.rpc('cesar_vinculo', { p_vinculo: V.ADMSEDE_C2, p_fecha_cese: HOY, p_motivo: 'Intruso' })))
   comprobar('No cesa a una cuenta de la sede 1', SIN_PERMISO(await s.GESTOR_C2.rpc('cesar_vinculo', { p_vinculo: V.USUARIO_C1, p_fecha_cese: HOY, p_motivo: 'Intruso' })))
@@ -458,6 +474,43 @@ seccion('9. Nadie escribe directo; otras empresas no ven nada; anon no ejecuta')
     comprobar(`Sin sesión no se ejecuta ${f}`, Boolean(r.error))
   }
   comprobar('El dueño de la plataforma ve las solicitudes de la empresa D', ((await dueno.from('solicitudes_cambio').select('id').eq('empresa_id', empresa)).data ?? []).length > 0)
+}
+
+// ───────────────────────────────────────────────
+seccion('10. Limpieza: la prueba borra lo que ella misma creó en la empresa D (nada de antes, nada de otras empresas)')
+{
+  const cuenta = async (tabla, col, valor, extra = (q) => q) => (await extra(dueno.from(tabla).select('*', { count: 'exact', head: true }).eq(col, valor))).count ?? 0
+  const solD = () => cuenta('solicitudes_cambio', 'empresa_id', empresa)
+  const solNuevas = async () => (await dueno.from('solicitudes_cambio').select('*', { count: 'exact', head: true }).eq('empresa_id', empresa).gte('solicitado_en', INICIO)).count ?? 0
+  const hisNuevo = async () => (await dueno.from('facultades_historial').select('*', { count: 'exact', head: true }).eq('empresa_id', empresa).gte('hecho_en', INICIO)).count ?? 0
+  const otrasSol = async () => (await dueno.from('solicitudes_cambio').select('*', { count: 'exact', head: true }).neq('empresa_id', empresa)).count ?? 0
+  const otrasHis = async () => (await dueno.from('facultades_historial').select('*', { count: 'exact', head: true }).neq('empresa_id', empresa)).count ?? 0
+  const antesSol = await solD()
+  const nuevasSol = await solNuevas()
+  const nuevoHis = await hisNuevo()
+  const ajenasSol = await otrasSol()
+  const ajenasHis = await otrasHis()
+  comprobar('La prueba dejó solicitudes e historial nuevos (hay algo que limpiar)', nuevasSol > 0 && nuevoHis > 0, `${nuevasSol} · ${nuevoHis}`)
+  for (const n of ['ADMIN_C', 'ADMSEDE_C1', 'GESTOR_C1', 'USUGES_C1', 'USUARIO_C1', 'ADMIN_A']) {
+    const r = await s[n].rpc('limpiar_pruebas_facultades', { p_empresa: empresa, p_desde: INICIO })
+    comprobar(`${n} no puede ejecutar la limpieza (solo el dueño de la plataforma)`, SIN_PERMISO(r), JSON.stringify(r.error))
+  }
+  const viejo = await dueno.rpc('limpiar_pruebas_facultades', { p_empresa: empresa, p_desde: '2020-01-01T00:00:00Z' })
+  comprobar('No acepta una fecha de inicio vieja (no borra de más)', !!viejo.error, viejo.error?.message)
+  const demo = (await dueno.from('empresas').select('id').eq('ruc', '20000000061').maybeSingle()).data?.id
+  if (demo) {
+    const rd = await dueno.rpc('limpiar_pruebas_facultades', { p_empresa: demo, p_desde: INICIO })
+    comprobar('No limpia la empresa de la demo', !!rd.error, rd.error?.message)
+  }
+  const ra = await dueno.rpc('limpiar_pruebas_facultades', { p_empresa: (await dueno.from('empresas').select('id').neq('id', empresa).limit(1)).data?.[0]?.id ?? randomUUID(), p_desde: INICIO })
+  comprobar('No limpia otra empresa de prueba ni una que no existe', !!ra.error, ra.error?.message)
+  const r = await dueno.rpc('limpiar_pruebas_facultades', { p_empresa: empresa, p_desde: INICIO })
+  comprobar('El dueño ejecuta la limpieza de la empresa D', !r.error, r.error?.message)
+  comprobar('Ya no quedan solicitudes ni historial de esta corrida', (await solNuevas()) === 0 && (await hisNuevo()) === 0)
+  comprobar('Lo de antes de la prueba sigue intacto (solo se fue lo nuevo)', (await solD()) === antesSol - nuevasSol)
+  comprobar('Las demás empresas (la demo, A, B) no perdieron nada', (await otrasSol()) === ajenasSol && (await otrasHis()) === ajenasHis)
+  comprobar('No quedan facultades marcadas por la prueba', ((await dueno.from('facultades_persona').select('permiso').eq('empresa_id', empresa).gte('otorgado_en', INICIO)).data ?? []).length === 0)
+  comprobar('Las cuentas de prueba siguen ahí', (await dueno.from('vinculos').select('id').in('id', Object.values(V))).data?.length === Object.keys(V).length)
 }
 
 // Limpieza: el programa de la prueba se desactiva para que no se acumulen

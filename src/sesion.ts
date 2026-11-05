@@ -65,7 +65,7 @@ function perfilGuardado(id: string): Perfil | null {
 
 async function leerPerfil(id: string): Promise<Perfil | null> {
   if (!supabase) return null
-  const [persona, vinculo, dueno, misSedes, misPermisos] = await Promise.all([
+  const [persona, vinculo, dueno, misSedes, misPermisos, vencida] = await Promise.all([
     supabase.from('personas').select('apellidos_nombres, numero_documento, debe_cambiar_contrasena').eq('id', id).maybeSingle(),
     supabase
       .from('vinculos')
@@ -76,6 +76,7 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
     supabase.from('duenos_plataforma').select('persona_id').eq('persona_id', id).maybeSingle(),
     supabase.from('vinculos_sedes').select('sedes(id, nombre, activa), vinculos!inner(persona_id, estado)').eq('vinculos.persona_id', id).eq('vinculos.estado', 'activo'),
     supabase.rpc('mis_permisos'),
+    supabase.rpc('contrasena_vencida'),
   ])
   if (persona.error || vinculo.error || dueno.error || misSedes.error) throw new Error('sin respuesta')
   if (!persona.data) return null
@@ -101,7 +102,8 @@ async function leerPerfil(id: string): Promise<Perfil | null> {
     id,
     apellidosNombres: persona.data.apellidos_nombres,
     numeroDocumento: persona.data.numero_documento,
-    debeCambiarContrasena: persona.data.debe_cambiar_contrasena,
+    // Clave vencida (administradores, 90 días, si la empresa lo tiene encendido) se trata igual que «debe cambiarla».
+    debeCambiarContrasena: persona.data.debe_cambiar_contrasena || vencida.data === true,
     esDueno: Boolean(dueno.data),
     empresa: v?.empresas?.razon_social ?? null,
     empresaId: v?.empresa_id ?? null,

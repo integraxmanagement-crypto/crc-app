@@ -1,6 +1,6 @@
 # Pruebas de la etapa 2: usuario gestor, facultades y solicitudes
 
-Fecha: 2026-11-04T00:51:24.575Z · Base: crc-dev · Datos FICTICIOS (empresa D) · **147 de 147 correctas**
+Fecha: 2026-11-04T22:18:21.850Z · Base: crc-dev · Datos FICTICIOS (empresa D) · **164 de 164 correctas**
 
 ## 1. El rol nuevo y sus permisos
 
@@ -143,8 +143,8 @@ Fecha: 2026-11-04T00:51:24.575Z · Base: crc-dev · Datos FICTICIOS (empresa D) 
 
 ## 8. El gestor maneja el personal de su sede, con límites
 
-- ✅ El gestor de la sede 2 crea un usuario en su sede
-- ✅ …y un usuario gestor
+- ✅ Se reutiliza la cuenta fija de usuario: el gestor de su sede la reactiva
+- ✅ Se reutiliza la cuenta fija de usuario gestor: el gestor de su sede la reactiva
 - ✅ No crea un gestor
 - ✅ No crea un administrador de sede
 - ✅ No crea un administrador general
@@ -155,6 +155,7 @@ Fecha: 2026-11-04T00:51:24.575Z · Base: crc-dev · Datos FICTICIOS (empresa D) 
 - ✅ El gestor cesa a un usuario de su sede
 - ✅ …y lo reactiva
 - ✅ El gestor no da contraseñas nuevas
+- ✅ Las cuentas de personal no se acumulan: tras las pruebas negativas la empresa D no ganó vínculos
 - ✅ No cesa a otro gestor
 - ✅ No cesa a un administrador
 - ✅ No cesa a una cuenta de la sede 1
@@ -175,3 +176,22 @@ Fecha: 2026-11-04T00:51:24.575Z · Base: crc-dev · Datos FICTICIOS (empresa D) 
 - ✅ Sin sesión no se ejecuta resolver_solicitud
 - ✅ Sin sesión no se ejecuta marcar_solicitud_vista
 - ✅ El dueño de la plataforma ve las solicitudes de la empresa D
+
+## 10. Limpieza: la prueba borra lo que ella misma creó en la empresa D (nada de antes, nada de otras empresas)
+
+- ✅ La prueba dejó solicitudes e historial nuevos (hay algo que limpiar)
+- ✅ ADMIN_C no puede ejecutar la limpieza (solo el dueño de la plataforma)
+- ✅ ADMSEDE_C1 no puede ejecutar la limpieza (solo el dueño de la plataforma)
+- ✅ GESTOR_C1 no puede ejecutar la limpieza (solo el dueño de la plataforma)
+- ✅ USUGES_C1 no puede ejecutar la limpieza (solo el dueño de la plataforma)
+- ✅ USUARIO_C1 no puede ejecutar la limpieza (solo el dueño de la plataforma)
+- ✅ ADMIN_A no puede ejecutar la limpieza (solo el dueño de la plataforma)
+- ✅ No acepta una fecha de inicio vieja (no borra de más)
+- ✅ No limpia la empresa de la demo
+- ✅ No limpia otra empresa de prueba ni una que no existe
+- ✅ El dueño ejecuta la limpieza de la empresa D
+- ✅ Ya no quedan solicitudes ni historial de esta corrida
+- ✅ Lo de antes de la prueba sigue intacto (solo se fue lo nuevo)
+- ✅ Las demás empresas (la demo, A, B) no perdieron nada
+- ✅ No quedan facultades marcadas por la prueba
+- ✅ Las cuentas de prueba siguen ahí

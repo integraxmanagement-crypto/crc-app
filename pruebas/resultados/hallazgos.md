@@ -1,12 +1,12 @@
 # Pruebas del seguimiento de hallazgos (tarea 3.4-D, parte 2)
 
-Fecha: 2026-11-03T13:42:36.573Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
+Fecha: 2026-11-04T21:58:14.697Z · Base: crc-dev · Datos FICTICIOS · **undefined de undefined correctas**
 
 ## 1. Nacen solos al recibir la inspección
 
-- ❌ Se registra una inspección con 2 X — {"id":"db50079e-bbde-4697-a1a5-474b6e1eaadb","estado":"grabada","huella":"4ced145eb02970e37c95ac3500af5f72475e4ae62495e8a15381d139ce55df48","numero":168}
+- ❌ Se registra una inspección con 2 X — {"id":"bcdd11e5-375e-423a-a8e3-28ccd6cb52e9","estado":"grabada","huella":"17c8db6d26f1f85c539af4d562f65c3bdbfbd0dab6fe59b13d06815562ecd654","numero":176}
 - ❌ Nacen 2 hallazgos, uno por cada X — ["HAL-01","HAL-02"]
-- ❌ El que traía acción nace con responsable, plazo y acción — {"id":"fb3428c6-3ace-4ddc-b19d-28faa410bd88","empresa_id":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50","inspeccion_id":"db50079e-bbde-4697-a1a5-474b6e1eaadb","plantilla_id":"71f49b64-7363-4f26-971d-86de042eb2ad","sede_id":"5bfa9266-f5d4-4ab3-9986-97413d41194c","activo_id":"b806bf8a-02b4-40a2-b3e4-4679ad91cc3a","origen":"no_cumple","clave":"HAL-01","fila":null,"texto":"Señal visible (ficticio)","accion":"Reponer la señal (ficticio)","responsable_id":"ba30ec35-3d0a-4606-985f-08c3353c6fb4","plazo":"2026-11-15","estado":"abierto","severidad":null,"creado_en":"2026-11-03T13:42:30.76928+00:00","cerrado_en":null,"cerrado_por":null,"cierre_comentario":null,"cierre_foto_ruta":null,"cierre_foto_bytes":null,"anulado_motivo":null,"inspeccion_numero":168,"activo_codigo":"HAL-79193"}
+- ❌ El que traía acción nace con responsable, plazo y acción — {"id":"24762aa6-2d74-4778-a966-a1093bc188be","empresa_id":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50","inspeccion_id":"bcdd11e5-375e-423a-a8e3-28ccd6cb52e9","plantilla_id":"29bd6591-7b07-449b-9fdf-cd8dd6451234","sede_id":"5bfa9266-f5d4-4ab3-9986-97413d41194c","activo_id":"bc3aa9cc-1b92-4a7a-a066-cecedde75a7f","origen":"no_cumple","clave":"HAL-01","fila":null,"texto":"Señal visible (ficticio)","accion":"Reponer la señal (ficticio)","responsable_id":"ba30ec35-3d0a-4606-985f-08c3353c6fb4","plazo":"2026-11-15","estado":"abierto","severidad":null,"creado_en":"2026-11-04T21:57:57.369675+00:00","cerrado_en":null,"cerrado_por":null,"cierre_comentario":null,"cierre_foto_ruta":null,"cierre_foto_bytes":null,"anulado_motivo":null,"inspeccion_numero":176,"activo_codigo":"HAL-99154"}
 - ❌ El otro nace sin asignar
 - ❌ Llevan el formato, la sede y el equipo
 - ❌ Si la inspección llega dos veces, no se duplican
@@ -40,7 +40,7 @@ Fecha: 2026-11-03T13:42:36.573Z · Base: crc-dev · Datos FICTICIOS · **undefin
 - ❌ Otra empresa no puede cerrar — No autorizado
 - ❌ La foto debe estar en la carpeta del hallazgo — La foto no está en la carpeta del hallazgo
 - ❌ El responsable lo cierra con comentario y foto
-- ❌ Queda cerrado, con quién y la foto — {"estado":"cerrado","cerrado_por":"ba30ec35-3d0a-4606-985f-08c3353c6fb4","cierre_foto_ruta":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50/db50079e-bbde-4697-a1a5-474b6e1eaadb/cierre-fb3428c6-3ace-4ddc-b19d-28faa410bd88-85364618.png"}
+- ❌ Queda cerrado, con quién y la foto — {"estado":"cerrado","cerrado_por":"ba30ec35-3d0a-4606-985f-08c3353c6fb4","cierre_foto_ruta":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50/bcdd11e5-375e-423a-a8e3-28ccd6cb52e9/cierre-24762aa6-2d74-4778-a966-a1093bc188be-59a47e36.png"}
 - ❌ El gestor ve la foto de cierre
 - ❌ Otra empresa no ve la foto de cierre
 - ❌ No se cierra dos veces
@@ -55,11 +55,11 @@ Fecha: 2026-11-03T13:42:36.573Z · Base: crc-dev · Datos FICTICIOS · **undefin
 
 ## 6. Corrección y anulación de la inspección
 
-- ❌ El administrador corrige la inspección — {"estado":"corregida","huella":"1ef04a2abd71f48711fca308d7d7704bbe82a9ffc35759cb5aa87ec5713b8fa6","edicion":2}
-- ❌ El hallazgo que desapareció queda «anulado por corrección» — {"id":"4842ce54-d522-4f97-89e0-0489710a5ae3","empresa_id":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50","inspeccion_id":"db50079e-bbde-4697-a1a5-474b6e1eaadb","plantilla_id":"71f49b64-7363-4f26-971d-86de042eb2ad","sede_id":"5bfa9266-f5d4-4ab3-9986-97413d41194c","activo_id":"b806bf8a-02b4-40a2-b3e4-4679ad91cc3a","origen":"no_cumple","clave":"HAL-02","fila":null,"texto":"Acceso libre (ficticio)","accion":"Despejar el acceso (ficticio)","responsable_id":"ba30ec35-3d0a-4606-985f-08c3353c6fb4","plazo":"2026-10-01","estado":"anulado","severidad":null,"creado_en":"2026-11-03T13:42:30.76928+00:00","cerrado_en":null,"cerrado_por":null,"cierre_comentario":null,"cierre_foto_ruta":null,"cierre_foto_bytes":null,"anulado_motivo":"Anulado por corrección de la inspección","inspeccion_numero":168,"activo_codigo":"HAL-79193"}
+- ❌ El administrador corrige la inspección — {"estado":"corregida","huella":"40a6e8361c9dfb20340003e8c2e49b726e440fdd9378126f5a10a6bce26565c8","edicion":2}
+- ❌ El hallazgo que desapareció queda «anulado por corrección» — {"id":"dff76b18-a7a4-47cd-b042-7d56ad162ed6","empresa_id":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50","inspeccion_id":"bcdd11e5-375e-423a-a8e3-28ccd6cb52e9","plantilla_id":"29bd6591-7b07-449b-9fdf-cd8dd6451234","sede_id":"5bfa9266-f5d4-4ab3-9986-97413d41194c","activo_id":"bc3aa9cc-1b92-4a7a-a066-cecedde75a7f","origen":"no_cumple","clave":"HAL-02","fila":null,"texto":"Acceso libre (ficticio)","accion":"Despejar el acceso (ficticio)","responsable_id":"ba30ec35-3d0a-4606-985f-08c3353c6fb4","plazo":"2026-10-01","estado":"anulado","severidad":null,"creado_en":"2026-11-04T21:57:57.369675+00:00","cerrado_en":null,"cerrado_por":null,"cierre_comentario":null,"cierre_foto_ruta":null,"cierre_foto_bytes":null,"anulado_motivo":"Anulado por corrección de la inspección","inspeccion_numero":176,"activo_codigo":"HAL-99154"}
 - ❌ Nace el hallazgo nuevo (HAL-03)
 - ❌ El cerrado sigue cerrado
 - ❌ No se duplica el que ya existía
-- ❌ Al anular la inspección, sus hallazgos abiertos se anulan — {"id":"f8547400-e525-4876-868f-353a7b2f9d7e","empresa_id":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50","inspeccion_id":"db50079e-bbde-4697-a1a5-474b6e1eaadb","plantilla_id":"71f49b64-7363-4f26-971d-86de042eb2ad","sede_id":"5bfa9266-f5d4-4ab3-9986-97413d41194c","activo_id":"b806bf8a-02b4-40a2-b3e4-4679ad91cc3a","origen":"no_cumple","clave":"HAL-03","fila":null,"texto":"Batería cargada (ficticio)","accion":null,"responsable_id":null,"plazo":null,"estado":"anulado","severidad":null,"creado_en":"2026-11-03T13:42:36.002092+00:00","cerrado_en":null,"cerrado_por":null,"cierre_comentario":null,"cierre_foto_ruta":null,"cierre_foto_bytes":null,"anulado_motivo":"Inspección anulada","inspeccion_numero":168,"activo_codigo":"HAL-79193"}
+- ❌ Al anular la inspección, sus hallazgos abiertos se anulan — {"id":"de5c4bf3-7714-4eef-a626-be0b98d601d3","empresa_id":"a6cdbf53-a50f-4da9-9c3d-bbf837259d50","inspeccion_id":"bcdd11e5-375e-423a-a8e3-28ccd6cb52e9","plantilla_id":"29bd6591-7b07-449b-9fdf-cd8dd6451234","sede_id":"5bfa9266-f5d4-4ab3-9986-97413d41194c","activo_id":"bc3aa9cc-1b92-4a7a-a066-cecedde75a7f","origen":"no_cumple","clave":"HAL-03","fila":null,"texto":"Batería cargada (ficticio)","accion":null,"responsable_id":null,"plazo":null,"estado":"anulado","severidad":null,"creado_en":"2026-11-04T21:58:13.241232+00:00","cerrado_en":null,"cerrado_por":null,"cierre_comentario":null,"cierre_foto_ruta":null,"cierre_foto_bytes":null,"anulado_motivo":"Inspección anulada","inspeccion_numero":176,"activo_codigo":"HAL-99154"}
 - ❌ El que ya estaba cerrado no cambia
 - ❌ Un hallazgo anulado ya no se asigna

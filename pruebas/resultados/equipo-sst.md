@@ -30,7 +30,10 @@ Fecha: 2026-11-04 · Solo datos ficticios en crc-dev.
 - ✅ El usuario de la sede 1 puede consultar el equipo
 - ✅ Ve a los gestores de su sede (el de la sede 1 y el de las dos sedes)
 - ✅ No ve al gestor de la otra sede
-- ✅ No ve usuarios gestores ni usuarios (solo gestores)
+- ✅ Ve al usuario gestor de su sede, no al de la otra, y no ve a los usuarios (solo el equipo SST)
+- ✅ Ve al administrador general y al de su sede, no al de la otra sede
+- ✅ Cada fila trae su rol
+- ✅ El WhatsApp solo sale en los gestores
 - ✅ Cada fila trae nombre, puesto y WhatsApp
 - ✅ Quien no puso número aparece sin número
 - ✅ La fila trae las sedes donde atiende
@@ -74,4 +77,106 @@ Fecha: 2026-11-04 · Solo datos ficticios en crc-dev.
 - ✅ Quedan 3 etiquetas
 - ✅ (limpieza) no quedan etiquetas de la prueba
 
-**Resultado: 63 de 63**
+## 4. El dueño de la plataforma habilita o no «Conoce al equipo de SST» por empresa
+
+- ✅ De partida está habilitado para la empresa D
+- ✅ Y el equipo trae personas
+- ✅ ADMIN_C no puede deshabilitarlo (solo el dueño)
+- ✅ ADMSEDE_C1 no puede deshabilitarlo (solo el dueño)
+- ✅ GESTOR_C1 no puede deshabilitarlo (solo el dueño)
+- ✅ USUARIO_C1 no puede deshabilitarlo (solo el dueño)
+- ✅ USUGES_C1 no puede deshabilitarlo (solo el dueño)
+- ✅ Los intentos no cambiaron nada
+- ✅ El dueño lo deshabilita para la empresa D
+- ✅ La consulta de habilitado dice que no, para todos de esa empresa
+- ✅ Nadie de esa empresa recibe a ninguna persona del equipo
+- ✅ Otra empresa no se ve afectada
+- ✅ No acepta una empresa que no existe
+- ✅ Nadie escribe directo en la tabla de interruptores
+- ✅ Otra empresa no lee el interruptor de la empresa D
+- ✅ El dueño lo vuelve a habilitar
+- ✅ Y el equipo vuelve a verse
+- ✅ El dueño lee los interruptores de todas las empresas
+
+## 5. El organigrama del equipo de SST: puestos y nombres que editan administradores y gestores
+
+- ✅ El administrador general crea el primer puesto (para toda la empresa)
+- ✅ El gestor de la sede 1 agrega una rama de su sede
+- ✅ …pero no una de la sede 2
+- ✅ …ni una «para toda la empresa» (eso es del administrador general)
+- ✅ El gestor de la sede 2 agrega la suya
+- ✅ El administrador de la sede 1 agrega una rama (con el nombre vacío: puesto por cubrir)
+- ✅ USUARIO_C1 no puede agregar puestos
+- ✅ USUGES_C1 no puede agregar puestos
+- ✅ Nadie cuelga una rama de un puesto que no ve (el gestor 2 no ve la sede 1)
+- ✅ Rechaza textos fuera de medida («…», nombre de 1)
+- ✅ Rechaza textos fuera de medida («A…», nombre de 1)
+- ✅ Rechaza textos fuera de medida («PPPPPPPP…», nombre de 1)
+- ✅ Rechaza textos fuera de medida («Puesto b…», nombre de 81)
+- ✅ Un usuario de la sede 1 ve el puesto general y los de su sede
+- ✅ …y no ve los de la sede 2
+- ✅ El administrador general ve todo
+- ✅ Otra empresa no ve nada de la empresa D
+- ✅ La fila trae puesto y nombre, sin datos de la cuenta (documento, correo, rol)
+- ✅ El gestor cambia el nombre y el puesto de un puesto de su sede
+- ✅ El cambio se ve
+- ✅ El administrador de la sede también
+- ✅ El administrador de la sede 1 no edita un puesto de la sede 2
+- ✅ El gestor no edita el puesto general de la empresa
+- ✅ El administrador general sí
+- ✅ Otra empresa no edita nada
+- ✅ El dueño de la plataforma tampoco edita el organigrama de una empresa
+- ✅ USUARIO_C1 no edita
+- ✅ USUGES_C1 no edita
+- ✅ Nadie inserta directo en la tabla
+- ✅ Ni actualiza directo
+- ✅ Ni borra directo
+- ✅ Quien atiende las dos sedes agrega una rama de la sede 2 bajo un puesto de la sede 1
+- ✅ No se quita un puesto que tiene ramas de otra sede que no manejas
+- ✅ Quien maneja las dos sedes sí quita el puesto con todas sus ramas
+- ✅ Se fueron el puesto y sus ramas, y quedó lo demás
+- ✅ Un usuario no quita nada
+- ✅ El gestor no quita el puesto general
+- ✅ Si el dueño deshabilita la sección, nadie de la empresa ve el organigrama
+- ✅ El gestor no arma el organigrama inicial (solo el administrador general)
+- ✅ El administrador general arma el organigrama con el equipo actual
+- ✅ Salen personas con puesto y nombre
+- ✅ Hay una sola raíz y las demás cuelgan de algo
+- ✅ No se arma dos veces (no pisa lo que ya hay)
+- ✅ (limpieza) no quedan puestos de la prueba
+
+## 6. El WhatsApp aparece en el puesto solo si el gestor lo publicó
+
+- ✅ El gestor publica su número
+- ✅ Sin vincular a ningún puesto, el número no aparece en ninguna parte
+- ✅ El gestor vincula su puesto de la sede con su cuenta
+- ✅ Un usuario de la sede ve el WhatsApp en ese puesto
+- ✅ …y no recibe el identificador de la cuenta
+- ✅ Solo salen los puestos con número publicado
+- ✅ Quien edita ve a qué cuenta está vinculado el puesto
+- ✅ Un usuario de la otra sede no ve el número de un puesto que no ve
+- ✅ Otra empresa no ve nada
+- ✅ Si el gestor borra su número, deja de aparecer
+- ✅ El administrador sigue viendo el vínculo, sin número
+- ✅ No se vincula a un gestor de otra sede
+- ✅ Solo se vincula a gestores (no a un usuario)
+- ✅ No se vincula un puesto de otra sede
+- ✅ USUARIO_C1 no vincula
+- ✅ USUGES_C1 no vincula
+- ✅ Otra empresa no vincula
+- ✅ El administrador general vincula un puesto de toda la empresa con un gestor de cualquier sede
+- ✅ Y lo desvincula
+- ✅ La tabla de vínculos no se lee ni se escribe directo
+- ✅ (escritura directa rechazada)
+- ✅ El gestor de la sede 1 ve a los gestores de su sede para vincular (con su nombre)
+- ✅ …no los de otra sede
+- ✅ Un usuario no recibe la lista
+- ✅ Cambiar el nombre del puesto no suelta el vínculo ni el número
+- ✅ Se quita el puesto
+- ✅ Con el puesto se va el vínculo
+- ✅ Se arma con el equipo actual
+- ✅ Los gestores quedan vinculados a su puesto
+- ✅ Y su número aparece apenas lo publican
+- ✅ (limpieza) sin puestos ni números de la prueba
+
+**Resultado: 159 de 159**

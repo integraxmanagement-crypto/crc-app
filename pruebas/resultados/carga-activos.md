@@ -1,6 +1,6 @@
 # Pruebas de la carga masiva de equipos
 
-Fecha: 2026-11-03T13:54:53.521Z · Sin base de datos · **undefined de undefined correctas**
+Fecha: 2026-11-04T21:51:04.822Z · Sin base de datos · **undefined de undefined correctas**
 
 - ❌ La plantilla de extintores trae las columnas del tipo, con * en las obligatorias — Código * | Área * | Ubicación * | Responsable * | Número de serie * | Tipo de agente * | Capacidad * | Unidad de capacidad * | Año de fabricación * | Año de la última prueba hidrostática * | Último mantenimiento (mes y año) * | Próximo mantenimiento (mes y año) | Tipo de soporte
 - ❌ Los dos años son obligatorios en extintores — Código * | Área * | Ubicación * | Responsable * | Número de serie * | Tipo de agente * | Capacidad * | Unidad de capacidad * | Año de fabricación * | Año de la última prueba hidrostática * | Último mantenimiento (mes y año) * | Próximo mantenimiento (mes y año) | Tipo de soporte

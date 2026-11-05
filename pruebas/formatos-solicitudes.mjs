@@ -15,6 +15,7 @@ function seccion(titulo) {
 const SIN_PERMISO = (r) => r.error?.code === '42501' || /No autorizado|permission denied/i.test(r.error?.message ?? '')
 const HOY = new Date().toISOString().slice(0, 10)
 const SUF = randomUUID().slice(0, 6)
+const INICIO = new Date(Date.now() - 2000).toISOString() // la limpieza final borra solo las solicitudes nacidas desde aquí
 
 const { c: dueno, error: errDueno } = await ingresarComo('DUENO')
 if (errDueno) throw new Error('El dueño ficticio no pudo ingresar: ' + errDueno.message)
@@ -121,7 +122,7 @@ comprobar('Pide publicar el cambio', !p2.error && Boolean(p2.data), p2.error?.me
 const SOL2 = p2.data
 comprobar('El título dice que es un cambio de un formato existente', /cambio|modific/i.test((await solicitud(SOL2)).titulo), (await solicitud(SOL2)).titulo)
 // El gestor retoca el borrador DESPUÉS de pedir: el administrador no puede aprobar algo distinto de lo que revisó
-const g3 = await s.GESTOR_C1.rpc('guardar_borrador', { p_version: v2, p_datos: encabezado({ version_formato: '02', receta: { ...recetaCambiada, observacion_general: false } }) })
+const g3 = await s.GESTOR_C1.rpc('guardar_borrador', { p_version: v2, p_datos: encabezado({ version_formato: '02', receta: structuredClone({ ...recetaCambiada, secciones: recetaCambiada.secciones.map((sec, i) => (i === 0 ? { ...sec, titulo: `${sec.titulo} (retocada ${SUF})` } : sec)) }) }) })
 comprobar('El gestor retoca el borrador después de pedir', !g3.error, g3.error?.message)
 const aprobarCambiado = await s.ADMIN_C.rpc('resolver_solicitud', { p_id: SOL2, p_aprobar: true, p_comentario: null })
 comprobar('Aprobar un borrador que cambió después de la solicitud se rechaza', Boolean(aprobarCambiado.error) && /cambi/i.test(aprobarCambiado.error.message), aprobarCambiado.error?.message)
@@ -177,6 +178,10 @@ const vista = await s.GESTOR_C1.rpc('marcar_solicitud_vista', { p_id: SOL2 })
 comprobar('El gestor marca como vista la respuesta que recibió', !vista.error, vista.error?.message)
 const deOtra = await s.GESTOR_A.rpc('marcar_solicitud_vista', { p_id: SOL2 })
 comprobar('Un gestor de otra empresa no puede tocarla', Boolean(deOtra.error) || (await solicitud(SOL2)).visto_solicitante === true)
+
+// Limpieza (nivel 2): las solicitudes de esta corrida se borran para que no se acumulen en la empresa D (mismo candado que facultades.mjs)
+const limpieza = await dueno.rpc('limpiar_pruebas_facultades', { p_empresa: D, p_desde: INICIO })
+comprobar('Limpieza: la prueba borra las solicitudes que creó en la empresa D', !limpieza.error && limpieza.data.solicitudes > 0, limpieza.error?.message)
 
 // Informe
 const informe = grupos.map((g, i) => {

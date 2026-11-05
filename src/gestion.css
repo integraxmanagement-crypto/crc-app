@@ -2645,9 +2645,11 @@
   gap: 1rem;
 }
 
-@media (min-width: 1024px) {
+/* Mapa a un lado e información al otro (pedido del dueño, 04/11/2026); en el celular, uno bajo el otro. */
+@media (min-width: 640px) {
   .sismos-cuerpo {
-    grid-template-columns: 1fr 1.1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
   }
 }
 
@@ -3233,4 +3235,132 @@ button.tarjeta-ext {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Organigrama del equipo de SST (pedido del dueño, 04/11/2026): árbol de puestos con líneas; se desplaza de lado si es ancho. */
+.org-arbol {
+  overflow-x: auto;
+  padding: 0.5rem 0 1rem;
+}
+
+.org-arbol ul {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 1.4rem 0 0;
+  list-style: none;
+  width: max-content;
+  min-width: 100%;
+}
+
+.org-arbol > ul {
+  padding-top: 0;
+}
+
+.org-arbol li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4rem 0.4rem 0;
+}
+
+.org-arbol > ul > li {
+  padding-top: 0;
+}
+
+.org-arbol li::before,
+.org-arbol li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 1.4rem;
+  border-top: 2px solid var(--rule);
+}
+
+.org-arbol li::after {
+  right: auto;
+  left: 50%;
+  border-left: 2px solid var(--rule);
+}
+
+.org-arbol > ul > li::before,
+.org-arbol > ul > li::after,
+.org-arbol li:only-child::before,
+.org-arbol li:only-child::after {
+  display: none;
+}
+
+.org-arbol li:only-child {
+  padding-top: 1.4rem;
+}
+
+.org-arbol li:first-child::before,
+.org-arbol li:last-child::after {
+  border: 0 none;
+}
+
+.org-arbol li:last-child::before {
+  border-right: 2px solid var(--rule);
+  border-radius: 0 6px 0 0;
+}
+
+.org-arbol li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+
+.org-arbol ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 1.4rem;
+  border-left: 2px solid var(--rule);
+}
+
+.org-persona {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 10.5rem;
+  max-width: 14rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-top: 4px solid #1ba39c;
+  border-radius: 10px;
+  background: var(--surface);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.org-persona small {
+  color: var(--ink-2);
+  font-size: 0.75rem;
+}
+
+.org-rol {
+  color: var(--ink-2);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.org-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.1rem 0.5rem;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--rule);
+}
+
+.org-acciones .btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
 }

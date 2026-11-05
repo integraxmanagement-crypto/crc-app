@@ -14,16 +14,16 @@ Fecha: 2026-11-04 · empresa D ficticia (RUC 20000000052).
 - ✅ Admin de la sede 1 NO edita un activo de la sede 2 — No autorizado
 - ✅ Admin de la sede 1 NO pasa su activo a la sede 2 — No autorizado
 - ✅ Admin de la sede 1 NO da de baja un activo de la sede 2 — No autorizado
-- ✅ ADMSEDE_C1: de los activos ve solo los de sus sedes — 38 activo(s)
-- ✅ ADMSEDE_C1: de las ubicaciones ve solo las de sus sedes — 21 ubicación(es)
-- ✅ USUARIO_C1: de los activos ve solo los de sus sedes — 38 activo(s)
-- ✅ USUARIO_C1: de las ubicaciones ve solo las de sus sedes — 21 ubicación(es)
-- ✅ GESTOR_C2: de los activos ve solo los de sus sedes — 29 activo(s)
-- ✅ GESTOR_C2: de las ubicaciones ve solo las de sus sedes — 20 ubicación(es)
-- ✅ GESTOR_C12: de los activos ve solo los de sus sedes — 67 activo(s)
-- ✅ GESTOR_C12: de las ubicaciones ve solo las de sus sedes — 41 ubicación(es)
-- ✅ ADMIN_C: de los activos ve solo los de sus sedes — 67 activo(s)
-- ✅ ADMIN_C: de las ubicaciones ve solo las de sus sedes — 41 ubicación(es)
+- ✅ ADMSEDE_C1: de los activos ve solo los de sus sedes — 63 activo(s)
+- ✅ ADMSEDE_C1: de las ubicaciones ve solo las de sus sedes — 30 ubicación(es)
+- ✅ USUARIO_C1: de los activos ve solo los de sus sedes — 63 activo(s)
+- ✅ USUARIO_C1: de las ubicaciones ve solo las de sus sedes — 30 ubicación(es)
+- ✅ GESTOR_C2: de los activos ve solo los de sus sedes — 46 activo(s)
+- ✅ GESTOR_C2: de las ubicaciones ve solo las de sus sedes — 29 ubicación(es)
+- ✅ GESTOR_C12: de los activos ve solo los de sus sedes — 109 activo(s)
+- ✅ GESTOR_C12: de las ubicaciones ve solo las de sus sedes — 59 ubicación(es)
+- ✅ ADMIN_C: de los activos ve solo los de sus sedes — 109 activo(s)
+- ✅ ADMIN_C: de las ubicaciones ve solo las de sus sedes — 59 ubicación(es)
 
 ## 2. Inspecciones, planes de acción, fotos y firmas
 
@@ -34,11 +34,11 @@ Fecha: 2026-11-04 · empresa D ficticia (RUC 20000000052).
 - ✅ Gestor con las dos sedes registra en la sede 2 — 200 
 - ✅ Cada inspección quedó en la sede correcta
 - ✅ Ninguna inspección rechazada quedó guardada
-- ✅ ADMSEDE_C1: de las inspecciones ve solo las de sus sedes — 68
-- ✅ USUARIO_C1: solo ve las inspecciones que firma — 111
-- ✅ GESTOR_C2: de las inspecciones ve solo las de sus sedes — 43
-- ✅ GESTOR_C12: de las inspecciones ve solo las de sus sedes — 111
-- ✅ ADMIN_C: de las inspecciones ve solo las de sus sedes — 111
+- ✅ ADMSEDE_C1: de las inspecciones ve solo las de sus sedes — 118
+- ✅ USUARIO_C1: solo ve las inspecciones que firma — 187
+- ✅ GESTOR_C2: de las inspecciones ve solo las de sus sedes — 69
+- ✅ GESTOR_C12: de las inspecciones ve solo las de sus sedes — 187
+- ✅ ADMIN_C: de las inspecciones ve solo las de sus sedes — 187
 - ✅ Admin de la sede 1 NO anula una inspección de la sede 2 — Ya no tienes acceso a esa sede: la inspección no se puede recibir
 - ✅ El plan de acción nació con la sede de la inspección (sede 2)
 - ✅ Admin de la sede 1 NO ve los planes de acción de la sede 2
@@ -70,9 +70,9 @@ Fecha: 2026-11-04 · empresa D ficticia (RUC 20000000052).
 - ✅ personas_de_mi_empresa: admin de la sede 1 no recibe al gestor de la sede 2
 - ✅ personas_de_mi_empresa: el admin general recibe a todos
 - ✅ passt_responsables: admin de la sede 1 no ve al gestor de la sede 2 y sí al gestor de las dos sedes
-- ✅ passt_trabajadores: la sede 1 cuenta menos personas que la empresa entera — sede 1: 43; empresa: 47
-- ✅ numero_trabajadores: igual que passt_trabajadores para el admin de la sede 1 — 43
-- ✅ uso_almacenamiento: la sede 1 usa menos que la empresa entera — sede 1: 9520; empresa: 15540
+- ✅ passt_trabajadores: la sede 1 cuenta menos personas que la empresa entera — sede 1: 55; empresa: 59
+- ✅ numero_trabajadores: igual que passt_trabajadores para el admin de la sede 1 — 55
+- ✅ uso_almacenamiento: la sede 1 usa menos que la empresa entera — sede 1: 16520; empresa: 26180
 - ✅ uso_almacenamiento: nadie lo pide para otra empresa
 
 ## 4. Programa anual de SST: general, de sede y aprobación
@@ -120,7 +120,7 @@ Fecha: 2026-11-04 · empresa D ficticia (RUC 20000000052).
 - ✅ El admin general NO crea administradores (solo el dueño) — 403
 - ✅ Admin de la sede 1 NO crea un gestor para la sede 2 — 403
 - ✅ Admin de la sede 1 NO crea un usuario con la sede 1 y la 2 — 403
-- ✅ Admin de la sede 1 sí crea un gestor para su sede — 200 
+- ✅ Admin de la sede 1 sí crea un gestor para su sede (cuenta fija: se crea la primera vez y después se reutiliza) — 200 
 - ✅ Una cuenta nueva no puede quedar sin sedes: el admin general debe elegirlas (empresa con dos sedes) — 400 Elige las sedes de la cuenta
 - ✅ El admin de una sola sede crea un usuario sin elegir sede: recibe la suya — 200 
 - ✅ Una sede que no es de la empresa se rechaza — 400
@@ -198,7 +198,7 @@ Fecha: 2026-11-04 · empresa D ficticia (RUC 20000000052).
 
 ## 9. Permisos de las tablas: nadie escribe directo
 
-- ✅ Se encontraron las tablas de public en las migraciones — 46 tablas
+- ✅ Se encontraron las tablas de public en las migraciones — 51 tablas
 - ✅ Ninguna tabla de public deja escribir directo a anon ni a authenticated
 
 **172 de 172 pruebas pasaron.**

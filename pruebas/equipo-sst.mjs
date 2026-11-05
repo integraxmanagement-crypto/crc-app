@@ -26,7 +26,7 @@ for (const n of ['ADMIN_C', 'ADMSEDE_C1', 'ADMSEDE_C2', 'GESTOR_C1', 'GESTOR_C2'
 const ID = {}
 for (const n of Object.keys(s)) ID[n] = (await s[n].auth.getUser()).data.user.id
 const V = {}
-for (const n of ['GESTOR_C1', 'GESTOR_C2', 'GESTOR_C12', 'USUARIO_C1', 'USUGES_C1', 'USUGES_C2'])
+for (const n of ['GESTOR_C1', 'GESTOR_C2', 'GESTOR_C12', 'USUARIO_C1', 'USUGES_C1', 'USUGES_C2', 'ADMIN_C', 'ADMSEDE_C1', 'ADMSEDE_C2'])
   V[n] = (await dueno.from('vinculos').select('id').eq('persona_id', ID[n]).eq('empresa_id', empresa).eq('estado', 'activo').single()).data.id
 
 // Estado limpio de partida (sobras de una corrida anterior)
@@ -85,7 +85,11 @@ seccion('2. «Conoce al equipo de SST»: cada persona ve a los gestores de SU se
   comprobar('El usuario de la sede 1 puede consultar el equipo', !e.error, e.error?.message)
   comprobar('Ve a los gestores de su sede (el de la sede 1 y el de las dos sedes)', ids(e).includes(V.GESTOR_C1) && ids(e).includes(V.GESTOR_C12))
   comprobar('No ve al gestor de la otra sede', !ids(e).includes(V.GESTOR_C2))
-  comprobar('No ve usuarios gestores ni usuarios (solo gestores)', !ids(e).includes(V.USUGES_C1) && !ids(e).includes(V.USUARIO_C1))
+  comprobar('Ve al usuario gestor de su sede, no al de la otra, y no ve a los usuarios (solo el equipo SST)', ids(e).includes(V.USUGES_C1) && !ids(e).includes(V.USUGES_C2) && !ids(e).includes(V.USUARIO_C1))
+  comprobar('Ve al administrador general y al de su sede, no al de la otra sede', ids(e).includes(V.ADMIN_C) && ids(e).includes(V.ADMSEDE_C1) && !ids(e).includes(V.ADMSEDE_C2))
+  comprobar('Cada fila trae su rol', e.filas.find((f) => f.vinculo_id === V.ADMIN_C)?.rol === 'admin_empresa' && e.filas.find((f) => f.vinculo_id === V.ADMSEDE_C1)?.rol === 'admin_sede'
+    && e.filas.find((f) => f.vinculo_id === V.GESTOR_C1)?.rol === 'gestor' && e.filas.find((f) => f.vinculo_id === V.USUGES_C1)?.rol === 'usuario_gestor')
+  comprobar('El WhatsApp solo sale en los gestores', e.filas.filter((f) => f.rol !== 'gestor').every((f) => f.whatsapp == null))
   const fila = e.filas.find((f) => f.vinculo_id === V.GESTOR_C1)
   comprobar('Cada fila trae nombre, puesto y WhatsApp', !!fila?.nombre && fila?.whatsapp === '+51900000111' && 'puesto' in (fila ?? {}), JSON.stringify(fila))
   comprobar('Quien no puso número aparece sin número', e.filas.find((f) => f.vinculo_id === V.GESTOR_C12)?.whatsapp == null)
@@ -176,6 +180,253 @@ seccion('3. Roles adicionales: son etiquetas, no dan permisos')
     await s.ADMIN_C.rpc('quitar_etiqueta', { p_vinculo: v, p_etiqueta: e })
   r = await s.ADMIN_C.from('etiquetas_persona').select('etiqueta').in('vinculo_id', [V.USUARIO_C1, V.USUGES_C1, V.USUGES_C2])
   comprobar('(limpieza) no quedan etiquetas de la prueba', (r.data ?? []).length === 0, JSON.stringify(r.data))
+}
+
+// ───────────────────────────────────────────────
+seccion('4. El dueño de la plataforma habilita o no «Conoce al equipo de SST» por empresa')
+{
+  const filas = async (n) => ((await s[n].rpc('equipo_sst')).data ?? []).length
+  const hab = async (n) => (await s[n].rpc('equipo_sst_habilitado')).data
+  await dueno.rpc('fijar_equipo_sst', { p_empresa: empresa, p_habilitado: true })
+  comprobar('De partida está habilitado para la empresa D', (await hab('USUARIO_C1')) === true)
+  comprobar('Y el equipo trae personas', (await filas('USUARIO_C1')) > 0)
+  for (const n of ['ADMIN_C', 'ADMSEDE_C1', 'GESTOR_C1', 'USUARIO_C1', 'USUGES_C1']) {
+    const r = await s[n].rpc('fijar_equipo_sst', { p_empresa: empresa, p_habilitado: false })
+    comprobar(`${n} no puede deshabilitarlo (solo el dueño)`, NO(r), JSON.stringify(r.error))
+  }
+  comprobar('Los intentos no cambiaron nada', (await hab('USUARIO_C1')) === true)
+  let r = await dueno.rpc('fijar_equipo_sst', { p_empresa: empresa, p_habilitado: false })
+  comprobar('El dueño lo deshabilita para la empresa D', SEGUIDO(r), r.error?.message)
+  comprobar('La consulta de habilitado dice que no, para todos de esa empresa', (await hab('USUARIO_C1')) === false && (await hab('ADMIN_C')) === false)
+  comprobar('Nadie de esa empresa recibe a ninguna persona del equipo', (await filas('USUARIO_C1')) === 0 && (await filas('ADMIN_C')) === 0 && (await filas('GESTOR_C1')) === 0)
+  comprobar('Otra empresa no se ve afectada', (await hab('GESTOR_A')) === true)
+  r = await dueno.rpc('fijar_equipo_sst', { p_empresa: '00000000-0000-0000-0000-000000000000', p_habilitado: false })
+  comprobar('No acepta una empresa que no existe', !!r.error, JSON.stringify(r.error))
+  const ins = await s.ADMIN_C.from('equipo_sst_config').insert({ empresa_id: empresa, habilitado: true })
+  comprobar('Nadie escribe directo en la tabla de interruptores', !!ins.error)
+  const lee = await s.GESTOR_A.from('equipo_sst_config').select('empresa_id').eq('empresa_id', empresa)
+  comprobar('Otra empresa no lee el interruptor de la empresa D', (lee.data ?? []).length === 0)
+  r = await dueno.rpc('fijar_equipo_sst', { p_empresa: empresa, p_habilitado: true })
+  comprobar('El dueño lo vuelve a habilitar', SEGUIDO(r), r.error?.message)
+  comprobar('Y el equipo vuelve a verse', (await hab('USUARIO_C1')) === true && (await filas('USUARIO_C1')) > 0)
+  const anon = await (await import('./comun.mjs')).ingresarComo('DUENO')
+  const lista = await anon.c.from('equipo_sst_config').select('empresa_id')
+  comprobar('El dueño lee los interruptores de todas las empresas', !lista.error)
+}
+
+// ───────────────────────────────────────────────
+seccion('5. El organigrama del equipo de SST: puestos y nombres que editan administradores y gestores')
+{
+  const sedeIds = {}
+  for (const n of ['GESTOR_C1', 'GESTOR_C2'])
+    sedeIds[n] = (await dueno.from('vinculos_sedes').select('sede_id').eq('vinculo_id', V[n])).data?.[0]?.sede_id
+  const S1 = sedeIds.GESTOR_C1
+  const S2 = sedeIds.GESTOR_C2
+  const limpiar = async () => {
+    const todos = (await s.ADMIN_C.from('equipo_sst_nodos').select('id,padre_id')).data ?? []
+    for (const n of todos.filter((x) => !x.padre_id)) await s.ADMIN_C.rpc('quitar_nodo_equipo', { p_nodo: n.id })
+  }
+  await dueno.rpc('fijar_equipo_sst', { p_empresa: empresa, p_habilitado: true })
+  await limpiar()
+
+  let r = await s.ADMIN_C.rpc('agregar_nodo_equipo', { p_padre: null, p_sede: null, p_puesto: 'Jefe de SST', p_nombre: 'Ana Prueba' })
+  comprobar('El administrador general crea el primer puesto (para toda la empresa)', SEGUIDO(r) && !!r.data, r.error?.message)
+  const RAIZ = r.data
+  r = await s.GESTOR_C1.rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: S1, p_puesto: 'Supervisor SST', p_nombre: 'Luis Prueba' })
+  comprobar('El gestor de la sede 1 agrega una rama de su sede', SEGUIDO(r) && !!r.data, r.error?.message)
+  const N1 = r.data
+  r = await s.GESTOR_C1.rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: S2, p_puesto: 'Intruso', p_nombre: 'X' })
+  comprobar('…pero no una de la sede 2', NO(r), JSON.stringify(r.error))
+  r = await s.GESTOR_C1.rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: null, p_puesto: 'Intruso', p_nombre: 'X' })
+  comprobar('…ni una «para toda la empresa» (eso es del administrador general)', NO(r), JSON.stringify(r.error))
+  r = await s.GESTOR_C2.rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: S2, p_puesto: 'Supervisor SST 2', p_nombre: 'Marta Prueba' })
+  comprobar('El gestor de la sede 2 agrega la suya', SEGUIDO(r) && !!r.data, r.error?.message)
+  const N2 = r.data
+  r = await s.ADMSEDE_C1.rpc('agregar_nodo_equipo', { p_padre: N1, p_sede: S1, p_puesto: 'Técnico de seguridad', p_nombre: null })
+  comprobar('El administrador de la sede 1 agrega una rama (con el nombre vacío: puesto por cubrir)', SEGUIDO(r), r.error?.message)
+  const N1A = r.data
+  for (const n of ['USUARIO_C1', 'USUGES_C1']) {
+    r = await s[n].rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: S1, p_puesto: 'Intruso', p_nombre: 'X' })
+    comprobar(`${n} no puede agregar puestos`, NO(r), JSON.stringify(r.error))
+  }
+  r = await s.GESTOR_C2.rpc('agregar_nodo_equipo', { p_padre: N1, p_sede: S2, p_puesto: 'Intruso', p_nombre: 'X' })
+  comprobar('Nadie cuelga una rama de un puesto que no ve (el gestor 2 no ve la sede 1)', NO(r), JSON.stringify(r.error))
+  for (const [puesto, nombre] of [['', 'X'], ['A', 'X'], ['P'.repeat(61), 'X'], ['Puesto bueno', 'N'.repeat(81)]]) {
+    r = await s.ADMIN_C.rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: null, p_puesto: puesto, p_nombre: nombre })
+    comprobar(`Rechaza textos fuera de medida («${puesto.slice(0, 8)}…», nombre de ${nombre.length})`, !!r.error, r.error?.message)
+  }
+
+  // Quién ve qué
+  const ver = async (n) => ((await s[n].from('equipo_sst_nodos').select('id')).data ?? []).map((x) => x.id)
+  let v = await ver('USUARIO_C1')
+  comprobar('Un usuario de la sede 1 ve el puesto general y los de su sede', v.includes(RAIZ) && v.includes(N1) && v.includes(N1A))
+  comprobar('…y no ve los de la sede 2', !v.includes(N2))
+  v = await ver('ADMIN_C')
+  comprobar('El administrador general ve todo', [RAIZ, N1, N1A, N2].every((x) => v.includes(x)))
+  v = await ver('GESTOR_A')
+  comprobar('Otra empresa no ve nada de la empresa D', v.length === 0 || ![RAIZ, N1, N2].some((x) => v.includes(x)))
+  const fila = (await s.USUARIO_C1.from('equipo_sst_nodos').select('*').eq('id', N1).single()).data
+  comprobar('La fila trae puesto y nombre, sin datos de la cuenta (documento, correo, rol)', fila?.puesto === 'Supervisor SST' && fila?.nombre === 'Luis Prueba' && !Object.keys(fila).some((k) => /documento|correo|persona_id|vinculo|rol/i.test(k)), Object.keys(fila ?? {}).join())
+
+  // Editar nombres y puestos
+  r = await s.GESTOR_C1.rpc('editar_nodo_equipo', { p_nodo: N1, p_puesto: 'Supervisor de SST', p_nombre: 'Luis Cambiado' })
+  comprobar('El gestor cambia el nombre y el puesto de un puesto de su sede', SEGUIDO(r), r.error?.message)
+  v = (await s.USUARIO_C1.from('equipo_sst_nodos').select('nombre,puesto').eq('id', N1).single()).data
+  comprobar('El cambio se ve', v?.nombre === 'Luis Cambiado' && v?.puesto === 'Supervisor de SST')
+  r = await s.ADMSEDE_C1.rpc('editar_nodo_equipo', { p_nodo: N1, p_puesto: 'Supervisor de SST', p_nombre: 'Luis Otra Vez' })
+  comprobar('El administrador de la sede también', SEGUIDO(r), r.error?.message)
+  r = await s.ADMSEDE_C1.rpc('editar_nodo_equipo', { p_nodo: N2, p_puesto: 'Hackeado', p_nombre: 'X' })
+  comprobar('El administrador de la sede 1 no edita un puesto de la sede 2', NO(r), JSON.stringify(r.error))
+  r = await s.GESTOR_C1.rpc('editar_nodo_equipo', { p_nodo: RAIZ, p_puesto: 'Hackeado', p_nombre: 'X' })
+  comprobar('El gestor no edita el puesto general de la empresa', NO(r), JSON.stringify(r.error))
+  r = await s.ADMIN_C.rpc('editar_nodo_equipo', { p_nodo: RAIZ, p_puesto: 'Jefe de SST', p_nombre: 'Ana Cambiada' })
+  comprobar('El administrador general sí', SEGUIDO(r), r.error?.message)
+  r = await s.GESTOR_A.rpc('editar_nodo_equipo', { p_nodo: RAIZ, p_puesto: 'Hackeado', p_nombre: 'X' })
+  comprobar('Otra empresa no edita nada', NO(r), JSON.stringify(r.error))
+  r = await dueno.rpc('editar_nodo_equipo', { p_nodo: RAIZ, p_puesto: 'Hackeado', p_nombre: 'X' })
+  comprobar('El dueño de la plataforma tampoco edita el organigrama de una empresa', NO(r), JSON.stringify(r.error))
+  for (const n of ['USUARIO_C1', 'USUGES_C1']) {
+    r = await s[n].rpc('editar_nodo_equipo', { p_nodo: N1, p_puesto: 'Hackeado', p_nombre: 'X' })
+    comprobar(`${n} no edita`, NO(r), JSON.stringify(r.error))
+  }
+
+  // Sin escritura directa
+  const ins = await s.ADMIN_C.from('equipo_sst_nodos').insert({ empresa_id: empresa, puesto: 'Directo' })
+  comprobar('Nadie inserta directo en la tabla', !!ins.error)
+  const upd = await s.ADMIN_C.from('equipo_sst_nodos').update({ puesto: 'Directo' }).eq('id', RAIZ).select()
+  comprobar('Ni actualiza directo', !!upd.error || (upd.data ?? []).length === 0)
+  const del = await s.ADMIN_C.from('equipo_sst_nodos').delete().eq('id', N1A).select()
+  comprobar('Ni borra directo', !!del.error || (del.data ?? []).length === 0)
+
+  // Quitar
+  r = await s.GESTOR_C12.rpc('agregar_nodo_equipo', { p_padre: N1, p_sede: S2, p_puesto: 'Apoyo de la sede 2', p_nombre: 'Eva Prueba' })
+  comprobar('Quien atiende las dos sedes agrega una rama de la sede 2 bajo un puesto de la sede 1', SEGUIDO(r), r.error?.message)
+  const N12 = r.data
+  r = await s.GESTOR_C1.rpc('quitar_nodo_equipo', { p_nodo: N1 })
+  comprobar('No se quita un puesto que tiene ramas de otra sede que no manejas', NO(r), JSON.stringify(r.error))
+  r = await s.GESTOR_C12.rpc('quitar_nodo_equipo', { p_nodo: N1 })
+  comprobar('Quien maneja las dos sedes sí quita el puesto con todas sus ramas', SEGUIDO(r), r.error?.message)
+  v = await ver('ADMIN_C')
+  comprobar('Se fueron el puesto y sus ramas, y quedó lo demás', !v.includes(N1) && !v.includes(N1A) && !v.includes(N12) && v.includes(RAIZ) && v.includes(N2))
+  r = await s.USUARIO_C1.rpc('quitar_nodo_equipo', { p_nodo: RAIZ })
+  comprobar('Un usuario no quita nada', NO(r), JSON.stringify(r.error))
+  r = await s.GESTOR_C1.rpc('quitar_nodo_equipo', { p_nodo: RAIZ })
+  comprobar('El gestor no quita el puesto general', NO(r), JSON.stringify(r.error))
+
+  // El interruptor del dueño también lo oculta
+  await dueno.rpc('fijar_equipo_sst', { p_empresa: empresa, p_habilitado: false })
+  comprobar('Si el dueño deshabilita la sección, nadie de la empresa ve el organigrama', (await ver('USUARIO_C1')).length === 0 && (await ver('ADMIN_C')).length === 0)
+  await dueno.rpc('fijar_equipo_sst', { p_empresa: empresa, p_habilitado: true })
+
+  // Armar con el equipo actual
+  await limpiar()
+  r = await s.GESTOR_C1.rpc('armar_equipo_sst_actual')
+  comprobar('El gestor no arma el organigrama inicial (solo el administrador general)', NO(r), JSON.stringify(r.error))
+  r = await s.ADMIN_C.rpc('armar_equipo_sst_actual')
+  comprobar('El administrador general arma el organigrama con el equipo actual', SEGUIDO(r), r.error?.message)
+  const armado = (await s.ADMIN_C.from('equipo_sst_nodos').select('id,padre_id,puesto,nombre,sede_id')).data ?? []
+  comprobar('Salen personas con puesto y nombre', armado.length >= 4 && armado.every((x) => x.puesto && x.nombre), String(armado.length))
+  comprobar('Hay una sola raíz y las demás cuelgan de algo', armado.filter((x) => !x.padre_id).length >= 1 && armado.filter((x) => x.padre_id).length >= 3)
+  r = await s.ADMIN_C.rpc('armar_equipo_sst_actual')
+  comprobar('No se arma dos veces (no pisa lo que ya hay)', !!r.error, r.error?.message)
+  await limpiar()
+  comprobar('(limpieza) no quedan puestos de la prueba', ((await s.ADMIN_C.from('equipo_sst_nodos').select('id')).data ?? []).length === 0)
+}
+
+// ───────────────────────────────────────────────
+seccion('6. El WhatsApp aparece en el puesto solo si el gestor lo publicó')
+{
+  const S1 = (await dueno.from('vinculos_sedes').select('sede_id').eq('vinculo_id', V.GESTOR_C1)).data?.[0]?.sede_id
+  const S2 = (await dueno.from('vinculos_sedes').select('sede_id').eq('vinculo_id', V.GESTOR_C2)).data?.[0]?.sede_id
+  const limpiar = async () => {
+    const todos = (await s.ADMIN_C.from('equipo_sst_nodos').select('id,padre_id')).data ?? []
+    for (const n of todos.filter((x) => !x.padre_id)) await s.ADMIN_C.rpc('quitar_nodo_equipo', { p_nodo: n.id })
+  }
+  await limpiar()
+  for (const n of ['GESTOR_C1', 'GESTOR_C2', 'GESTOR_C12']) await s[n].rpc('guardar_mi_whatsapp', { p_numero: '' })
+  const RAIZ = (await s.ADMIN_C.rpc('agregar_nodo_equipo', { p_padre: null, p_sede: null, p_puesto: 'Jefe de SST', p_nombre: 'Ana Prueba' })).data
+  const A = (await s.ADMIN_C.rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: S1, p_puesto: 'Supervisor SST', p_nombre: 'Luis Prueba' })).data
+  const B = (await s.ADMIN_C.rpc('agregar_nodo_equipo', { p_padre: RAIZ, p_sede: S2, p_puesto: 'Supervisor SST 2', p_nombre: 'Marta Prueba' })).data
+  const contactos = async (n) => ((await s[n].rpc('contactos_equipo_sst')).data ?? [])
+  const de = (lista, nodo) => lista.find((x) => x.nodo_id === nodo)
+
+  let r = await s.GESTOR_C1.rpc('guardar_mi_whatsapp', { p_numero: '900 000 101' })
+  comprobar('El gestor publica su número', SEGUIDO(r), r.error?.message)
+  comprobar('Sin vincular a ningún puesto, el número no aparece en ninguna parte', (await contactos('USUARIO_C1')).length === 0)
+
+  r = await s.GESTOR_C1.rpc('vincular_nodo_equipo', { p_nodo: A, p_vinculo: V.GESTOR_C1 })
+  comprobar('El gestor vincula su puesto de la sede con su cuenta', SEGUIDO(r), r.error?.message)
+  let c = await contactos('USUARIO_C1')
+  comprobar('Un usuario de la sede ve el WhatsApp en ese puesto', de(c, A)?.whatsapp === '+51900000101', JSON.stringify(c))
+  comprobar('…y no recibe el identificador de la cuenta', c.every((x) => x.vinculo_id == null), JSON.stringify(c))
+  c = await contactos('USUARIO_C1')
+  comprobar('Solo salen los puestos con número publicado', c.every((x) => !!x.whatsapp))
+  c = await contactos('GESTOR_C1')
+  comprobar('Quien edita ve a qué cuenta está vinculado el puesto', de(c, A)?.vinculo_id === V.GESTOR_C1, JSON.stringify(c))
+  c = await contactos('GESTOR_C2')
+  comprobar('Un usuario de la otra sede no ve el número de un puesto que no ve', !de(c, A))
+  c = await contactos('GESTOR_A')
+  comprobar('Otra empresa no ve nada', c.length === 0)
+
+  await s.GESTOR_C1.rpc('guardar_mi_whatsapp', { p_numero: '' })
+  c = await contactos('USUARIO_C1')
+  comprobar('Si el gestor borra su número, deja de aparecer', !de(c, A))
+  c = await contactos('ADMIN_C')
+  comprobar('El administrador sigue viendo el vínculo, sin número', de(c, A)?.vinculo_id === V.GESTOR_C1 && de(c, A)?.whatsapp == null)
+  await s.GESTOR_C1.rpc('guardar_mi_whatsapp', { p_numero: '900000101' })
+
+  // Reglas del vínculo
+  r = await s.GESTOR_C1.rpc('vincular_nodo_equipo', { p_nodo: A, p_vinculo: V.GESTOR_C2 })
+  comprobar('No se vincula a un gestor de otra sede', NO(r), JSON.stringify(r.error))
+  r = await s.GESTOR_C1.rpc('vincular_nodo_equipo', { p_nodo: A, p_vinculo: V.USUARIO_C1 })
+  comprobar('Solo se vincula a gestores (no a un usuario)', !!r.error, JSON.stringify(r.error))
+  r = await s.GESTOR_C1.rpc('vincular_nodo_equipo', { p_nodo: B, p_vinculo: V.GESTOR_C2 })
+  comprobar('No se vincula un puesto de otra sede', NO(r), JSON.stringify(r.error))
+  for (const n of ['USUARIO_C1', 'USUGES_C1']) {
+    r = await s[n].rpc('vincular_nodo_equipo', { p_nodo: A, p_vinculo: V.GESTOR_C1 })
+    comprobar(`${n} no vincula`, NO(r), JSON.stringify(r.error))
+  }
+  r = await s.GESTOR_A.rpc('vincular_nodo_equipo', { p_nodo: A, p_vinculo: V.GESTOR_C1 })
+  comprobar('Otra empresa no vincula', NO(r), JSON.stringify(r.error))
+  r = await s.ADMIN_C.rpc('vincular_nodo_equipo', { p_nodo: RAIZ, p_vinculo: V.GESTOR_C12 })
+  comprobar('El administrador general vincula un puesto de toda la empresa con un gestor de cualquier sede', SEGUIDO(r), r.error?.message)
+  r = await s.ADMIN_C.rpc('vincular_nodo_equipo', { p_nodo: RAIZ, p_vinculo: null })
+  comprobar('Y lo desvincula', SEGUIDO(r), r.error?.message)
+  const dir = await s.ADMIN_C.from('equipo_sst_enlaces').select('*')
+  comprobar('La tabla de vínculos no se lee ni se escribe directo', !!dir.error || (dir.data ?? []).length === 0)
+  const ins = await s.ADMIN_C.from('equipo_sst_enlaces').insert({ nodo_id: B, vinculo_id: V.GESTOR_C2 })
+  comprobar('(escritura directa rechazada)', !!ins.error)
+
+  // Candidatos
+  let g = await s.GESTOR_C1.rpc('gestores_para_vincular', { p_sede: S1 })
+  const idsG = (g.data ?? []).map((x) => x.vinculo_id)
+  comprobar('El gestor de la sede 1 ve a los gestores de su sede para vincular (con su nombre)', idsG.includes(V.GESTOR_C1) && idsG.includes(V.GESTOR_C12) && !idsG.includes(V.GESTOR_C2) && (g.data ?? []).every((x) => !!x.nombre))
+  g = await s.GESTOR_C1.rpc('gestores_para_vincular', { p_sede: S2 })
+  comprobar('…no los de otra sede', !!g.error || (g.data ?? []).length === 0)
+  g = await s.USUARIO_C1.rpc('gestores_para_vincular', { p_sede: S1 })
+  comprobar('Un usuario no recibe la lista', !!g.error || (g.data ?? []).length === 0)
+
+  // Si cambian el puesto de nombre, el vínculo sigue; si quitan el puesto, se va con él
+  await s.GESTOR_C1.rpc('editar_nodo_equipo', { p_nodo: A, p_puesto: 'Supervisor SST', p_nombre: 'Otro Nombre' })
+  c = await contactos('USUARIO_C1')
+  comprobar('Cambiar el nombre del puesto no suelta el vínculo ni el número', de(c, A)?.whatsapp === '+51900000101')
+  r = await s.GESTOR_C1.rpc('quitar_nodo_equipo', { p_nodo: A })
+  comprobar('Se quita el puesto', SEGUIDO(r), r.error?.message)
+  c = await contactos('ADMIN_C')
+  comprobar('Con el puesto se va el vínculo', !de(c, A))
+
+  // Armar con el equipo actual vincula a los gestores
+  await limpiar()
+  r = await s.ADMIN_C.rpc('armar_equipo_sst_actual')
+  comprobar('Se arma con el equipo actual', SEGUIDO(r), r.error?.message)
+  c = await contactos('ADMIN_C')
+  const vinc = c.map((x) => x.vinculo_id)
+  comprobar('Los gestores quedan vinculados a su puesto', [V.GESTOR_C1, V.GESTOR_C2, V.GESTOR_C12].every((x) => vinc.includes(x)), JSON.stringify(vinc))
+  c = await contactos('USUARIO_C1')
+  comprobar('Y su número aparece apenas lo publican', de(c, c.find((x) => x.whatsapp)?.nodo_id)?.whatsapp === '+51900000101')
+  await limpiar()
+  for (const n of ['GESTOR_C1', 'GESTOR_C2', 'GESTOR_C12']) await s[n].rpc('guardar_mi_whatsapp', { p_numero: '' })
+  comprobar('(limpieza) sin puestos ni números de la prueba', ((await s.ADMIN_C.from('equipo_sst_nodos').select('id')).data ?? []).length === 0)
 }
 
 // Limpieza de números

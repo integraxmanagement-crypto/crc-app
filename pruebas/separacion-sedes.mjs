@@ -196,13 +196,14 @@ const aj = await s.ADMSEDE_C1.rpc('anular_inspeccion', { p_id: i2.id, p_motivo: 
 comprobar('Admin de la sede 1 NO anula una inspección de la sede 2', SIN_PERMISO(aj), aj.error?.message)
 
 // Planes de acción
-const hz = async (n) => (await s[n].from('hallazgos').select('id, sede_id, responsable_id').eq('empresa_id', empresa)).data ?? []
+const hz = async (n) => (await s[n].from('hallazgos').select('id, sede_id, responsable_id, estado, creado_en').eq('empresa_id', empresa)).data ?? []
 const hz2 = (await hz('ADMIN_C')).filter((h) => h.sede_id === S2)
 comprobar('El plan de acción nació con la sede de la inspección (sede 2)', hz2.length >= 1)
 comprobar('Admin de la sede 1 NO ve los planes de acción de la sede 2', (await hz('ADMSEDE_C1')).every((h) => h.sede_id !== S2))
 comprobar('Gestor de la sede 2 sí ve los de su sede', (await hz('GESTOR_C2')).some((h) => h.sede_id === S2))
 comprobar('Admin de la sede 2 sí los ve', (await hz('ADMSEDE_C2')).some((h) => h.sede_id === S2))
-const hid = hz2[0]?.id
+// El plan de acción de esta corrida: el último que sigue ABIERTO (la sede 2 acumula planes anulados y en proceso de otras pruebas)
+const hid = [...hz2].filter((h) => h.estado === 'abierto').sort((x, y) => String(y.creado_en).localeCompare(String(x.creado_en)))[0]?.id
 const g1 = await s.ADMSEDE_C1.rpc('gestionar_hallazgo', { p_id: hid, p_datos: { responsable_id: ID.ADMSEDE_C1, plazo: '2026-12-31', accion: 'Intruso' } })
 comprobar('Admin de la sede 1 NO gestiona un plan de acción de la sede 2', SIN_PERMISO(g1), g1.error?.message)
 const g2 = await s.ADMSEDE_C1.rpc('cerrar_hallazgo', { p_id: hid, p_comentario: 'Intruso', p_foto_ruta: null, p_foto_bytes: null })
@@ -365,11 +366,23 @@ const c4 = await crear('ADMSEDE_C1', `4400${suf8}`, 'gestor', [S2])
 comprobar('Admin de la sede 1 NO crea un gestor para la sede 2', c4.estado === 403, `${c4.estado}`)
 const c5 = await crear('ADMSEDE_C1', `4500${suf8}`, 'usuario', [S1, S2])
 comprobar('Admin de la sede 1 NO crea un usuario con la sede 1 y la 2', c5.estado === 403, `${c5.estado}`)
-const c6 = await crear('ADMSEDE_C1', `4600${suf8}`, 'gestor', [S1])
-comprobar('Admin de la sede 1 sí crea un gestor para su sede', c6.estado === 200, `${c6.estado} ${c6.datos?.error ?? ''}`)
+// Cuentas FIJAS (nivel 2, 05/11/2026): estas dos cuentas ya no se crean nuevas en cada corrida. La primera vez el administrador de la sede 1 las crea
+// (y se comprueba); las siguientes se reutilizan: se buscan por documento y, si estuvieran cesadas, se reactivan.
+const fijaOCrea = async (n, doc, rol, sedes) => {
+  const p = (await dueno.from('personas').select('id').eq('tipo_documento', 'dni').eq('numero_documento', doc).maybeSingle()).data
+  const v = p ? (await dueno.from('vinculos').select('id, estado').eq('persona_id', p.id).eq('empresa_id', empresa).maybeSingle()).data : null
+  if (!v) return crear(n, doc, rol, sedes)
+  if (v.estado !== 'activo') {
+    const r = await s[n].rpc('reactivar_vinculo', { p_vinculo: v.id })
+    if (r.error) return { estado: 400, datos: { error: r.error.message } }
+  }
+  return { estado: 200, datos: { vinculo_id: v.id } }
+}
+const c6 = await fijaOCrea('ADMSEDE_C1', '46009001', 'gestor', [S1])
+comprobar('Admin de la sede 1 sí crea un gestor para su sede (cuenta fija: se crea la primera vez y después se reutiliza)', c6.estado === 200, `${c6.estado} ${c6.datos?.error ?? ''}`)
 const c7 = await crear('ADMIN_C', `4700${suf8}`, 'usuario', null)
 comprobar('Una cuenta nueva no puede quedar sin sedes: el admin general debe elegirlas (empresa con dos sedes)', c7.estado === 400, `${c7.estado} ${c7.datos?.error ?? ''}`)
-const c8 = await crear('ADMSEDE_C1', `4800${suf8}`, 'usuario', null)
+const c8 = await fijaOCrea('ADMSEDE_C1', '48009001', 'usuario', null)
 comprobar('El admin de una sola sede crea un usuario sin elegir sede: recibe la suya', c8.estado === 200, `${c8.estado} ${c8.datos?.error ?? ''}`)
 const c9 = await crear('ADMIN_C', `4900${suf8}`, 'usuario', [S2, randomUUID()])
 comprobar('Una sede que no es de la empresa se rechaza', c9.estado === 400 || c9.estado === 403, `${c9.estado}`)

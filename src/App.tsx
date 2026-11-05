@@ -138,8 +138,8 @@ function Barra({ perfil, firmas, online }: { perfil: Perfil; firmas: number; onl
           </button>
         )}
         <SelectorSede perfil={perfil} />
-        {perfil.empresaId && <Campana firmas={firmas} cuenta={perfil.id} online={online} resuelve={puede(perfil, 'solicitudes.resolver')} solicita={perfil.rolCodigo === 'gestor'} />}
         <Emergencias />
+        {perfil.empresaId && <Campana firmas={firmas} cuenta={perfil.id} online={online} resuelve={puede(perfil, 'solicitudes.resolver')} solicita={perfil.rolCodigo === 'gestor'} />}
         <MenuPerfil perfil={perfil} />
       </nav>
     </header>
@@ -257,7 +257,7 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
     return PantallasFormatos({ empresaId: perfil.empresaId, partes: ruta, rutas, perfil })
   }
   // Conoce al equipo de SST (etapa 4): todas las cuentas de una empresa; el gestor además escribe su propio WhatsApp.
-  if (ruta[0] === 'equipo' && perfil.empresaId) return <EquipoSst online={online} esGestor={perfil.rolCodigo === 'gestor'} />
+  if (ruta[0] === 'equipo' && perfil.empresaId) return <EquipoSst online={online} puedeEditar={['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? '')} esGeneral={perfil.rolCodigo === 'admin_empresa'} esGestor={perfil.rolCodigo === 'gestor'} sedes={perfil.sedes} />
   // Solicitudes de cambio del gestor y su respuesta (etapa 2).
   if (ruta[0] === 'solicitudes' && perfil.empresaId && (esAdminDeEmpresa(perfil) || perfil.rolCodigo === 'gestor'))
     return <Solicitudes cuenta={perfil.id} resuelve={puede(perfil, 'solicitudes.resolver')} online={online} />
@@ -348,4 +348,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.9.5 · Solicitudes de formatos, equipo de SST y roles adicionales'
+const VERSION = 'Versión 0.9.6 · Organigrama del equipo de SST, mapa de sismos y caducidad de contraseña'
