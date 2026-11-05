@@ -15,20 +15,36 @@ const REQUISITOS: [RegExp | ((c: string) => boolean), string][] = [
   [(c) => [...c].some((x) => SIMBOLOS_SUPABASE.includes(x)), 'un símbolo (por ejemplo - ! # ?)'],
 ]
 
-/** Contraseña inicial al azar (12 caracteres, ~72 bits). Se muestra una sola vez y nunca se guarda legible. */
-export function generarContrasenaInicial(numeroDocumento: string): string {
-  for (;;) {
-    let clave = ''
-    // Muestreo con rechazo: cada carácter tiene exactamente la misma probabilidad.
-    const limite = 256 - (256 % ALFABETO.length)
-    while (clave.length < LARGO_INICIAL) {
-      const bytes = crypto.getRandomValues(new Uint8Array(32))
-      for (const b of bytes) {
-        if (b < limite && clave.length < LARGO_INICIAL) clave += ALFABETO[b % ALFABETO.length]
-      }
+/** Intentos como máximo para dar con una contraseña inicial válida (06/11/2026). Casi siempre basta el primero. */
+export const INTENTOS_MAXIMOS_CONTRASENA = 50
+
+/** Una contraseña al azar de 12 caracteres (puede no cumplir las reglas: quien la pide la revisa). */
+function claveAlAzar(): string {
+  let clave = ''
+  // Muestreo con rechazo: cada carácter tiene exactamente la misma probabilidad.
+  const limite = 256 - (256 % ALFABETO.length)
+  while (clave.length < LARGO_INICIAL) {
+    const bytes = crypto.getRandomValues(new Uint8Array(32))
+    for (const b of bytes) {
+      if (b < limite && clave.length < LARGO_INICIAL) clave += ALFABETO[b % ALFABETO.length]
     }
+  }
+  return clave
+}
+
+/**
+ * Contraseña inicial al azar (12 caracteres, ~72 bits). Se muestra una sola vez y nunca se guarda legible.
+ * Si en 50 intentos no sale una que cumpla las reglas, falla con un error claro en vez de seguir sin fin.
+ * `opciones` solo sirve para las pruebas (cambiar el tope o los candidatos).
+ */
+export function generarContrasenaInicial(numeroDocumento: string, opciones: { maximo?: number; candidata?: () => string } = {}): string {
+  const maximo = opciones.maximo ?? INTENTOS_MAXIMOS_CONTRASENA
+  const candidata = opciones.candidata ?? claveAlAzar
+  for (let i = 0; i < maximo; i++) {
+    const clave = candidata()
     if (validarContrasena(clave, numeroDocumento) === null) return clave
   }
+  throw new Error(`No se pudo generar una contraseña segura después de ${maximo} intentos. Intenta de nuevo.`)
 }
 
 /** Devuelve el motivo de rechazo en lenguaje simple, o null si la contraseña es válida. */

@@ -6,7 +6,7 @@ import { NOMBRE_FRECUENCIA } from '../formatos/datos'
 import { ir } from '../ruta'
 import { sedeActiva } from '../sedeActiva'
 import { NOMBRE_NIVEL, type Nivel } from '../usuarios/datos'
-import { type Borrador, type CopiaLocal, type EnCola, type FormatoLocal, bajarCopia, descartarBorrador, guardarBorrador, leerCopia, sincronizar, useCampo, volverABorrador } from './campo'
+import { type Borrador, type CopiaLocal, type EnCola, type FormatoLocal, bajarCopia, descartarBorrador, guardarBorrador, leerCopia, reintentarAhora, sincronizar, useCampo, volverABorrador } from './campo'
 import { type ResumenInspeccion, conFrecuencias, frecuenciasActuales, listarInspecciones } from './datos'
 import { espacioLleno, hoyLocal, ordenarUnidades, useUso } from './ayudas'
 import { esBombaIncendio } from './BombasIncendio'
@@ -55,6 +55,7 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
   }
 
   const porEnviar = cola.filter((c) => c.estado === 'pendiente' || c.estado === 'enviando').length
+  const conAtencion = cola.filter((c) => c.estado === 'atencion').length
 
   return (
     <div className="detalle">
@@ -114,6 +115,12 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
               <CloudOff size={16} aria-hidden="true" /> Sin señal: {porEnviar} inspección(es) esperan para enviarse. No cierres sesión en este equipo.
             </>
           )}
+        </p>
+      )}
+
+      {conAtencion > 0 && (
+        <p className="alert" role="alert">
+          <CloudOff size={16} aria-hidden="true" /> <b>{conAtencion === 1 ? '1 inspección necesita' : `${conAtencion} inspecciones necesitan`} atención.</b> No se pudo enviar después de 12 intentos y dejó de reintentarse sola. Tus fotos y firmas siguen guardadas en este dispositivo. Abre el tipo de inspección y pulsa «Reintentar ahora».
         </p>
       )}
 
@@ -225,6 +232,7 @@ const NOMBRE_ESTADO_COLA: Record<EnCola['estado'], [string, string]> = {
   enviando: ['Enviando…', 'chip-aviso'],
   enviada: ['Enviada', 'chip-ok'],
   rechazada: ['No aceptada', 'chip-mal'],
+  atencion: ['Necesita atención', 'chip-mal'],
 }
 
 export function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
@@ -242,6 +250,11 @@ export function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
           {c.borrador.activo_foto ? c.borrador.activo_foto.codigo : 'Área'} · cerrada {hora(c.cerrada_en)} · {c.borrador.fotos.length} foto(s)
           {c.estado === 'pendiente' && c.error ? ` · ${c.error}${online ? ' Se reintentará sola.' : ''}` : ''}
         </small>
+        {c.estado === 'atencion' && (
+          <small className="error-linea">
+            No se pudo enviar después de 12 intentos{c.error ? `: ${c.error}` : ''}. Tus fotos y firmas siguen guardadas en este dispositivo.
+          </small>
+        )}
         {c.estado === 'rechazada' && (
           <small className="error-linea">
             {c.error}
@@ -250,6 +263,11 @@ export function FilaCola({ c, online }: { c: EnCola; online: boolean }) {
         )}
       </div>
       <span className="lista-acciones">
+        {c.estado === 'atencion' && (
+          <button className="btn-sec" type="button" disabled={!online} onClick={() => void reintentarAhora(c.cuenta, c.id)}>
+            <CloudUpload size={16} aria-hidden="true" /> Reintentar ahora
+          </button>
+        )}
         {c.estado === 'rechazada' && (
           <button className="btn-link" type="button" onClick={() => void volverABorrador(c).then(() => ir(`/inspecciones/llenar/${c.id}`))}>
             Revisar y corregir

@@ -22,7 +22,12 @@ const admin = clienteAdmin()
 
 /** Cambia la contraseña de una persona y deja todo anotado. Devuelve la contraseña nueva o null si falló. */
 async function darContrasena(personaId: string, numero: string, vinculoId: string | null, dadoPor: string | null, modo: Modo) {
-  const contrasena = generarContrasenaInicial(numero)
+  let contrasena: string
+  try {
+    contrasena = generarContrasenaInicial(numero)
+  } catch {
+    return null // sin contraseña válida no se cambia nada: quien llama responde «No se pudo cambiar la contraseña»
+  }
   const cambio = await admin.auth.admin.updateUserById(personaId, { password: await claveParaSupabase(contrasena) })
   if (cambio.error) return null
   const registro = await admin.rpc('registrar_contrasena_dada', {

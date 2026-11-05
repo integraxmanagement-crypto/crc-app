@@ -82,7 +82,12 @@ Deno.serve(async (req) => {
   }
 
   // 3. Persona nueva: cuenta con contraseña inicial al azar, que se devuelve UNA sola vez.
-  const contrasena = generarContrasenaInicial(numero)
+  let contrasena: string
+  try {
+    contrasena = generarContrasenaInicial(numero)
+  } catch {
+    return responder(req, 500, { error: 'No se pudo generar la contraseña inicial. Intenta de nuevo.' })
+  }
   const creada = await admin.auth.admin.createUser({
     email: correoInterno(tipo, numero), password: await claveParaSupabase(contrasena), email_confirm: true,
   })

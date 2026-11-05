@@ -92,7 +92,13 @@ Deno.serve(async (req) => {
   for (let i = 0; i < nuevas.length && !fallo; i += A_LA_VEZ) {
     await Promise.all(nuevas.slice(i, i + A_LA_VEZ).map(async (f) => {
       const tipo = TIPO_INTERNO[f.tipo]
-      const contrasena = generarContrasenaInicial(f.numero)
+      let contrasena: string
+      try {
+        contrasena = generarContrasenaInicial(f.numero)
+      } catch {
+        fallo ??= f
+        return
+      }
       const r = await admin.auth.admin.createUser({
         email: correoInterno(tipo, f.numero), password: await claveParaSupabase(contrasena), email_confirm: true,
       })

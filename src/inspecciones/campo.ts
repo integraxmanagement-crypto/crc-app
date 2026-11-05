@@ -5,6 +5,7 @@
 //  3. con señal se suben primero las fotos y la firma, y después la inspección, a la función registrar-inspeccion,
 //     que la graba todo o nada. Si llega dos veces responde «ya recibida»: nunca se duplica.
 // Solo se borra de la cola cuando el servidor confirma. Si algo falla, se reintenta solo, cada vez con más espera.
+import { despuesDeFallar, toca } from './cola'
 import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { db } from '../empresas/datos'
@@ -172,8 +173,10 @@ export async function guardarFoto(cuenta: string, id: string, blob: Blob) {
 export const quitarArchivo = (id: string) => borrar('archivos', id)
 
 // ───────────────────────── Cola de envío ─────────────────────────
+// Las reglas de reintento (tope de 12 intentos, esperas y 30 s mínimos) están en ./cola.ts.
 
-export type EstadoCola = 'pendiente' | 'enviando' | 'enviada' | 'rechazada'
+/** «atencion» = necesita atención: tras 12 intentos fallidos deja de reintentarse sola; se conserva todo y se reintenta a mano. */
+export type EstadoCola = 'pendiente' | 'enviando' | 'enviada' | 'rechazada' | 'atencion'
 export type EnCola = {
   id: string
   cuenta: string
@@ -184,6 +187,7 @@ export type EnCola = {
   faltan?: string[]
   intentos: number
   proximo_intento: number
+  ultimo_intento?: number // cuándo empezó el último intento (para respetar los 30 s mínimos)
   subidos: string[] // fotos y firma que ya están en el servidor
   numero: number | null // número de la inspección en el servidor
 }
@@ -211,23 +215,30 @@ export async function volverABorrador(item: EnCola) {
   avisar()
 }
 
-const ESPERAS = [30, 60, 120, 300, 900, 1800] // segundos entre reintentos
 let enCurso: Promise<void> | null = null
 
+/** El botón «Reintentar ahora»: la inspección que necesitaba atención vuelve a la cola con los intentos en cero (nada se borra: fotos y firma siguen guardadas). */
+export async function reintentarAhora(cuenta: string, id: string) {
+  const item = (await miCola(cuenta)).find((c) => c.id === id)
+  if (!item || item.estado === 'enviada') return
+  await guardar('cola', { ...item, estado: 'pendiente', intentos: 0, proximo_intento: 0, ultimo_intento: undefined, error: null })
+  avisar()
+  await sincronizar(cuenta, true, true)
+}
+
 /** Envía lo que esté en la cola. Nunca corre dos veces a la vez. */
-export function sincronizar(cuenta: string, forzar = false): Promise<void> {
-  enCurso ??= enviarCola(cuenta, forzar).finally(() => {
+export function sincronizar(cuenta: string, forzar = false, manual = false): Promise<void> {
+  enCurso ??= enviarCola(cuenta, forzar, manual).finally(() => {
     enCurso = null
   })
   return enCurso
 }
 
-async function enviarCola(cuenta: string, forzar: boolean) {
+async function enviarCola(cuenta: string, forzar: boolean, manual: boolean) {
   if (!navigator.onLine) return
   const ahora = Date.now()
   for (const item of await miCola(cuenta)) {
-    if (item.estado === 'enviada' || item.estado === 'rechazada') continue
-    if (!forzar && item.proximo_intento > ahora) continue
+    if (!toca(item, ahora, forzar, manual)) continue
     await enviarUna(item)
   }
   // Las enviadas se guardan una semana como constancia en el equipo y luego se limpian.
@@ -248,7 +259,7 @@ async function enviarUna(item: EnCola) {
     await guardar('cola', item)
     avisar()
   }
-  await marcar({ estado: 'enviando', error: null })
+  await marcar({ estado: 'enviando', error: null, ultimo_intento: Date.now() })
   try {
     // 1. Fotos y firma
     for (const f of b.fotos) {
@@ -285,8 +296,7 @@ async function enviarUna(item: EnCola) {
   }
 
   async function reintentar(it: EnCola, mensaje: string) {
-    const espera = ESPERAS[Math.min(it.intentos, ESPERAS.length - 1)]
-    await marcar({ estado: 'pendiente', error: mensaje, intentos: it.intentos + 1, proximo_intento: Date.now() + espera * 1000 })
+    await marcar({ error: mensaje, ...despuesDeFallar(it.intentos, Date.now()) })
   }
 }
 
