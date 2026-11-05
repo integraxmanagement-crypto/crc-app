@@ -1,6 +1,6 @@
 # Resultado: arreglos de la revisión de funciones del servidor
 
-Fecha: 2026-11-05 15:36 UTC · 25 de 25 pasaron · con --restablecer.
+Fecha: 2026-11-05 15:40 UTC · 25 de 25 pasaron · con --restablecer.
 
 - ✅ Con la dirección inventada bloqueada (30 fallos, ver ip-ingreso.sql) el intento NO sale bloqueado: se usa la dirección real (HTTP 400)
 - ✅ El intento quedó anotado una vez, como fallo
