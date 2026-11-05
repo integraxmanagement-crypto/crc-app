@@ -23,6 +23,15 @@ Fecha: 2026-11-05 · crc-dev · empresa ficticia D.
 - ✅ Vacío: texto en blanco, lista sin elegir, descripción a medias
 - ✅ Texto de la descripción para la tabla
 
+## 2b. Las tarjetas cuentan por columna
+
+- ✅ Tarjeta de borradores
+- ✅ Tarjeta «sin plazo»
+- ✅ Tarjeta «igual a» no distingue mayúsculas ni tildes
+- ✅ Tarjeta «distinta de»
+- ✅ Tarjeta sobre el estado calculado
+- ✅ Tarjeta sobre una persona compara su nombre
+
 ## 3. Quién ve y quién carga
 
 - ✅ El administrador de la sede 1 prepara la matriz de su sede
@@ -56,15 +65,19 @@ Fecha: 2026-11-05 · crc-dev · empresa ficticia D.
 - ✅ Sin foto no se guarda (es obligatoria)
 - ✅ El plazo no puede ser anterior al hallazgo
 - ✅ El hallazgo no puede ser futuro
-- ✅ El cierre no puede ser futuro
-- ✅ El cierre no puede ser anterior al hallazgo
 - ✅ Una fecha que no existe no se guarda
 - ✅ La clasificación solo acepta las opciones de la lista
 - ✅ No se acepta una foto de otra empresa
 - ✅ El responsable debe ser de la sede
 - ✅ El usuario común no puede cargar
 - ✅ El gestor de otra sede no puede cargar en esta
-- ✅ El gestor de esa sede puede editar y cerrar la condición
+- ✅ El gestor de esa sede puede editar la condición (el cierre no se manda al cargar)
+- ✅ Guardar no cierra aunque se mande una fecha de cierre
+- ✅ El cierre no puede ser futuro
+- ✅ El cierre no puede ser anterior al hallazgo
+- ✅ El gestor de otra sede no valida el cierre
+- ✅ El usuario común no valida el cierre
+- ✅ Validar el cierre pone la fecha
 - ✅ Queda anotado quién la cambió y que sigue a nombre de quien la creó
 - ✅ Con cierre antes del plazo queda dentro de plazo
 - ✅ El gestor de otra sede no edita esa condición
@@ -84,9 +97,10 @@ Fecha: 2026-11-05 · crc-dev · empresa ficticia D.
 - ✅ Dos columnas no pueden llamarse igual
 - ✅ Una lista pide al menos una opción
 - ✅ Las opciones no se repiten
-- ✅ Convertir el área en lista desplegable
-- ✅ Con el área en lista, solo acepta sus opciones
-- ✅ Devolver el área a texto libre
+- ✅ El área no cambia de tipo (es la lista de áreas de la empresa)
+- ✅ Convertir la ubicación en lista desplegable
+- ✅ Con la ubicación en lista, solo acepta sus opciones
+- ✅ Devolver la ubicación a texto libre
 - ✅ La fecha de hallazgo no cambia de tipo
 - ✅ Una columna base no se elimina
 - ✅ El estado nunca es obligatorio
@@ -118,7 +132,43 @@ Fecha: 2026-11-05 · crc-dev · empresa ficticia D.
 - ✅ Proponer eliminar la columna agregada
 - ✅ Al aprobar se elimina
 
-## 7. Limpieza
+## 7. Borradores, responsables, áreas y tarjetas
+
+- ✅ Incompleta sin pedir borrador: se rechaza
+- ✅ Incompleta pidiendo borrador: se guarda
+- ✅ Queda marcada como borrador
+- ✅ El responsable de la inspección es quien la cargó
+- ✅ El borrador no se puede cerrar
+- ✅ Al completarlo deja de ser borrador
+- ✅ Cualquier persona de la empresa puede ser responsable del levantamiento
+- ✅ Una persona que no es de la empresa no
+- ✅ El área elegida de la lista usa el nombre de la estructura de la empresa
+- ✅ Si solo se escribe el nombre de un área existente, se acepta y se vincula
+- ✅ Un área con identificador que no es de la empresa se rechaza
+- ✅ Hay dos tarjetas fijas: borradores y sin plazo
+- ✅ El administrador crea una tarjeta sobre una columna
+- ✅ Una tarjeta pide un valor si compara
+- ✅ Una tarjeta pide una columna que existe
+- ✅ El gestor no crea tarjetas
+- ✅ El administrador de otra sede no crea tarjetas aquí
+- ✅ El gestor sí ve las tarjetas
+- ✅ El usuario común no ve las tarjetas
+- ✅ Las tarjetas fijas no se cambian ni se quitan
+- ✅ El administrador edita y quita su tarjeta
+- ✅ El gestor no quita tarjetas
+
+## 7b. Extrapolar al IPF
+
+- ✅ A la fecha en que seguía abierta, la condición se trae al IPF
+- ✅ Ya cerrada a esa fecha, no se trae
+- ✅ Una condición anterior al hallazgo no existía aún (fecha previa)
+- ✅ Los borradores no se traen
+- ✅ Filtra por área: un área sin condiciones no trae nada
+- ✅ El usuario común no puede pedirlas
+- ✅ El gestor de otra sede no puede pedirlas de esta
+- ✅ Pide la fecha de la inspección
+
+## 8. Limpieza
 
 - ✅ La prueba dejó condiciones nuevas (hay algo que limpiar)
 - ✅ El dueño limpia solo lo de esta corrida
@@ -127,4 +177,4 @@ Fecha: 2026-11-05 · crc-dev · empresa ficticia D.
 - ✅ No se limpia una empresa que no es la ficticia D
 - ✅ Las columnas base siguen todas en su lugar
 
-**Resultado: 104 de 104**
+**Resultado: 145 de 145**

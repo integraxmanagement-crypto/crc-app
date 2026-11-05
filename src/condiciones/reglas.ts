@@ -1,7 +1,7 @@
 // Reglas puras de la gestión de condiciones (05/11/2026). Sin red ni pantalla: se prueban con pruebas/condiciones.mjs.
 // La base de datos vuelve a revisar todo; esto sirve para avisar rápido en pantalla y para calcular el estado.
 
-export type TipoColumna = 'texto' | 'numero' | 'fecha' | 'lista' | 'multiple' | 'foto' | 'descripcion' | 'estado' | 'responsable_auto' | 'persona'
+export type TipoColumna = 'texto' | 'numero' | 'fecha' | 'lista' | 'multiple' | 'foto' | 'descripcion' | 'estado' | 'responsable_auto' | 'persona' | 'area'
 export type Columna = {
   id: string
   clave: string
@@ -41,16 +41,16 @@ export const TIPOS_NUEVA: [TipoColumna, string][] = [
   ['multiple', 'Lista desplegable: varias opciones'],
 ]
 /** Columnas base cuyo tipo se puede cambiar (siempre a texto, lista o varias opciones). */
-export const BASE_CAMBIA_TIPO = ['area', 'ubicacion', 'plan_accion', 'clasificacion', 'origen', 'motivo']
+export const BASE_CAMBIA_TIPO = ['ubicacion', 'plan_accion', 'clasificacion', 'origen', 'motivo']
 export const NOMBRE_TIPO: Record<TipoColumna, string> = {
   texto: 'Texto', numero: 'Número', fecha: 'Fecha', lista: 'Lista (una opción)', multiple: 'Lista (varias opciones)', foto: 'Foto',
-  descripcion: 'Peligro y riesgo', estado: 'Automático', responsable_auto: 'Automático', persona: 'Persona de la sede',
+  descripcion: 'Peligro y riesgo', estado: 'Automático', responsable_auto: 'Automático', persona: 'Persona de la empresa', area: 'Área de la empresa',
 }
 
 export const esAutomatica = (c: Pick<Columna, 'tipo'>) => c.tipo === 'estado' || c.tipo === 'responsable_auto'
 
 /** Valor de una columna en una fila (las fechas clave están aparte de «datos»). */
-export type Fila = { fecha_hallazgo: string; fecha_programada: string | null; fecha_cierre: string | null; datos: Record<string, unknown> }
+export type Fila = { fecha_hallazgo: string; fecha_programada: string | null; fecha_cierre: string | null; datos: Record<string, unknown>; borrador?: boolean }
 export function valorDe(f: Fila, clave: string): unknown {
   if (clave === 'fecha_hallazgo' || clave === 'fecha_programada' || clave === 'fecha_cierre') return f[clave]
   return f.datos[clave]
@@ -70,7 +70,7 @@ export function vacio(valor: unknown, tipo: TipoColumna): boolean {
 /** Lo que falta completar antes de guardar: las columnas visibles obligatorias (la descripción siempre pide peligro y riesgo). */
 export function faltantes(columnas: Columna[], valores: Record<string, unknown>): string[] {
   return columnas
-    .filter((c) => c.visible && !esAutomatica(c) && (c.obligatoria || c.tipo === 'descripcion') && vacio(valores[c.clave], c.tipo))
+    .filter((c) => c.visible && !esAutomatica(c) && c.clave !== 'fecha_cierre' && (c.obligatoria || c.tipo === 'descripcion') && vacio(valores[c.clave], c.tipo))
     .map((c) => (c.tipo === 'descripcion' ? 'Descripción: peligro observado y riesgo asociado' : c.nombre))
 }
 
@@ -83,4 +83,27 @@ export function textoDe(valor: unknown, tipo: TipoColumna): string {
   }
   if (Array.isArray(valor)) return valor.join(', ')
   return String(valor)
+}
+
+// ───────────── Tarjetas del encabezado ─────────────
+export type Tarjeta = { id: string; sede_id: string; titulo: string; columna: string; operador: 'borrador' | 'vacia' | 'igual' | 'distinto'; valor: string | null; fija: boolean; orden: number }
+
+/** Valor de una columna de una fila, como texto, para comparar con una tarjeta (el estado se calcula; las personas se comparan por nombre). */
+export function valorComparable(f: Fila, c: Columna | undefined, hoy: string): string {
+  if (!c) return ''
+  if (c.tipo === 'estado') return estadoDe(f, hoy)
+  if (c.tipo === 'responsable_auto') return String(f.datos.creado_por_nombre ?? '')
+  if (c.tipo === 'persona') return String(f.datos[`${c.clave}_nombre`] ?? '')
+  return textoDe(valorDe(f, c.clave), c.tipo)
+}
+
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+/** ¿La fila cuenta en esta tarjeta? */
+export function cumpleTarjeta(t: Pick<Tarjeta, 'columna' | 'operador' | 'valor'>, f: Fila, columnas: Columna[], hoy: string): boolean {
+  if (t.operador === 'borrador') return Boolean(f.borrador)
+  const v = norm(valorComparable(f, columnas.find((c) => c.clave === t.columna), hoy))
+  if (t.operador === 'vacia') return v === ''
+  const w = norm(t.valor ?? '')
+  return t.operador === 'igual' ? v === w : v !== w
 }

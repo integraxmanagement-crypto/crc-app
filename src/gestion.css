@@ -3793,3 +3793,97 @@ fieldset.field legend {
 .tabla th {
   vertical-align: top;
 }
+
+/* Gestión de condiciones: tarjetas de atención, autocompletado y filas en borrador. */
+.tarjetas-cond {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.tarjeta-cond {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 12rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tarjeta-cond b {
+  font-size: 1.75rem;
+  line-height: 1;
+  min-width: 2rem;
+  text-align: center;
+}
+.tarjeta-cond.atencion {
+  background: #fff4dc;
+  border-color: #e0b04c;
+}
+.tarjeta-cond.atencion b {
+  color: #8a5a00;
+}
+.tarjeta-cond[aria-pressed='true'] {
+  outline: 2px solid var(--teal-ink);
+  outline-offset: 1px;
+}
+.fila-borrador td {
+  background: #fffaf0;
+}
+.btn-validar {
+  white-space: nowrap;
+}
+.combo {
+  position: relative;
+}
+.combo-lista {
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(11, 60, 93, 0.18);
+}
+.combo-lista li {
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.combo-lista li.activa {
+  background: #e3f1f0;
+}
+.combo-lista small {
+  color: var(--ink-soft, #5a6b78);
+}
+.combo-crear {
+  color: var(--teal-ink);
+  font-weight: 650;
+  border-top: 1px solid var(--rule);
+}
+.combo-vacio {
+  color: var(--ink-soft, #5a6b78);
+  cursor: default;
+}
+
+/* La foto de evidencia se ve dentro de una ventana pequeña, sin abrir otra pestaña. */
+.foto-evidencia {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  margin: 0 auto;
+  border-radius: 8px;
+  object-fit: contain;
+}

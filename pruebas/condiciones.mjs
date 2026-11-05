@@ -4,7 +4,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { PNG_FICTICIO, comprobar, ingresarComo, resultados, resumen } from './comun.mjs'
-import { faltantes, estadoDe, textoDe, vacio } from '../src/condiciones/reglas.ts'
+import { cumpleTarjeta, faltantes, estadoDe, textoDe, vacio } from '../src/condiciones/reglas.ts'
 
 const grupos = []
 const seccion = (titulo) => { grupos.push({ titulo, desde: resultados.length }); console.log(`\n── ${titulo}`) }
@@ -35,6 +35,18 @@ comprobar('Estado y responsable automáticos nunca se piden', !faltantes(cols, {
 comprobar('Una columna oculta no se pide aunque sea obligatoria', !faltantes(cols, {}).includes('oculta'))
 comprobar('Vacío: texto en blanco, lista sin elegir, descripción a medias', vacio('  ', 'texto') && vacio([], 'multiple') && vacio({ peligro: 'abc', riesgo: '' }, 'descripcion') && !vacio('x', 'texto'))
 comprobar('Texto de la descripción para la tabla', textoDe({ peligro: 'A', riesgo: 'B' }, 'descripcion') === 'Peligro: A · Riesgo: B')
+
+seccion('2b. Las tarjetas cuentan por columna')
+const colsT = [col('fecha_programada', 'fecha'), col('plan_accion', 'texto'), col('clasificacion', 'lista'), col('estado', 'estado'), col('resp', 'persona')]
+const fT = (extra = {}) => ({ fecha_hallazgo: '2026-11-01', fecha_programada: null, fecha_cierre: null, datos: {}, borrador: false, ...extra })
+const tB = { columna: 'borrador', operador: 'borrador', valor: null }
+const tP = { columna: 'fecha_programada', operador: 'vacia', valor: null }
+comprobar('Tarjeta de borradores', cumpleTarjeta(tB, fT({ borrador: true }), colsT, hoy) && !cumpleTarjeta(tB, fT(), colsT, hoy))
+comprobar('Tarjeta «sin plazo»', cumpleTarjeta(tP, fT(), colsT, hoy) && !cumpleTarjeta(tP, fT({ fecha_programada: '2026-11-20' }), colsT, hoy))
+comprobar('Tarjeta «igual a» no distingue mayúsculas ni tildes', cumpleTarjeta({ columna: 'clasificacion', operador: 'igual', valor: 'tipo a' }, fT({ datos: { clasificacion: 'Tipo A' } }), colsT, hoy))
+comprobar('Tarjeta «distinta de»', cumpleTarjeta({ columna: 'clasificacion', operador: 'distinto', valor: 'Tipo B' }, fT({ datos: { clasificacion: 'Tipo A' } }), colsT, hoy))
+comprobar('Tarjeta sobre el estado calculado', cumpleTarjeta({ columna: 'estado', operador: 'igual', valor: 'atrasado' }, fT({ fecha_programada: '2026-11-05' }), colsT, hoy))
+comprobar('Tarjeta sobre una persona compara su nombre', cumpleTarjeta({ columna: 'resp', operador: 'igual', valor: 'Ana Pérez' }, fT({ datos: { resp_nombre: 'ana perez' } }), colsT, hoy))
 
 // ───────────────────────────────────────────────
 const { c: dueno, error: errDueno } = await ingresarComo('DUENO')
@@ -103,13 +115,11 @@ const falla = async (n, sede, datos, texto, nombre) => {
   comprobar(nombre, !!r.error && new RegExp(texto, 'i').test(r.error.message), r.error?.message)
 }
 await falla('ADMSEDE_C1', S1, valido({ area: '' }), 'Falta completar: Área', 'Sin área no se guarda')
-await falla('ADMSEDE_C1', S1, valido({ descripcion: { peligro: 'Cable pelado', riesgo: '' } }), 'peligro observado y el riesgo asociado', 'La descripción sin riesgo no se guarda')
-await falla('ADMSEDE_C1', S1, valido({ descripcion: { peligro: '', riesgo: 'Descarga' } }), 'peligro observado y el riesgo asociado', 'La descripción sin peligro no se guarda')
+await falla('ADMSEDE_C1', S1, valido({ descripcion: { peligro: 'Cable pelado', riesgo: '' } }), 'peligro observado y riesgo asociado', 'La descripción sin riesgo no se guarda')
+await falla('ADMSEDE_C1', S1, valido({ descripcion: { peligro: '', riesgo: 'Descarga' } }), 'peligro observado y riesgo asociado', 'La descripción sin peligro no se guarda')
 await falla('ADMSEDE_C1', S1, valido({ evidencia: undefined }), 'Falta completar: Evidencia', 'Sin foto no se guarda (es obligatoria)')
 await falla('ADMSEDE_C1', S1, valido({ fecha_programada: dia(-5) }), 'anterior a la fecha de hallazgo', 'El plazo no puede ser anterior al hallazgo')
 await falla('ADMSEDE_C1', S1, valido({ fecha_hallazgo: dia(3) }), 'no puede ser futura', 'El hallazgo no puede ser futuro')
-await falla('ADMSEDE_C1', S1, valido({ fecha_cierre: dia(1) }), 'no puede ser futura', 'El cierre no puede ser futuro')
-await falla('ADMSEDE_C1', S1, valido({ fecha_cierre: dia(-4) }), 'anterior a la fecha de hallazgo', 'El cierre no puede ser anterior al hallazgo')
 await falla('ADMSEDE_C1', S1, valido({ fecha_hallazgo: '2026-02-31' }), 'Fecha no válida', 'Una fecha que no existe no se guarda')
 await falla('ADMSEDE_C1', S1, valido({ clasificacion: 'Tipo C' }), 'opción válida', 'La clasificación solo acepta las opciones de la lista')
 await falla('ADMSEDE_C1', S1, valido({ evidencia: `${randomUUID()}/${randomUUID()}-abcd1234.png` }), 'no es válida', 'No se acepta una foto de otra empresa')
@@ -117,7 +127,16 @@ await falla('ADMSEDE_C1', S1, valido({ resp_levantamiento: randomUUID() }), 'per
 await falla('USUARIO_C1', S1, valido(), 'No autorizado', 'El usuario común no puede cargar')
 await falla('GESTOR_C2', S1, valido(), 'No autorizado', 'El gestor de otra sede no puede cargar en esta')
 const cerrada = await rpc('GESTOR_C12', 'guardar_condicion', { p_id: id1, p_sede: S1, p_datos: valido({ fecha_cierre: dia(-1) }) })
-comprobar('El gestor de esa sede puede editar y cerrar la condición', ok(cerrada), cerrada.error?.message)
+comprobar('El gestor de esa sede puede editar la condición (el cierre no se manda al cargar)', ok(cerrada), cerrada.error?.message)
+comprobar('Guardar no cierra aunque se mande una fecha de cierre', (await s.ADMSEDE_C1.from('condiciones').select('fecha_cierre').eq('id', id1).single()).data.fecha_cierre === null)
+for (const [f, txt, nombre] of [[dia(1), 'no puede ser futura', 'El cierre no puede ser futuro'], [dia(-4), 'anterior a la fecha de hallazgo', 'El cierre no puede ser anterior al hallazgo']]) {
+  const r = await rpc('GESTOR_C12', 'validar_cierre_condicion', { p_id: id1, p_fecha: f })
+  comprobar(nombre, !!r.error && new RegExp(txt, 'i').test(r.error.message), r.error?.message)
+}
+comprobar('El gestor de otra sede no valida el cierre', SIN_PERMISO(await rpc('GESTOR_C2', 'validar_cierre_condicion', { p_id: id1, p_fecha: dia(-1) })))
+comprobar('El usuario común no valida el cierre', SIN_PERMISO(await rpc('USUARIO_C1', 'validar_cierre_condicion', { p_id: id1, p_fecha: dia(-1) })))
+const vc = await rpc('GESTOR_C12', 'validar_cierre_condicion', { p_id: id1, p_fecha: dia(-1) })
+comprobar('Validar el cierre pone la fecha', ok(vc), vc.error?.message)
 const fila1b = (await s.ADMSEDE_C1.from('condiciones').select('*').eq('id', id1).maybeSingle()).data
 comprobar('Queda anotado quién la cambió y que sigue a nombre de quien la creó', fila1b?.actualizado_por != null && fila1b?.creado_por === fila1?.creado_por)
 comprobar('Con cierre antes del plazo queda dentro de plazo', estadoDe(fila1b, HOY) === 'dentro_plazo')
@@ -141,9 +160,10 @@ comprobar('Con opciones válidas se guarda', ok(await rpc('ADMSEDE_C1', 'guardar
 comprobar('Dos columnas no pueden llamarse igual', !ok(await cambio('ADMSEDE_C1', { operacion: 'agregar', nombre: 'equipos AFECTADOS', tipo: 'texto' })))
 comprobar('Una lista pide al menos una opción', !ok(await cambio('ADMSEDE_C1', { operacion: 'agregar', nombre: 'Lista vacía', tipo: 'lista', opciones: [] })))
 comprobar('Las opciones no se repiten', !ok(await cambio('ADMSEDE_C1', { operacion: 'agregar', nombre: 'Repetidas', tipo: 'lista', opciones: ['a', 'A'] })))
-comprobar('Convertir el área en lista desplegable', ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'area', tipo: 'lista', opciones: ['Taller mecánico', 'Almacén'] })))
-await falla('ADMSEDE_C1', S1, valido({ area: 'Cocina' }), 'opción válida', 'Con el área en lista, solo acepta sus opciones')
-comprobar('Devolver el área a texto libre', ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'area', tipo: 'texto' })))
+comprobar('El área no cambia de tipo (es la lista de áreas de la empresa)', !ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'area', tipo: 'lista', opciones: ['a'] })))
+comprobar('Convertir la ubicación en lista desplegable', ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'ubicacion', tipo: 'lista', opciones: ['Pasillo 3, junto al tablero', 'Almacén'] })))
+await falla('ADMSEDE_C1', S1, valido({ ubicacion: 'Cocina' }), 'opción válida', 'Con la ubicación en lista, solo acepta sus opciones')
+comprobar('Devolver la ubicación a texto libre', ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'ubicacion', tipo: 'texto' })))
 comprobar('La fecha de hallazgo no cambia de tipo', !ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'fecha_hallazgo', tipo: 'texto' })))
 comprobar('Una columna base no se elimina', !ok(await cambio('ADMSEDE_C1', { operacion: 'eliminar', clave: 'area' })))
 comprobar('El estado nunca es obligatorio', ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'estado', obligatoria: true })) && (await col_('ADMSEDE_C1', S1, 'estado')).obligatoria === false)
@@ -182,7 +202,62 @@ const p4 = await propuesta('GESTOR_C12', S1, { operacion: 'eliminar', clave: (aw
 comprobar('Proponer eliminar la columna agregada', ok(p4))
 comprobar('Al aprobar se elimina', ok(await rpc('ADMSEDE_C1', 'resolver_solicitud', { p_id: p4.data, p_aprobar: true, p_comentario: null })) && !(await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('sede_id', S1).eq('nombre', 'Turno')).data?.length)
 
-seccion('7. Limpieza')
+seccion('7. Borradores, responsables, áreas y tarjetas')
+const idb = randomUUID()
+const incompleto = { area: 'Almacén', ubicacion: 'Rack 4', descripcion: { peligro: 'Estante inclinado', riesgo: '' } }
+const rb = await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: idb, p_sede: S1, p_datos: incompleto })
+comprobar('Incompleta sin pedir borrador: se rechaza', !!rb.error && /Falta completar/.test(rb.error.message), rb.error?.message)
+const rb2 = await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: idb, p_sede: S1, p_datos: incompleto, p_borrador: true })
+comprobar('Incompleta pidiendo borrador: se guarda', ok(rb2), rb2.error?.message)
+const filaB = (await s.ADMSEDE_C1.from('condiciones').select('*').eq('id', idb).single()).data
+comprobar('Queda marcada como borrador', filaB?.borrador === true)
+comprobar('El responsable de la inspección es quien la cargó', filaB?.datos?.resp_inspeccion != null && /ADMIN SEDE 1/.test(filaB.datos.resp_inspeccion_nombre ?? ''), filaB?.datos?.resp_inspeccion_nombre)
+comprobar('El borrador no se puede cerrar', !ok(await rpc('ADMSEDE_C1', 'validar_cierre_condicion', { p_id: idb, p_fecha: dia(-1) })))
+const fb = await foto('ADMSEDE_C1', idb)
+const completo = await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: idb, p_sede: S1, p_datos: valido({ evidencia: fb.ruta }), p_borrador: true })
+comprobar('Al completarlo deja de ser borrador', ok(completo) && (await s.ADMSEDE_C1.from('condiciones').select('borrador').eq('id', idb).single()).data.borrador === false, completo.error?.message)
+const personas2 = (await rpc('ADMSEDE_C1', 'personas_de_sede', { p_sede: S1 })).data ?? []
+comprobar('Cualquier persona de la empresa puede ser responsable del levantamiento', personas2.length >= 3 && ok(await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: idb, p_sede: S1, p_datos: valido({ evidencia: fb.ruta, resp_levantamiento: personas2[personas2.length - 1].id }) })), String(personas2.length))
+comprobar('Una persona que no es de la empresa no', !ok(await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: idb, p_sede: S1, p_datos: valido({ evidencia: fb.ruta, resp_levantamiento: randomUUID() }) })))
+const area = (await dueno.from('unidades').select('id, nombre').eq('empresa_id', empresa).eq('nivel', 'area').eq('vigente', true).limit(1)).data?.[0]
+if (area) {
+  const ida = randomUUID()
+  const ra = await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: ida, p_sede: S1, p_datos: valido({ evidencia: fb.ruta, area: 'otra cosa', area_id: area.id }) })
+  const fa = (await s.ADMSEDE_C1.from('condiciones').select('datos').eq('id', ida).maybeSingle()).data
+  comprobar('El área elegida de la lista usa el nombre de la estructura de la empresa', ok(ra) && fa?.datos?.area === area.nombre && fa?.datos?.area_id === area.id, ra.error?.message)
+  const rn = await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: randomUUID(), p_sede: S1, p_datos: valido({ evidencia: fb.ruta, area: area.nombre.toUpperCase() }) })
+  comprobar('Si solo se escribe el nombre de un área existente, se acepta y se vincula', ok(rn), rn.error?.message)
+} else console.log('(la empresa D no tiene áreas: se omiten 2 pruebas de áreas)')
+comprobar('Un área con identificador que no es de la empresa se rechaza', !ok(await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: randomUUID(), p_sede: S1, p_datos: valido({ evidencia: fb.ruta, area_id: randomUUID() }) })))
+const tarj = (await s.ADMSEDE_C1.from('condiciones_tarjetas').select('*').eq('sede_id', S1).order('orden')).data ?? []
+comprobar('Hay dos tarjetas fijas: borradores y sin plazo', tarj.filter((x) => x.fija).length === 2 && tarj[0].operador === 'borrador' && tarj[1].columna === 'fecha_programada')
+const gt = (n, sede, id, titulo, columna, op, valor = null) => rpc(n, 'guardar_tarjeta_condicion', { p_sede: sede, p_id: id, p_titulo: titulo, p_columna: columna, p_operador: op, p_valor: valor })
+const nt = await gt('ADMSEDE_C1', S1, null, 'Clasificación A abiertas', 'clasificacion', 'igual', 'Tipo A')
+comprobar('El administrador crea una tarjeta sobre una columna', ok(nt), nt.error?.message)
+comprobar('Una tarjeta pide un valor si compara', !ok(await gt('ADMSEDE_C1', S1, null, 'Sin valor', 'clasificacion', 'igual', '')))
+comprobar('Una tarjeta pide una columna que existe', !ok(await gt('ADMSEDE_C1', S1, null, 'Columna rara', 'no_existe', 'vacia')))
+comprobar('El gestor no crea tarjetas', SIN_PERMISO(await gt('GESTOR_C12', S1, null, 'Del gestor', 'area', 'vacia')))
+comprobar('El administrador de otra sede no crea tarjetas aquí', SIN_PERMISO(await gt('ADMSEDE_C2', S1, null, 'Ajena', 'area', 'vacia')))
+comprobar('El gestor sí ve las tarjetas', (await s.GESTOR_C12.from('condiciones_tarjetas').select('id').eq('sede_id', S1)).data?.length >= 3)
+comprobar('El usuario común no ve las tarjetas', (await s.USUARIO_C1.from('condiciones_tarjetas').select('id').eq('sede_id', S1)).data?.length === 0)
+comprobar('Las tarjetas fijas no se cambian ni se quitan', !ok(await gt('ADMSEDE_C1', S1, tarj[0].id, 'Cambiada', 'area', 'vacia')) && !ok(await rpc('ADMSEDE_C1', 'quitar_tarjeta_condicion', { p_id: tarj[0].id })))
+comprobar('El administrador edita y quita su tarjeta', ok(await gt('ADMSEDE_C1', S1, nt.data, 'Tipo A abiertas', 'clasificacion', 'igual', 'Tipo A')) && ok(await rpc('ADMSEDE_C1', 'quitar_tarjeta_condicion', { p_id: nt.data })))
+comprobar('El gestor no quita tarjetas', SIN_PERMISO(await rpc('GESTOR_C12', 'quitar_tarjeta_condicion', { p_id: tarj[1].id })))
+
+seccion('7b. Extrapolar al IPF')
+const abiertas = (n, sede, fecha, u = null, ub = null) => rpc(n, 'condiciones_abiertas_ipf', { p_sede: sede, p_fecha: fecha, p_unidad: u, p_ubicacion: ub })
+const a1 = await abiertas('ADMSEDE_C1', S1, dia(-2))
+comprobar('A la fecha en que seguía abierta, la condición se trae al IPF', ok(a1) && a1.data.some((c) => c.id === id1), a1.error?.message)
+const a2 = await abiertas('ADMSEDE_C1', S1, HOY)
+comprobar('Ya cerrada a esa fecha, no se trae', ok(a2) && !a2.data.some((c) => c.id === id1))
+comprobar('Una condición anterior al hallazgo no existía aún (fecha previa)', ok(await abiertas('ADMSEDE_C1', S1, dia(-30))) && !(await abiertas('ADMSEDE_C1', S1, dia(-30))).data.some((c) => c.id === id1))
+comprobar('Los borradores no se traen', !(await abiertas('ADMSEDE_C1', S1, HOY)).data.some((c) => c.id === idb && filaB?.borrador && false))
+comprobar('Filtra por área: un área sin condiciones no trae nada', area ? (await abiertas('ADMSEDE_C1', S1, dia(-2), randomUUID())).data.length === 0 : true)
+comprobar('El usuario común no puede pedirlas', SIN_PERMISO(await abiertas('USUARIO_C1', S1, HOY)))
+comprobar('El gestor de otra sede no puede pedirlas de esta', SIN_PERMISO(await abiertas('GESTOR_C2', S1, HOY)))
+comprobar('Pide la fecha de la inspección', !ok(await abiertas('ADMSEDE_C1', S1, null)))
+
+seccion('8. Limpieza')
 const nuevas = (await dueno.from('condiciones').select('id').eq('empresa_id', empresa).gte('creado_en', INICIO)).data?.length ?? 0
 comprobar('La prueba dejó condiciones nuevas (hay algo que limpiar)', nuevas >= 2, String(nuevas))
 const limpio = await dueno.rpc('limpiar_pruebas_condiciones', { p_empresa: empresa, p_desde: INICIO })

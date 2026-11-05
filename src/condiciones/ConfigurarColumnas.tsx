@@ -2,7 +2,8 @@ import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { type CambioColumnas, cambiarColumnas, proponerCambioColumnas, propuestasPendientes } from './datos'
-import { BASE_CAMBIA_TIPO, type Columna, NOMBRE_TIPO, TIPOS_NUEVA, esAutomatica } from './reglas'
+import { TarjetasConfig } from './TarjetasConfig'
+import { BASE_CAMBIA_TIPO, type Columna, NOMBRE_TIPO, type Tarjeta, TIPOS_NUEVA, esAutomatica } from './reglas'
 
 type Borrador = { clave: string | null; nombre: string; tipo: string; opciones: string; obligatoria: boolean }
 const NUEVA: Borrador = { clave: null, nombre: '', tipo: 'texto', opciones: '', obligatoria: false }
@@ -12,7 +13,7 @@ const TIPOS_BASE_EDITABLES: [string, string][] = [['texto', 'Letras (texto libre
  * Configuración de las columnas de la matriz (por sede). El administrador general o de sede cambia directo; el gestor propone y un administrador
  * aprueba o deniega desde «Solicitudes». Las columnas base no se eliminan (se ocultan). Eliminar una columna agregada borra sus datos de esa sede.
  */
-export function ConfigurarColumnas({ sedeId, columnas, esAdmin, onCambio }: { sedeId: string; columnas: Columna[]; esAdmin: boolean; onCambio: () => Promise<void> }) {
+export function ConfigurarColumnas({ sedeId, columnas, tarjetas, esAdmin, online, onCambio }: { sedeId: string; columnas: Columna[]; tarjetas: Tarjeta[]; esAdmin: boolean; online: boolean; onCambio: () => Promise<void> }) {
   const [borrador, setBorrador] = useState<Borrador | null>(null)
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -143,6 +144,7 @@ export function ConfigurarColumnas({ sedeId, columnas, esAdmin, onCambio }: { se
           </div>
         </form>
       )}
+      {esAdmin && <TarjetasConfig sedeId={sedeId} columnas={columnas} tarjetas={tarjetas} online={online} onCambio={onCambio} />}
     </Seccion>
   )
 }
