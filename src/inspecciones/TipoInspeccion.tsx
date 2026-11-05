@@ -11,7 +11,10 @@ import { type InspeccionDelMes, type ResumenInspeccion, conFrecuencias, frecuenc
 import { hoyLocal } from './ayudas'
 import { Hallazgos } from '../hallazgos/Hallazgos'
 import { type Unidad, unidadesAsignables } from '../usuarios/datos'
-import { Extintores, mesesRecientes } from './Extintores'
+import { Extintores } from './Extintores'
+import { FiltroPeriodo } from './FiltroPeriodo'
+import type { Frecuencia } from '../formatos/base'
+import { periodoInicial, rangoPeriodo } from './periodos'
 import { BombasIncendio, esBombaIncendio } from './BombasIncendio'
 import { FilaBorrador, FilaCola, ListaRecibidas } from './Inspecciones'
 import { CargaMasivaEquipos } from '../activos/CargaMasiva'
@@ -98,7 +101,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
             <CargaMasivaEquipos empresaId={empresaId} empresaNombre={copia.empresa.razon_social} tipoId={formato.plantilla.tipo_activo_id} exigirTodo={esExtintor}
               onCerrar={() => setCargando(false)} onListo={() => setCargaVersion((v) => v + 1)} />
           )}
-          {porMes && <PorMes plantillaId={id} nombre={formato.plantilla.nombre} online={online} onCerrar={() => setPorMes(false)} />}
+          {porMes && <PorMes plantillaId={id} nombre={formato.plantilla.nombre} frecuencia={formato.plantilla.frecuencia} online={online} onCerrar={() => setPorMes(false)} />}
           {esLoto && (
             <>
               <div className="fila-entre">
@@ -132,7 +135,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
               {pestana === 'resultados' && <ResultadosHallazgos empresaId={empresaId} nombre={formato.plantilla.nombre} online={online} />}
               {pestana === 'registros' && (
                 <Seccion titulo="Registros de inspección">
-                  <TablaPorMes plantillaId={id} online={online} descargas />
+                  <TablaPorMes plantillaId={id} frecuencia={formato.plantilla.frecuencia} online={online} descargas />
                 </Seccion>
               )}
               {pestana === 'hallazgos' && <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />}
@@ -162,10 +165,10 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
 }
 
 /** Las inspecciones de un mes, ordenadas por área y ubicación (pedido del dueño, 29/10/2026: IPF y demás inspecciones programadas). */
-function PorMes({ plantillaId, nombre, online, onCerrar }: { plantillaId: string; nombre: string; online: boolean; onCerrar: () => void }) {
+function PorMes({ plantillaId, nombre, frecuencia, online, onCerrar }: { plantillaId: string; nombre: string; frecuencia: Frecuencia; online: boolean; onCerrar: () => void }) {
   return (
     <Ventana titulo={`${nombre} · por mes`} onCerrar={onCerrar}>
-      <TablaPorMes plantillaId={plantillaId} online={online} />
+      <TablaPorMes plantillaId={plantillaId} frecuencia={frecuencia} online={online} />
     </Ventana>
   )
 }
@@ -174,16 +177,14 @@ function PorMes({ plantillaId, nombre, online, onCerrar }: { plantillaId: string
  * El historial de registros por mes y por área. Con descargas (pestaña «Registros» del IPF) cada registro tiene «Ver», «Excel» y «PDF»
  * (abren el registro y bajan el archivo) y se puede ver todo el año.
  */
-function TablaPorMes({ plantillaId, online, descargas = false }: { plantillaId: string; online: boolean; descargas?: boolean }) {
+function TablaPorMes({ plantillaId, frecuencia, online, descargas = false }: { plantillaId: string; frecuencia: Frecuencia; online: boolean; descargas?: boolean }) {
   const hoy = hoyLocal()
-  const meses = [
-    ...(descargas ? [{ clave: 'anio', etiqueta: `Todo el año ${hoy.slice(0, 4)}`, desde: `${hoy.slice(0, 4)}-01-01`, hasta: `${hoy.slice(0, 4)}-12-31` }] : []),
-    ...mesesRecientes(hoy),
-  ]
-  const [mes, setMes] = useState(meses[descargas ? 1 : 0].clave)
+  const semanal = frecuencia === 'semanal'
+  // Año, mes y (si es semanal) semana en listas separadas; empieza en el mes de hoy (pedido del dueño, 05/11/2026).
+  const [periodo, setPeriodo] = useState(() => periodoInicial(hoy, semanal))
   const [lista, setLista] = useState<InspeccionDelMes[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const elegido = meses.find((m) => m.clave === mes) ?? meses[0]
+  const elegido = rangoPeriodo(periodo.anio, periodo.mes, periodo.semana)
 
   useEffect(() => {
     if (!online) return
@@ -210,12 +211,7 @@ function TablaPorMes({ plantillaId, online, descargas = false }: { plantillaId: 
 
   return (
     <>
-      <label className="field campo-fecha">
-        <span>{descargas ? 'Período' : 'Mes'}</span>
-        <select value={mes} onChange={(e) => setMes(e.target.value)}>
-          {meses.map((m) => <option key={m.clave} value={m.clave}>{m.etiqueta}</option>)}
-        </select>
-      </label>
+      <FiltroPeriodo valor={periodo} onCambio={setPeriodo} semanal={semanal} conAnioCompleto={descargas} hoy={hoy} />
       <Aviso>{error}</Aviso>
       {!online ? <p className="nota">Se ve con señal.</p> : !lista ? <Esqueleto forma="lista" /> : !lista.length ? <p className="nota">No hay inspecciones en {elegido.etiqueta}.</p> : (
         <>

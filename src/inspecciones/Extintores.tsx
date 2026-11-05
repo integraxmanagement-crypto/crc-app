@@ -491,19 +491,30 @@ export function mesesRecientes(hoy: string) {
   })
 }
 
+/** Los 12 meses de un año, con su primer y último día (para el filtro por año y mes). */
+export function mesesDelAnio(anio: number) {
+  return Array.from({ length: 12 }, (_, k) => {
+    const mm = String(k + 1).padStart(2, '0')
+    const ultimo = new Date(Date.UTC(anio, k + 1, 0)).getUTCDate()
+    return { clave: `${anio}-${mm}`, etiqueta: `${MESES[k]} ${anio}`, desde: `${anio}-${mm}-01`, hasta: `${anio}-${mm}-${String(ultimo).padStart(2, '0')}` }
+  })
+}
+
 /** Generar el registro en Excel o PDF de una semana o de un mes; la fecha de inspección es el domingo de la semana (se puede cambiar) o la que se escriba. */
 function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cuenta, esSemanal, unPeriodo }: { formato: FormatoLocal; copia: CopiaLocal; sede: string; semanas: ReturnType<typeof periodosHasta>; hoy: string; cuenta: string; esSemanal: boolean; unPeriodo: string; nombreArchivo: string }) {
   void cuenta
   // Con frecuencia semanal se puede elegir una semana o un mes del calendario; con otra frecuencia (mensual…), un período del formato.
+  // Con frecuencia semanal el mes se elige con dos listas, año y mes (pedido del dueño, 05/11/2026); empieza en el mes de hoy.
+  const [anioReg, setAnioReg] = useState(Number(hoy.slice(0, 4)))
   const meses = useMemo(
-    () => (esSemanal ? mesesRecientes(hoy) : semanas.map((s) => ({ clave: s.clave, etiqueta: s.etiqueta.split(' · ')[0], desde: s.desde, hasta: s.hasta }))),
-    [esSemanal, hoy, semanas],
+    () => (esSemanal ? mesesDelAnio(anioReg) : semanas.map((s) => ({ clave: s.clave, etiqueta: s.etiqueta.split(' · ')[0], desde: s.desde, hasta: s.hasta }))),
+    [esSemanal, anioReg, semanas],
   )
   // Las opciones Excel y PDF salen según el Excel de la organización que tenga el formato (null: aún se está viendo).
   const [tieneExcel, setTieneExcel] = useState<boolean | null>(null)
   const [por, setPor] = useState<'semana' | 'mes'>(esSemanal ? 'semana' : 'mes')
   const [semana, setSemana] = useState(semanas[0]?.clave ?? '')
-  const [mes, setMes] = useState(meses[0].clave)
+  const [mes, setMes] = useState(esSemanal ? hoy.slice(0, 7) : meses[0].clave)
   const [fecha, setFecha] = useState(esSemanal ? (semanas[0]?.hasta ?? '') : '')
   const [registro, setRegistro] = useState({ nombre: '', cargo: '' })
   const [firma, setFirma] = useState<Uint8Array | null>(null)
@@ -583,12 +594,22 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
             </select>
           </label>
         ) : (
-          <label className="field">
-            <span>{esSemanal ? 'Mes' : unPeriodo[0].toUpperCase() + unPeriodo.slice(1)}</span>
-            <select value={mes} onChange={(e) => setMes(e.target.value)}>
-              {meses.map((m) => <option key={m.clave} value={m.clave}>{m.etiqueta}</option>)}
-            </select>
-          </label>
+          <>
+            {esSemanal && (
+              <label className="field">
+                <span>Año</span>
+                <select value={anioReg} onChange={(e) => { const a = Number(e.target.value); setAnioReg(a); setMes(`${a}-${mes.slice(5, 7)}`) }}>
+                  {Array.from({ length: 5 }, (_, k) => Number(hoy.slice(0, 4)) - k).map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="field">
+              <span>{esSemanal ? 'Mes' : unPeriodo[0].toUpperCase() + unPeriodo.slice(1)}</span>
+              <select value={mes} onChange={(e) => setMes(e.target.value)}>
+                {meses.map((m) => <option key={m.clave} value={m.clave}>{esSemanal ? m.etiqueta.split(' ')[0] : m.etiqueta}</option>)}
+              </select>
+            </label>
+          </>
         )}
       </div>
       <label className="field campo-fecha">

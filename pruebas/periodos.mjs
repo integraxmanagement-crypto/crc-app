@@ -66,6 +66,19 @@ const lista = periodosHasta('2026-10-28', 'mensual', 13)
 comprobar('Lista de los últimos 13 meses, del más reciente al más antiguo', lista.length === 13 && lista[0].clave === '2026-10' && lista[12].clave === '2025-10', lista.map((p) => p.clave).join(' '))
 comprobar('Lista de semanas que cruza el cambio de año (semana 53)', periodosHasta('2027-01-10', 'semanal', 3).map((p) => p.clave).join(' ') === '2027-S01 2026-S53 2026-S52')
 
+// ── Filtro por año, mes y semana (05/11/2026) ──
+{
+  const { rangoPeriodo, semanasDelMes, periodoInicial } = await import('../src/inspecciones/periodos.ts')
+  comprobar('Rango de un mes del calendario (febrero 2028 tiene 29 días)', JSON.stringify(rangoPeriodo(2028, 2, 0)) === JSON.stringify({ desde: '2028-02-01', hasta: '2028-02-29', etiqueta: 'febrero 2028' }))
+  comprobar('Rango de todo el año (mes 0)', rangoPeriodo(2026, 0, 0).desde === '2026-01-01' && rangoPeriodo(2026, 0, 0).hasta === '2026-12-31')
+  comprobar('Rango de una semana ISO: lunes a domingo (semana 45 de 2026)', rangoPeriodo(2026, 11, 45).desde === '2026-11-02' && rangoPeriodo(2026, 11, 45).hasta === '2026-11-08')
+  const sem = semanasDelMes(2026, 11)
+  comprobar('Las semanas de noviembre 2026 son las 45 a 48 (y cada una cuenta en un solo mes)', sem.map((s) => s.semana).join() === '45,46,47,48', sem.map((s) => s.semana).join())
+  comprobar('Ninguna semana se repite entre dos meses', new Set([...Array(12).keys()].flatMap((m) => semanasDelMes(2026, m + 1).map((s) => s.semana))).size === 52 || new Set([...Array(12).keys()].flatMap((m) => semanasDelMes(2026, m + 1).map((s) => s.semana))).size === 53)
+  comprobar('El filtro empieza en el mes de hoy (sin semana si no es semanal)', JSON.stringify(periodoInicial('2026-11-05', false)) === JSON.stringify({ anio: 2026, mes: 11, semana: 0 }))
+  comprobar('Si es semanal, empieza también en la semana de hoy (5/11/2026 es la semana 45)', JSON.stringify(periodoInicial('2026-11-05', true)) === JSON.stringify({ anio: 2026, mes: 11, semana: 45 }))
+}
+
 const r = resumen()
 const lineas = ['# Pruebas de los períodos (tarea 3.4-D)', '', `Fecha: ${new Date().toISOString()} · Sin base de datos · **${r.ok} de ${r.total} correctas**`, '']
 for (const [k, g] of grupos.entries()) {

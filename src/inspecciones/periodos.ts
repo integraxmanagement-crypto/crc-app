@@ -96,3 +96,37 @@ export function semanasConMes(anio: number): { semana: number; mes: number; lune
     return { semana: k + 1, mes: mesDeLaSemana(lunes).mes, lunes }
   })
 }
+
+// ───── Filtro por año, mes y semana (pedido del dueño, 05/11/2026) ─────
+export const NOMBRE_MES = MESES
+
+/** Semanas ISO cuyo jueves cae en el mes (así cada semana cuenta en un solo mes). */
+export function semanasDelMes(anio: number, mes: number): { semana: number; lunes: string; domingo: string; etiqueta: string }[] {
+  return semanasConMes(anio)
+    .filter((s) => s.mes === mes)
+    .map((s) => {
+      const domingo = aTexto(aFecha(s.lunes) + 6 * DIA)
+      return { semana: s.semana, lunes: s.lunes, domingo, etiqueta: `Semana ${s.semana} (${corta(s.lunes)} al ${corta(domingo)})` }
+    })
+}
+
+/** Rango de fechas de un año completo (mes 0), de un mes del calendario o de una semana ISO de ese año (semana > 0). */
+export function rangoPeriodo(anio: number, mes: number, semana: number): { desde: string; hasta: string; etiqueta: string } {
+  if (semana > 0) {
+    const lunes = lunesDeSemana(anio, semana)
+    const hasta = aTexto(aFecha(lunes) + 6 * DIA)
+    return { desde: lunes, hasta, etiqueta: `la semana ${semana} de ${anio}` }
+  }
+  if (mes === 0) return { desde: `${anio}-01-01`, hasta: `${anio}-12-31`, etiqueta: `todo el año ${anio}` }
+  const { desde, hasta } = tramo(anio, mes, mes)
+  return { desde, hasta, etiqueta: `${MESES[mes - 1]} ${anio}` }
+}
+
+/** El filtro empieza en el mes de hoy; con frecuencia semanal, también en la semana de hoy si esa semana cuenta en este mes. */
+export function periodoInicial(hoy: string, semanal: boolean): { anio: number; mes: number; semana: number } {
+  const anio = Number(hoy.slice(0, 4))
+  const mes = Number(hoy.slice(5, 7))
+  if (!semanal) return { anio, mes, semana: 0 }
+  const s = semanaIso(hoy)
+  return { anio, mes, semana: s.anio === anio && semanasDelMes(anio, mes).some((x) => x.semana === s.semana) ? s.semana : 0 }
+}

@@ -1,6 +1,6 @@
 # Pruebas de los períodos (tarea 3.4-D)
 
-Fecha: 2026-11-05T21:31:30.824Z · Sin base de datos · **undefined de undefined correctas**
+Fecha: 2026-11-05T23:13:10.123Z · Sin base de datos · **undefined de undefined correctas**
 
 ## Semanas ISO
 
@@ -38,3 +38,10 @@ Fecha: 2026-11-05T21:31:30.824Z · Sin base de datos · **undefined de undefined
 - ❌ anual: cada día de 2024 a 2028 está en un solo período (semanal: de lunes a domingo; los demás: meses completos) y sin huecos
 - ❌ Lista de los últimos 13 meses, del más reciente al más antiguo — 2026-10 2026-09 2026-08 2026-07 2026-06 2026-05 2026-04 2026-03 2026-02 2026-01 2025-12 2025-11 2025-10
 - ❌ Lista de semanas que cruza el cambio de año (semana 53)
+- ❌ Rango de un mes del calendario (febrero 2028 tiene 29 días)
+- ❌ Rango de todo el año (mes 0)
+- ❌ Rango de una semana ISO: lunes a domingo (semana 45 de 2026)
+- ❌ Las semanas de noviembre 2026 son las 45 a 48 (y cada una cuenta en un solo mes) — 45,46,47,48
+- ❌ Ninguna semana se repite entre dos meses
+- ❌ El filtro empieza en el mes de hoy (sin semana si no es semanal)
+- ❌ Si es semanal, empieza también en la semana de hoy (5/11/2026 es la semana 45)
