@@ -88,13 +88,16 @@ function Inicio({ perfil, online }: { perfil: Perfil; online: boolean }) {
       <h1 className="saludo">Hola, {nombreCorto(perfil.apellidosNombres)}</h1>
 
       {esEquipoSso(perfil) && perfil.empresaId && <AvancePasst empresaId={perfil.empresaId} online={online} />}
-      {esEquipoSso(perfil) && perfil.empresaId && <PendientesMes empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
+      {/* Las tarjetas de resumen van juntas en una cuadrícula que se reparte sola, sin huecos (05/11/2026). */}
+      <div className="inicio-tarjetas">
+        {esEquipoSso(perfil) && perfil.empresaId && <PendientesMes empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
 
-      {/* Quien no es del equipo SSO ve primero a quién acudir (etapa 4, 04/11/2026). */}
-      {!esEquipoSso(perfil) && perfil.empresaId && <EquipoSst inicio online={online} />}
+        {/* Quien no es del equipo SSO ve primero a quién acudir (etapa 4, 04/11/2026). */}
+        {!esEquipoSso(perfil) && perfil.empresaId && <EquipoSst inicio online={online} />}
 
-      {/* Debajo de los atrasados: mis hallazgos por cerrar (pedido del dueño, 29/10/2026). */}
-      {perfil.empresaId && <MisHallazgos empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
+        {/* Mis hallazgos por cerrar (pedido del dueño, 29/10/2026). */}
+        {perfil.empresaId && <MisHallazgos empresaId={perfil.empresaId} cuenta={perfil.id} online={online} />}
+      </div>
 
       {/* Alerta de sismos — Perú (pedido del dueño, 29/10/2026). */}
       <Suspense fallback={null}>

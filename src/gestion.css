@@ -3386,21 +3386,23 @@ button.tarjeta-ext {
   }
 }
 
-@media (min-width: 900px) {
-  .panel.panel-inicio {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-    gap: 0 1.5rem;
-  }
+/* Inicio (05/11/2026): arriba el saludo y el avance del programa, a todo el ancho; debajo, las tarjetas de resumen en una cuadrícula que se
+   reparte sola (una, dos, tres o cuatro por fila según el ancho y cuántas haya), todas de la misma altura y sin huecos; al final, sismos e instalar. */
+.inicio-tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+  align-items: stretch;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
 
-  .panel.panel-inicio > .saludo,
-  .panel.panel-inicio > .sismos,
-  .panel.panel-inicio > .install,
-  .panel.panel-inicio > .install-note,
-  .panel.panel-inicio > .esq {
-    grid-column: 1 / -1;
-  }
+.inicio-tarjetas > * {
+  margin: 0;
+  min-width: 0;
+}
+
+.inicio-tarjetas:empty {
+  display: none;
 }
 
 @media (min-width: 1100px) {
@@ -3457,7 +3459,6 @@ button.tarjeta-ext {
 
   .panel.panel-inicio {
     max-width: 88rem;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -3886,4 +3887,86 @@ fieldset.field legend {
   margin: 0 auto;
   border-radius: 8px;
   object-fit: contain;
+}
+
+/* Menú: Inspecciones se despliega con una flecha; «Ver más» y «Ocultar» dentro del mismo panel (05/11/2026). */
+.menu-lateral nav .menu-grupo {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.menu-fila {
+  display: flex;
+  align-items: stretch;
+  gap: 0.15rem;
+}
+
+.menu-fila > button:first-child {
+  display: flex;
+  flex: 1;
+  gap: 0.6rem;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.8rem;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.menu-fila > button:first-child:hover,
+.menu-flecha:hover {
+  background: rgb(255 255 255 / 14%);
+}
+
+.menu-fila > button.activo:first-child {
+  background: rgb(255 255 255 / 16%);
+  box-shadow: inset 3px 0 0 var(--teal);
+  font-weight: 700;
+}
+
+.menu-flecha {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.menu-flecha svg {
+  transition: transform 0.2s var(--ease-out);
+}
+
+.menu-flecha[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.menu-sub .menu-ver-mas {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-flecha svg {
+    transition: none;
+  }
+}
+
+/* Inicio: menos aire entre las tarjetas y la alerta de sismos */
+.inicio-tarjetas + .sismos {
+  margin-top: 0;
+}
+
+/* Con dos columnas (tablet angosta), si queda una tarjeta sola en la última fila, ocupa todo el ancho: sin huecos. */
+@media (min-width: 560px) and (max-width: 735px) {
+  .inicio-tarjetas > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
