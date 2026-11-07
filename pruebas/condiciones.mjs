@@ -64,20 +64,20 @@ for (const n of ['ADMIN_C', 'ADMSEDE_C1', 'ADMSEDE_C2', 'GESTOR_C2', 'GESTOR_C12
 }
 const rpc = (n, f, a) => s[n].rpc(f, a)
 const ok = (r) => !r.error
-const col_ = async (n, sede, clave) => (await s[n].from('condiciones_columnas').select('*').eq('sede_id', sede).eq('clave', clave).maybeSingle()).data
+const col_ = async (n, sede, clave) => (await s[n].from('condiciones_columnas').select('*').eq('matriz', 'condiciones').eq('sede_id', sede).eq('clave', clave).maybeSingle()).data
 
 seccion('3. Quién ve y quién carga')
 comprobar('El administrador de la sede 1 prepara la matriz de su sede', ok(await rpc('ADMSEDE_C1', 'preparar_condiciones', { p_sede: S1 })))
-comprobar('Hay 14 columnas base (y repetir no las duplica)', (await rpc('ADMSEDE_C1', 'preparar_condiciones', { p_sede: S1 }), (await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('sede_id', S1).eq('es_base', true)).data?.length === 14))
-comprobar('El usuario común no puede preparar ni ver la matriz', SIN_PERMISO(await rpc('USUARIO_C1', 'preparar_condiciones', { p_sede: S1 })) && (await s.USUARIO_C1.from('condiciones_columnas').select('id').eq('sede_id', S1)).data?.length === 0)
-comprobar('El administrador de otra empresa no la ve ni la prepara', SIN_PERMISO(await rpc('ADMIN_A', 'preparar_condiciones', { p_sede: S1 })) && (await s.ADMIN_A.from('condiciones_columnas').select('id').eq('sede_id', S1)).data?.length === 0)
+comprobar('Hay 14 columnas base (y repetir no las duplica)', (await rpc('ADMSEDE_C1', 'preparar_condiciones', { p_sede: S1 }), (await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1).eq('es_base', true)).data?.length === 14))
+comprobar('El usuario común no puede preparar ni ver la matriz', SIN_PERMISO(await rpc('USUARIO_C1', 'preparar_condiciones', { p_sede: S1 })) && (await s.USUARIO_C1.from('condiciones_columnas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1)).data?.length === 0)
+comprobar('El administrador de otra empresa no la ve ni la prepara', SIN_PERMISO(await rpc('ADMIN_A', 'preparar_condiciones', { p_sede: S1 })) && (await s.ADMIN_A.from('condiciones_columnas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1)).data?.length === 0)
 comprobar('El administrador de la sede 2 no toca la sede 1', SIN_PERMISO(await rpc('ADMSEDE_C2', 'preparar_condiciones', { p_sede: S1 })))
 comprobar('El gestor de la sede 2 no toca la sede 1', SIN_PERMISO(await rpc('GESTOR_C2', 'preparar_condiciones', { p_sede: S1 })))
 comprobar('El administrador general sí ve las dos sedes', ok(await rpc('ADMIN_C', 'preparar_condiciones', { p_sede: S1 })) && ok(await rpc('ADMIN_C', 'preparar_condiciones', { p_sede: S2 })))
 comprobar('Nadie escribe directo en la tabla', SIN_PERMISO(await s.ADMSEDE_C1.from('condiciones').insert({ id: randomUUID(), empresa_id: empresa, sede_id: S1, fecha_hallazgo: HOY, creado_por: randomUUID(), creado_por_nombre: 'x' }))
   && SIN_PERMISO(await s.ADMSEDE_C1.from('condiciones_columnas').update({ obligatoria: false }).eq('sede_id', S1)))
 comprobar('Los obligatorios de fábrica: todo menos cierre, estado y responsable de la inspección',
-  (await s.ADMSEDE_C1.from('condiciones_columnas').select('clave, obligatoria').eq('sede_id', S1).eq('es_base', true)).data
+  (await s.ADMSEDE_C1.from('condiciones_columnas').select('clave, obligatoria').eq('matriz', 'condiciones').eq('sede_id', S1).eq('es_base', true)).data
     .every((c) => c.obligatoria === !['fecha_cierre', 'estado', 'resp_inspeccion'].includes(c.clave)))
 
 seccion('4. Cargar una condición')
@@ -151,7 +151,7 @@ comprobar('Con la columna oculta ya no se pide', ok(g2), g2.error?.message)
 comprobar('Mostrarla otra vez', ok(await cambio('ADMSEDE_C1', { operacion: 'mostrar', clave: 'motivo' })))
 await falla('ADMSEDE_C1', S1, valido({ motivo: undefined }), 'Falta completar: Motivo', 'Visible otra vez, vuelve a ser obligatoria')
 comprobar('Agregar una columna de varias opciones obligatoria', ok(await cambio('ADMSEDE_C1', { operacion: 'agregar', nombre: 'Equipos afectados', tipo: 'multiple', opciones: ['Grúa', 'Montacargas', 'Andamio'], obligatoria: true })))
-const nueva = (await s.ADMSEDE_C1.from('condiciones_columnas').select('*').eq('sede_id', S1).eq('nombre', 'Equipos afectados').maybeSingle()).data
+const nueva = (await s.ADMSEDE_C1.from('condiciones_columnas').select('*').eq('matriz', 'condiciones').eq('sede_id', S1).eq('nombre', 'Equipos afectados').maybeSingle()).data
 comprobar('Queda al final, no es base y guarda sus opciones', nueva && !nueva.es_base && nueva.opciones.length === 3 && nueva.orden === 15, String(nueva?.orden))
 await falla('ADMSEDE_C1', S1, valido(), `Falta completar: Equipos afectados`, 'La columna nueva obligatoria se pide')
 await falla('ADMSEDE_C1', S1, valido({ [nueva.clave]: ['Grúa', 'Cohete'] }), 'opciones válidas', 'Solo acepta las opciones de la lista')
@@ -170,7 +170,7 @@ comprobar('El estado nunca es obligatorio', ok(await cambio('ADMSEDE_C1', { oper
 comprobar('Cambiar el nombre y volver a ponerlo', ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'origen', nombre: 'Origen del hallazgo' })) && ok(await cambio('ADMSEDE_C1', { operacion: 'modificar', clave: 'origen', nombre: 'Origen' })))
 comprobar('Eliminar la columna agregada borra sus datos', ok(await cambio('ADMSEDE_C1', { operacion: 'eliminar', clave: nueva.clave }))
   && !(await s.ADMSEDE_C1.from('condiciones').select('datos').eq('id', id3).single()).data.datos[nueva.clave])
-comprobar('Las columnas son de cada sede: la sede 2 no cambió', (await col_('ADMSEDE_C2', S2, 'motivo'))?.visible === true && !(await s.ADMSEDE_C2.from('condiciones_columnas').select('id').eq('sede_id', S2).eq('nombre', 'Equipos afectados')).data?.length)
+comprobar('Las columnas son de cada sede: la sede 2 no cambió', (await col_('ADMSEDE_C2', S2, 'motivo'))?.visible === true && !(await s.ADMSEDE_C2.from('condiciones_columnas').select('id').eq('matriz', 'condiciones').eq('sede_id', S2).eq('nombre', 'Equipos afectados')).data?.length)
 comprobar('El administrador de la sede 2 no cambia las columnas de la sede 1', SIN_PERMISO(await cambio('ADMSEDE_C2', { operacion: 'ocultar', clave: 'area' })))
 comprobar('El gestor no cambia columnas directo', SIN_PERMISO(await cambio('GESTOR_C12', { operacion: 'ocultar', clave: 'area' })))
 comprobar('El usuario común tampoco', SIN_PERMISO(await cambio('USUARIO_C1', { operacion: 'ocultar', clave: 'area' })))
@@ -179,7 +179,7 @@ seccion('6. El gestor propone y el administrador decide')
 const propuesta = (n, sede, c, motivo = 'Necesitamos registrar los equipos') => rpc(n, 'solicitar_cambio', { p_tipo: 'cambio_columnas_condiciones', p_objetivo: sede, p_datos: c, p_motivo: motivo })
 const p1 = await propuesta('GESTOR_C12', S1, { operacion: 'agregar', nombre: 'Turno', tipo: 'lista', opciones: ['Día', 'Noche'] })
 comprobar('El gestor envía su propuesta', ok(p1) && typeof p1.data === 'string', p1.error?.message)
-comprobar('La matriz no cambia mientras nadie decide', !(await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('sede_id', S1).eq('nombre', 'Turno')).data?.length)
+comprobar('La matriz no cambia mientras nadie decide', !(await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1).eq('nombre', 'Turno')).data?.length)
 const sol1 = (await s.ADMSEDE_C1.from('solicitudes_cambio').select('*').eq('id', p1.data).single()).data
 comprobar('La solicitud es de la sede, pendiente y con título legible', sol1?.sede_id === S1 && sol1.estado === 'pendiente' && /Agregar la columna «Turno»/.test(sol1.titulo), sol1?.titulo)
 comprobar('Una propuesta mal hecha se rechaza al pedirla', !ok(await propuesta('GESTOR_C12', S1, { operacion: 'agregar', nombre: 'X', tipo: 'volar' })))
@@ -188,7 +188,7 @@ comprobar('El usuario común no propone', !ok(await propuesta('USUARIO_C1', S1, 
 comprobar('El gestor no se aprueba a sí mismo', !ok(await rpc('GESTOR_C12', 'resolver_solicitud', { p_id: p1.data, p_aprobar: true, p_comentario: null })))
 comprobar('El administrador de la otra sede no decide esta propuesta', !ok(await rpc('ADMSEDE_C2', 'resolver_solicitud', { p_id: p1.data, p_aprobar: true, p_comentario: null })))
 comprobar('El administrador de la sede la aprueba', ok(await rpc('ADMSEDE_C1', 'resolver_solicitud', { p_id: p1.data, p_aprobar: true, p_comentario: null })))
-const turno = await col_('ADMSEDE_C1', S1, (await s.ADMSEDE_C1.from('condiciones_columnas').select('clave').eq('sede_id', S1).eq('nombre', 'Turno').maybeSingle()).data?.clave ?? 'x')
+const turno = await col_('ADMSEDE_C1', S1, (await s.ADMSEDE_C1.from('condiciones_columnas').select('clave').eq('matriz', 'condiciones').eq('sede_id', S1).eq('nombre', 'Turno').maybeSingle()).data?.clave ?? 'x')
 comprobar('Al aprobar se ejecuta: la columna aparece con sus opciones', turno?.tipo === 'lista' && turno.opciones.length === 2)
 comprobar('Una solicitud resuelta no se decide otra vez', !ok(await rpc('ADMIN_C', 'resolver_solicitud', { p_id: p1.data, p_aprobar: false, p_comentario: 'ya no' })))
 const p2 = await propuesta('GESTOR_C12', S1, { operacion: 'ocultar', clave: 'ubicacion' })
@@ -198,9 +198,9 @@ comprobar('El administrador general la deniega', ok(await rpc('ADMIN_C', 'resolv
 comprobar('Al denegar la matriz queda sin el cambio', (await col_('ADMSEDE_C1', S1, 'ubicacion')).visible === true)
 const p3 = await propuesta('GESTOR_C12', S1, { operacion: 'eliminar', clave: 'area' })
 comprobar('Una propuesta que no se podría cumplir se rechaza al pedirla (base no se elimina)', !ok(p3))
-const p4 = await propuesta('GESTOR_C12', S1, { operacion: 'eliminar', clave: (await s.ADMSEDE_C1.from('condiciones_columnas').select('clave').eq('sede_id', S1).eq('nombre', 'Turno').single()).data.clave })
+const p4 = await propuesta('GESTOR_C12', S1, { operacion: 'eliminar', clave: (await s.ADMSEDE_C1.from('condiciones_columnas').select('clave').eq('matriz', 'condiciones').eq('sede_id', S1).eq('nombre', 'Turno').single()).data.clave })
 comprobar('Proponer eliminar la columna agregada', ok(p4))
-comprobar('Al aprobar se elimina', ok(await rpc('ADMSEDE_C1', 'resolver_solicitud', { p_id: p4.data, p_aprobar: true, p_comentario: null })) && !(await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('sede_id', S1).eq('nombre', 'Turno')).data?.length)
+comprobar('Al aprobar se elimina', ok(await rpc('ADMSEDE_C1', 'resolver_solicitud', { p_id: p4.data, p_aprobar: true, p_comentario: null })) && !(await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1).eq('nombre', 'Turno')).data?.length)
 
 seccion('7. Borradores, responsables, áreas y tarjetas')
 const idb = randomUUID()
@@ -229,7 +229,7 @@ if (area) {
   comprobar('Si solo se escribe el nombre de un área existente, se acepta y se vincula', ok(rn), rn.error?.message)
 } else console.log('(la empresa D no tiene áreas: se omiten 2 pruebas de áreas)')
 comprobar('Un área con identificador que no es de la empresa se rechaza', !ok(await rpc('ADMSEDE_C1', 'guardar_condicion', { p_id: randomUUID(), p_sede: S1, p_datos: valido({ evidencia: fb.ruta, area_id: randomUUID() }) })))
-const tarj = (await s.ADMSEDE_C1.from('condiciones_tarjetas').select('*').eq('sede_id', S1).order('orden')).data ?? []
+const tarj = (await s.ADMSEDE_C1.from('condiciones_tarjetas').select('*').eq('matriz', 'condiciones').eq('sede_id', S1).order('orden')).data ?? []
 comprobar('Hay dos tarjetas fijas: borradores y sin plazo', tarj.filter((x) => x.fija).length === 2 && tarj[0].operador === 'borrador' && tarj[1].columna === 'fecha_programada')
 const gt = (n, sede, id, titulo, columna, op, valor = null) => rpc(n, 'guardar_tarjeta_condicion', { p_sede: sede, p_id: id, p_titulo: titulo, p_columna: columna, p_operador: op, p_valor: valor })
 const nt = await gt('ADMSEDE_C1', S1, null, 'Clasificación A abiertas', 'clasificacion', 'igual', 'Tipo A')
@@ -238,8 +238,8 @@ comprobar('Una tarjeta pide un valor si compara', !ok(await gt('ADMSEDE_C1', S1,
 comprobar('Una tarjeta pide una columna que existe', !ok(await gt('ADMSEDE_C1', S1, null, 'Columna rara', 'no_existe', 'vacia')))
 comprobar('El gestor no crea tarjetas', SIN_PERMISO(await gt('GESTOR_C12', S1, null, 'Del gestor', 'area', 'vacia')))
 comprobar('El administrador de otra sede no crea tarjetas aquí', SIN_PERMISO(await gt('ADMSEDE_C2', S1, null, 'Ajena', 'area', 'vacia')))
-comprobar('El gestor sí ve las tarjetas', (await s.GESTOR_C12.from('condiciones_tarjetas').select('id').eq('sede_id', S1)).data?.length >= 3)
-comprobar('El usuario común no ve las tarjetas', (await s.USUARIO_C1.from('condiciones_tarjetas').select('id').eq('sede_id', S1)).data?.length === 0)
+comprobar('El gestor sí ve las tarjetas', (await s.GESTOR_C12.from('condiciones_tarjetas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1)).data?.length >= 3)
+comprobar('El usuario común no ve las tarjetas', (await s.USUARIO_C1.from('condiciones_tarjetas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1)).data?.length === 0)
 comprobar('Las tarjetas fijas no se cambian ni se quitan', !ok(await gt('ADMSEDE_C1', S1, tarj[0].id, 'Cambiada', 'area', 'vacia')) && !ok(await rpc('ADMSEDE_C1', 'quitar_tarjeta_condicion', { p_id: tarj[0].id })))
 comprobar('El administrador edita y quita su tarjeta', ok(await gt('ADMSEDE_C1', S1, nt.data, 'Tipo A abiertas', 'clasificacion', 'igual', 'Tipo A')) && ok(await rpc('ADMSEDE_C1', 'quitar_tarjeta_condicion', { p_id: nt.data })))
 comprobar('El gestor no quita tarjetas', SIN_PERMISO(await rpc('GESTOR_C12', 'quitar_tarjeta_condicion', { p_id: tarj[1].id })))
@@ -265,7 +265,7 @@ comprobar('El dueño limpia solo lo de esta corrida', ok(limpio) && limpio.data.
 comprobar('Lo anterior no se puede borrar con una fecha vieja', !ok(await dueno.rpc('limpiar_pruebas_condiciones', { p_empresa: empresa, p_desde: '2020-01-01T00:00:00Z' })))
 comprobar('Nadie más limpia', SIN_PERMISO(await s.ADMIN_C.rpc('limpiar_pruebas_condiciones', { p_empresa: empresa, p_desde: INICIO })))
 comprobar('No se limpia una empresa que no es la ficticia D', !ok(await dueno.rpc('limpiar_pruebas_condiciones', { p_empresa: randomUUID(), p_desde: INICIO })))
-comprobar('Las columnas base siguen todas en su lugar', (await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('sede_id', S1).eq('es_base', true)).data?.length === 14)
+comprobar('Las columnas base siguen todas en su lugar', (await s.ADMSEDE_C1.from('condiciones_columnas').select('id').eq('matriz', 'condiciones').eq('sede_id', S1).eq('es_base', true)).data?.length === 14)
 
 const bien = resumen()
 mkdirSync('pruebas/resultados', { recursive: true })

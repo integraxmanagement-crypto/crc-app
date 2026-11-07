@@ -18,6 +18,8 @@ export type Plantilla = {
   aplica_a: 'activo' | 'area'
   tipo_activo_id: string | null
   frecuencia: Frecuencia
+  /** A dónde van los hallazgos de este formato; vacío = por defecto (el IPF a condiciones, los demás a planes de acción). */
+  destino_hallazgos: 'condiciones' | 'planes' | null
   vigente: boolean
   actualizado_en: string
   versiones: { id: string; numero: number; estado: EstadoVersion }[]
@@ -113,6 +115,8 @@ export async function leerPlantilla(id: string) {
 export const copiarPlantilla = (empresaId: string, origen: string) => rpc<string>('copiar_plantilla', { p_empresa: empresaId, p_origen: origen })
 export const nuevaPlantilla = (empresaId: string, datos: { nombre: string; aplica_a: 'activo' | 'area'; tipo_activo_id: string | null; frecuencia: Frecuencia }) =>
   rpc<string>('nueva_plantilla', { p_empresa: empresaId, p_datos: datos })
+/** Elige a dónde van los hallazgos de un formato (administrador general). null = por defecto. */
+export const fijarDestinoFormato = (plantilla: string, destino: 'condiciones' | 'planes' | null) => rpc<void>('fijar_destino_formato', { p_plantilla: plantilla, p_destino: destino })
 export const guardarPlantilla = (id: string, datos: { nombre: string; descripcion: string | null; frecuencia: Frecuencia }) =>
   rpc<void>('guardar_plantilla', { p_plantilla: id, p_datos: datos })
 export const cambiarVigenciaPlantilla = (id: string, vigente: boolean) =>

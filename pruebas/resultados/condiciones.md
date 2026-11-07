@@ -1,6 +1,6 @@
 # Prueba de la gestión de condiciones
 
-Fecha: 2026-11-05 · crc-dev · empresa ficticia D.
+Fecha: 2026-11-07 · crc-dev · empresa ficticia D.
 
 ## 1. El estado se calcula con las fechas
 

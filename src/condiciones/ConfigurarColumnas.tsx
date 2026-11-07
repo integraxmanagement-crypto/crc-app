@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { type CambioColumnas, cambiarColumnas, proponerCambioColumnas, propuestasPendientes } from './datos'
 import { TarjetasConfig } from './TarjetasConfig'
-import { BASE_CAMBIA_TIPO, type Columna, NOMBRE_TIPO, type Tarjeta, TIPOS_NUEVA, esAutomatica } from './reglas'
+import { BASE_CAMBIA_TIPO, type Columna, type Matriz, NOMBRE_TIPO, type Tarjeta, TIPOS_NUEVA, esAutomatica } from './reglas'
 
 type Borrador = { clave: string | null; nombre: string; tipo: string; opciones: string; obligatoria: boolean }
 const NUEVA: Borrador = { clave: null, nombre: '', tipo: 'texto', opciones: '', obligatoria: false }
@@ -13,7 +13,7 @@ const TIPOS_BASE_EDITABLES: [string, string][] = [['texto', 'Letras (texto libre
  * Configuración de las columnas de la matriz (por sede). El administrador general o de sede cambia directo; el gestor propone y un administrador
  * aprueba o deniega desde «Solicitudes». Las columnas base no se eliminan (se ocultan). Eliminar una columna agregada borra sus datos de esa sede.
  */
-export function ConfigurarColumnas({ sedeId, columnas, tarjetas, esAdmin, online, onCambio }: { sedeId: string; columnas: Columna[]; tarjetas: Tarjeta[]; esAdmin: boolean; online: boolean; onCambio: () => Promise<void> }) {
+export function ConfigurarColumnas({ sedeId, matriz, columnas, tarjetas, esAdmin, online, onCambio }: { sedeId: string; matriz: Matriz; columnas: Columna[]; tarjetas: Tarjeta[]; esAdmin: boolean; online: boolean; onCambio: () => Promise<void> }) {
   const [borrador, setBorrador] = useState<Borrador | null>(null)
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -32,10 +32,10 @@ export function ConfigurarColumnas({ sedeId, columnas, tarjetas, esAdmin, online
     setOcupado(true)
     try {
       if (esAdmin) {
-        await cambiarColumnas(sedeId, cambio)
+        await cambiarColumnas(sedeId, cambio, matriz)
         setAviso('Cambio hecho.')
       } else {
-        await proponerCambioColumnas(sedeId, cambio, motivo.trim())
+        await proponerCambioColumnas(sedeId, cambio, motivo.trim(), matriz)
         setAviso('Propuesta enviada. Un administrador la aprobará o la denegará; hasta entonces la matriz sigue igual.')
         setMotivo('')
       }
@@ -144,7 +144,7 @@ export function ConfigurarColumnas({ sedeId, columnas, tarjetas, esAdmin, online
           </div>
         </form>
       )}
-      {esAdmin && <TarjetasConfig sedeId={sedeId} columnas={columnas} tarjetas={tarjetas} online={online} onCambio={onCambio} />}
+      {esAdmin && <TarjetasConfig sedeId={sedeId} matriz={matriz} columnas={columnas} tarjetas={tarjetas} online={online} onCambio={onCambio} />}
     </Seccion>
   )
 }

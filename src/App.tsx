@@ -257,7 +257,10 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
   }
   // Gestión de condiciones: administrador general, administrador de sede y gestor (la base de datos decide lo que cada uno hace).
   if (ruta[0] === 'condiciones' && perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? ''))
-    return <Condiciones cuenta={perfil.id} empresaId={perfil.empresaId} sedes={perfil.sedes} rolCodigo={perfil.rolCodigo ?? ''} online={online} />
+    return <Condiciones key="condiciones" cuenta={perfil.id} empresaId={perfil.empresaId} sedes={perfil.sedes} rolCodigo={perfil.rolCodigo ?? ''} online={online} />
+  // Gestión de planes de acción: la misma pantalla con la matriz de planes (06/11/2026).
+  if (ruta[0] === 'planes' && perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? ''))
+    return <Condiciones key="planes" matriz="planes" cuenta={perfil.id} empresaId={perfil.empresaId} sedes={perfil.sedes} rolCodigo={perfil.rolCodigo ?? ''} online={online} />
   if (ruta[0] === 'hallazgos' && perfil.empresaId)
     return <Hallazgos key={ruta[1] ?? 'todos'} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} inspeccionId={ruta[1]} />
   if ((ruta[0] === 'formatos' || ruta[0] === 'activos') && esEquipoSso(perfil) && perfil.empresaId) {

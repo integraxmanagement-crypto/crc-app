@@ -2,13 +2,13 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { guardarTarjeta, quitarTarjeta } from './datos'
-import type { Columna, Tarjeta } from './reglas'
+import type { Columna, Matriz, Tarjeta } from './reglas'
 
 const OPERADORES: [string, string][] = [['vacia', 'está vacía (sin dato)'], ['igual', 'es igual a'], ['distinto', 'es distinta de']]
 const NOMBRE_ESTADOS: [string, string][] = [['pendiente', 'Pendiente'], ['atrasado', 'Atrasado'], ['dentro_plazo', 'Realizado dentro de plazo'], ['fuera_plazo', 'Realizado fuera de plazo']]
 
 /** Tarjetas del encabezado de la matriz: cuentan las condiciones según una columna. Las dos fijas no se cambian. Solo administradores. */
-export function TarjetasConfig({ sedeId, columnas, tarjetas, online, onCambio }: { sedeId: string; columnas: Columna[]; tarjetas: Tarjeta[]; online: boolean; onCambio: () => Promise<void> }) {
+export function TarjetasConfig({ sedeId, matriz, columnas, tarjetas, online, onCambio }: { sedeId: string; matriz: Matriz; columnas: Columna[]; tarjetas: Tarjeta[]; online: boolean; onCambio: () => Promise<void> }) {
   const [abierto, setAbierto] = useState(false)
   const [t, setT] = useState({ id: null as string | null, titulo: '', columna: '', operador: 'vacia', valor: '' })
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +57,7 @@ export function TarjetasConfig({ sedeId, columnas, tarjetas, online, onCambio }:
         </div>
       )}
       {abierto && (
-        <form className="subform" onSubmit={(e) => { e.preventDefault(); void hacer(() => guardarTarjeta(sedeId, t.id, { titulo: t.titulo, columna: t.columna, operador: t.operador, valor: t.operador === 'vacia' ? null : t.valor })) }}>
+        <form className="subform" onSubmit={(e) => { e.preventDefault(); void hacer(() => guardarTarjeta(sedeId, t.id, { titulo: t.titulo, columna: t.columna, operador: t.operador, valor: t.operador === 'vacia' ? null : t.valor }, matriz)) }}>
           <label className="field"><span>Título de la tarjeta</span><input type="text" maxLength={80} value={t.titulo} onChange={(e) => setT({ ...t, titulo: e.target.value })} /></label>
           <label className="field"><span>Columna</span>
             <select value={t.columna} onChange={(e) => setT({ ...t, columna: e.target.value, valor: '' })}>

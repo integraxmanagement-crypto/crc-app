@@ -3735,7 +3735,9 @@ input[type='radio'] {
   min-width: 8rem;
   vertical-align: top;
 }
-.tabla-condiciones td:nth-child(5) {
+.tabla-condiciones:not(.tabla-planes) td:nth-child(5),
+.tabla-planes td:nth-child(2),
+.tabla-planes td:nth-child(5) {
   min-width: 16rem;
 }
 fieldset.field {

@@ -16,7 +16,7 @@ import {
 } from './datos'
 import { type CacheSede, type Pendiente, guardarCache, guardarPendiente, leerCache, pendientesDe } from './local'
 import {
-  type Columna, type EstadoCondicion, NOMBRE_ESTADO_CONDICION, type Tarjeta, cumpleTarjeta, esAutomatica, estadoDe, faltantes, textoDe, valorDe,
+  type Columna, type EstadoCondicion, type Matriz, NOMBRE_ESTADO_CONDICION, RESPONSABLE_QUE_CARGA, TEXTOS, type Tarjeta, cumpleTarjeta, esAutomatica, estadoDe, faltantes, textoDe, valorDe,
 } from './reglas'
 
 const fechaCorta = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
@@ -45,7 +45,8 @@ function filaDePendiente(p: Pendiente, columnas: Columna[], personas: Persona[],
  * administrador de sede y el gestor. Los administradores configuran las columnas y las tarjetas; el gestor propone y un administrador decide.
  * Funciona sin señal: la matriz se ve desde la copia del equipo y lo que se carga espera, como borrador, hasta que haya señal.
  */
-export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online }: { cuenta: string; empresaId: string; sedes: { id: string; nombre: string }[]; rolCodigo: string; online: boolean }) {
+export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online, matriz = 'condiciones' }: { cuenta: string; empresaId: string; sedes: { id: string; nombre: string }[]; rolCodigo: string; online: boolean; matriz?: Matriz }) {
+  const textos = TEXTOS[matriz]
   const activa = useSedeActiva()
   const [elegida, setElegida] = useState('')
   const sedeId = [elegida, activa].find((x) => sedes.some((s) => s.id === x)) ?? sedes[0]?.id ?? ''
@@ -59,35 +60,35 @@ export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online }: { c
   const [aviso, setAviso] = useState<string | null>(null)
   const sede = sedes.find((s) => s.id === sedeId)
   const esAdmin = rolCodigo === 'admin_empresa' || rolCodigo === 'admin_sede'
-  const datos = cargado?.sede_id === sedeId ? cargado : null
+  const datos = cargado?.sede_id === sedeId && cargado.matriz === matriz ? cargado : null
 
-  const recargarPendientes = useCallback(() => pendientesDe(cuenta, sedeId).then(setPendientes), [cuenta, sedeId])
+  const recargarPendientes = useCallback(() => pendientesDe(cuenta, sedeId, matriz).then(setPendientes), [cuenta, sedeId, matriz])
 
   const cargar = useCallback(() => {
     if (!sedeId) return Promise.resolve()
     if (!online) {
-      return leerCache(cuenta, sedeId).then((c) => {
+      return leerCache(cuenta, sedeId, matriz).then((c) => {
         if (c) setCargado({ ...c, desde_servidor: false })
         else setError('Abre esta sección una vez con señal para poder usarla sin señal.')
         return recargarPendientes()
       })
     }
     return enviarPendientes(cuenta)
-      .then((r) => { if (r.enviadas) setAviso(`Se enviaron ${r.enviadas} ${r.enviadas === 1 ? 'condición cargada' : 'condiciones cargadas'} sin señal.`) })
+      .then((r) => { if (r.enviadas) setAviso(`Se enviaron ${r.enviadas} ${r.enviadas === 1 ? textos.una : textos.unas} cargados sin señal.`) })
       .catch(() => {})
-      .then(() => leerColumnas(sedeId))
-      .then((columnas) => Promise.all([listarCondiciones(sedeId), personasDeSede(sedeId), leerTarjetas(sedeId), leerUnidades(empresaId).catch(() => [] as Unidad[])]).then(([filas, personas, tarjetas, unidades]) => {
-        const c = { cuenta, sede_id: sedeId, empresa_id: empresaId, guardado_en: new Date().toISOString(), columnas, tarjetas, filas, personas, unidades }
+      .then(() => leerColumnas(sedeId, matriz))
+      .then((columnas) => Promise.all([listarCondiciones(sedeId, matriz), personasDeSede(sedeId), leerTarjetas(sedeId, matriz), leerUnidades(empresaId).catch(() => [] as Unidad[])]).then(([filas, personas, tarjetas, unidades]) => {
+        const c = { cuenta, matriz, sede_id: sedeId, empresa_id: empresaId, guardado_en: new Date().toISOString(), columnas, tarjetas, filas, personas, unidades }
         setCargado({ ...c, desde_servidor: true })
         setError(null)
         void guardarCache(c)
       }))
       .catch((e) => {
-        if (esFalloDeRed(e)) return leerCache(cuenta, sedeId).then((c) => { if (c) setCargado({ ...c, desde_servidor: false }); else setError((e as Error).message) })
+        if (esFalloDeRed(e)) return leerCache(cuenta, sedeId, matriz).then((c) => { if (c) setCargado({ ...c, desde_servidor: false }); else setError((e as Error).message) })
         setError((e as Error).message)
       })
       .then(() => recargarPendientes())
-  }, [sedeId, online, cuenta, empresaId, recargarPendientes])
+  }, [sedeId, online, cuenta, empresaId, matriz, textos, recargarPendientes])
   useEffect(() => {
     void cargar()
   }, [cargar])
@@ -111,8 +112,8 @@ export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online }: { c
   return (
     <div className="detalle">
       <header className="detalle-cab">
-        <h1>Gestión de condiciones</h1>
-        <p>Matriz de condiciones de la sede: cárgalas, dales plazo y sigue su cierre.</p>
+        <h1>{textos.titulo}</h1>
+        <p>{textos.subtitulo}</p>
       </header>
       {sedes.length > 1 && (
         <label className="field">
@@ -143,7 +144,7 @@ export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online }: { c
           </div>
           <div className="filtros" role="group" aria-label="Qué quieres hacer">
             <button type="button" aria-pressed={vista === 'tabla'} onClick={() => { setVista('tabla'); setEditando(null) }}><Table2 size={16} aria-hidden="true" /> Matriz</button>
-            <button type="button" aria-pressed={vista === 'nueva'} onClick={() => { setEditando(null); setVista('nueva'); setAviso(null) }}><Plus size={16} aria-hidden="true" /> Nueva condición</button>
+            <button type="button" aria-pressed={vista === 'nueva'} onClick={() => { setEditando(null); setVista('nueva'); setAviso(null) }}><Plus size={16} aria-hidden="true" /> {textos.nueva}</button>
             <button type="button" aria-pressed={vista === 'configurar'} onClick={() => setVista('configurar')}><Settings size={16} aria-hidden="true" /> {esAdmin ? 'Configurar columnas y tarjetas' : 'Proponer cambios a las columnas'}</button>
           </div>
 
@@ -155,12 +156,12 @@ export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online }: { c
                   <button key={e} type="button" aria-pressed={filtro?.tipo === 'estado' && filtro.valor === e} onClick={() => setFiltro({ tipo: 'estado', valor: e })}>{NOMBRE_ESTADO_CONDICION[e]} ({cuentaEstado(e)})</button>
                 ))}
               </div>
-              <p className="nota"><span className="marca-obligatoria" aria-hidden="true">*</span> Columna obligatoria al cargar una condición. Una condición incompleta queda como borrador.</p>
+              <p className="nota"><span className="marca-obligatoria" aria-hidden="true">*</span> Columna obligatoria al cargar. Si falta algo obligatorio, queda como borrador.</p>
               {mostradas.length === 0 ? (
-                <p className="nota">{filas.length ? 'No hay condiciones con ese filtro.' : `Todavía no hay condiciones en ${sede?.nombre ?? 'esta sede'}. Pulsa «Nueva condición».`}</p>
+                <p className="nota">{filas.length ? 'No hay condiciones con ese filtro.' : `Todavía no hay ${textos.unas} en ${sede?.nombre ?? 'esta sede'}. Pulsa «${textos.nueva}».`}</p>
               ) : (
                 <div className="tabla-scroll">
-                  <table className="tabla tabla-condiciones">
+                  <table className={`tabla tabla-condiciones${matriz === 'planes' ? ' tabla-planes' : ''}`}>
                     <thead>
                       <tr>
                         {visibles.map((c) => (
@@ -190,13 +191,13 @@ export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online }: { c
           )}
 
           {vista === 'nueva' && (
-            <Formulario key={editando?.id ?? 'nueva'} sedeId={sedeId} empresaId={empresaId} cuenta={cuenta} columnas={columnas} personas={datos.personas} unidades={datos.unidades} online={online} editando={editando}
+            <Formulario key={editando?.id ?? 'nueva'} matriz={matriz} sedeId={sedeId} empresaId={empresaId} cuenta={cuenta} columnas={columnas} personas={datos.personas} unidades={datos.unidades} online={online} editando={editando}
               onListo={async (m) => { setAviso(m); setEditando(null); setVista('tabla'); await cargar() }}
               onUnidades={() => leerUnidades(empresaId).then((u) => setCargado((c) => (c ? { ...c, unidades: u } : c)), () => {})}
               onCancelar={() => { setEditando(null); setVista('tabla') }} />
           )}
 
-          {vista === 'configurar' && <ConfigurarColumnas sedeId={sedeId} columnas={columnas} tarjetas={datos.tarjetas} esAdmin={esAdmin} online={online} onCambio={cargar} />}
+          {vista === 'configurar' && <ConfigurarColumnas sedeId={sedeId} matriz={matriz} columnas={columnas} tarjetas={datos.tarjetas} esAdmin={esAdmin} online={online} onCambio={cargar} />}
         </>
       )}
 
@@ -257,7 +258,7 @@ function Celda({ c, f, estado, alCerrar }: { c: Columna; f: Fila; estado: Estado
     const v = valorDe(f, c.clave)
     return <>{typeof v === 'string' && v ? fechaCorta(v) : ''}</>
   }
-  if (c.tipo === 'persona') return <>{String(f.datos[`${c.clave}_nombre`] ?? (c.clave === 'resp_inspeccion' ? f.creado_por_nombre : ''))}</>
+  if (c.tipo === 'persona') return <>{String(f.datos[`${c.clave}_nombre`] ?? (RESPONSABLE_QUE_CARGA.includes(c.clave) ? f.creado_por_nombre : ''))}</>
   if (c.tipo === 'foto') {
     const ruta = f.datos[c.clave]
     if (typeof ruta !== 'string') return null
@@ -279,15 +280,17 @@ function Celda({ c, f, estado, alCerrar }: { c: Columna; f: Fila; estado: Estado
   return <>{textoDe(valorDe(f, c.clave), c.tipo)}</>
 }
 
-function Formulario({ sedeId, empresaId, cuenta, columnas, personas, unidades, online, editando, onListo, onUnidades, onCancelar }: {
-  sedeId: string; empresaId: string; cuenta: string; columnas: Columna[]; personas: Persona[]; unidades: Unidad[]; online: boolean; editando: Fila | null
+function Formulario({ matriz, sedeId, empresaId, cuenta, columnas, personas, unidades, online, editando, onListo, onUnidades, onCancelar }: {
+  matriz: Matriz; sedeId: string; empresaId: string; cuenta: string; columnas: Columna[]; personas: Persona[]; unidades: Unidad[]; online: boolean; editando: Fila | null
   onListo: (mensaje: string) => Promise<void>; onUnidades: () => void; onCancelar: () => void
 }) {
+  const textos = TEXTOS[matriz]
   const [id] = useState(() => editando?.id ?? crypto.randomUUID())
   const [valores, setValores] = useState<Record<string, unknown>>(() => {
     if (!editando) {
       const yo = personas.find((p) => p.id === cuenta)
-      return { fecha_hallazgo: hoyLocal(), ...(yo ? { resp_inspeccion: yo.id, resp_inspeccion_nombre: yo.nombre } : {}) }
+      const quien = columnas.find((c) => RESPONSABLE_QUE_CARGA.includes(c.clave))?.clave
+      return { fecha_hallazgo: hoyLocal(), ...(yo && quien ? { [quien]: yo.id, [`${quien}_nombre`]: yo.nombre } : {}) }
     }
     const v: Record<string, unknown> = { ...editando.datos }
     for (const k of ['fecha_hallazgo', 'fecha_programada'] as const) v[k] = editando[k] ?? ''
@@ -308,14 +311,14 @@ function Formulario({ sedeId, empresaId, cuenta, columnas, personas, unidades, o
     const envio: Record<string, unknown> = { ...valores }
     setOcupado(true)
     const alEquipo = async () => {
-      await guardarPendiente({ id, cuenta, sede_id: sedeId, empresa_id: empresaId, valores: envio, creado_en: new Date().toISOString() }, foto)
-      await onListo(`Guardada en este equipo como borrador${faltan.length ? ` (falta: ${faltan.join(', ')})` : ''}. Se enviará cuando haya señal.`)
+      await guardarPendiente({ id, cuenta, matriz, sede_id: sedeId, empresa_id: empresaId, valores: envio, creado_en: new Date().toISOString() }, foto)
+      await onListo(`Guardado en este equipo como borrador${faltan.length ? ` (falta: ${faltan.join(', ')})` : ''}. Se enviará cuando haya señal.`)
     }
     try {
       if (!online) return await alEquipo()
       for (const c of visibles) if (c.tipo === 'foto' && foto[c.clave]) envio[c.clave] = await subirFotoCondicion(empresaId, id, foto[c.clave])
-      await guardarCondicion(id, sedeId, envio, faltan.length > 0)
-      await onListo(faltan.length ? `Guardada como borrador. Falta: ${faltan.join(', ')}.` : editando ? 'Condición actualizada.' : 'Condición guardada.')
+      await guardarCondicion(id, sedeId, envio, faltan.length > 0, matriz)
+      await onListo(faltan.length ? `Guardado como borrador. Falta: ${faltan.join(', ')}.` : editando ? 'Cambios guardados.' : 'Guardado.')
     } catch (e) {
       if (esFalloDeRed(e)) {
         try { return await alEquipo() } catch (e2) { setError((e2 as Error).message) }
@@ -326,15 +329,15 @@ function Formulario({ sedeId, empresaId, cuenta, columnas, personas, unidades, o
 
   return (
     <form className="subform" noValidate onSubmit={(e) => { e.preventDefault(); void guardar() }}>
-      <h2>{editando ? (editando.borrador ? 'Completar condición' : 'Editar condición') : 'Nueva condición'}</h2>
-      <p className="nota"><span className="marca-obligatoria" aria-hidden="true">*</span> Obligatorio. Si dejas algo obligatorio sin completar, la condición se guarda como borrador y requiere atención. La fecha de cierre se pone después, con «Validar cierre».</p>
+      <h2>{editando ? (editando.borrador ? `Completar ${textos.una}` : `Editar ${textos.una}`) : textos.nueva}</h2>
+      <p className="nota"><span className="marca-obligatoria" aria-hidden="true">*</span> Obligatorio. Si dejas algo obligatorio sin completar, se guarda como borrador y requiere atención. La fecha de cierre se pone después, con «Validar cierre».</p>
       {visibles.map((c) => (
         <Campo key={c.clave} c={c} valor={valores[c.clave]} valores={valores} personas={personas} unidades={unidades} empresaId={empresaId} online={online} foto={foto[c.clave]}
           onValor={(v) => poner(c.clave, v)} onVarios={(p) => setValores((v) => ({ ...v, ...p }))} onFoto={(b) => setFoto((f) => ({ ...f, [c.clave]: b }))} onError={setError} onUnidades={onUnidades} />
       ))}
       <Aviso>{error}</Aviso>
       <div className="acciones">
-        <button className="btn" type="submit" disabled={ocupado}>{ocupado ? 'Guardando…' : 'Guardar condición'}</button>
+        <button className="btn" type="submit" disabled={ocupado}>{ocupado ? 'Guardando…' : `Guardar ${textos.una}`}</button>
         <button className="btn-sec" type="button" disabled={ocupado} onClick={onCancelar}>Cancelar</button>
       </div>
     </form>

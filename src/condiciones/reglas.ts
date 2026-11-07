@@ -107,3 +107,13 @@ export function cumpleTarjeta(t: Pick<Tarjeta, 'columna' | 'operador' | 'valor'>
   const w = norm(t.valor ?? '')
   return t.operador === 'igual' ? v === w : v !== w
 }
+
+// ───────────── Las dos matrices: condiciones y planes de acción ─────────────
+export type Matriz = 'condiciones' | 'planes'
+/** Textos de cada matriz (la pantalla es la misma; cambian las palabras). */
+export const TEXTOS: Record<Matriz, { titulo: string; subtitulo: string; una: string; unas: string; nueva: string; ruta: string; menu: string }> = {
+  condiciones: { titulo: 'Gestión de condiciones', subtitulo: 'Matriz de condiciones de la sede: cárgalas, dales plazo y sigue su cierre.', una: 'condición', unas: 'condiciones', nueva: 'Nueva condición', ruta: '/condiciones', menu: 'Gestión de condiciones' },
+  planes: { titulo: 'Gestión de planes de acción', subtitulo: 'Matriz de planes de acción de la sede: llegan solos de las inspecciones y también puedes cargarlos; sigue su cierre.', una: 'plan de acción', unas: 'planes de acción', nueva: 'Nuevo plan de acción', ruta: '/planes', menu: 'Gestión de planes de acción' },
+}
+/** Columnas de persona que se llenan solas con quien carga. */
+export const RESPONSABLE_QUE_CARGA = ['resp_inspeccion', 'resp_acr']

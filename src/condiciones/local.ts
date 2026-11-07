@@ -4,11 +4,12 @@
 import { borrar, guardar, leer, todos } from '../inspecciones/almacen'
 import type { Unidad } from '../usuarios/datos'
 import type { Condicion } from './datos'
-import type { Columna, Tarjeta } from './reglas'
+import type { Columna, Matriz, Tarjeta } from './reglas'
 
 export type CacheSede = {
   id: string
   cuenta: string
+  matriz: Matriz
   sede_id: string
   guardado_en: string
   columnas: Columna[]
@@ -22,6 +23,7 @@ export type CacheSede = {
 export type Pendiente = {
   id: string
   cuenta: string
+  matriz?: Matriz
   sede_id: string
   empresa_id: string
   valores: Record<string, unknown>
@@ -31,12 +33,12 @@ export type Pendiente = {
   error?: string
 }
 
-const idCache = (cuenta: string, sede: string) => `cond-cache:${cuenta}:${sede}`
+const idCache = (cuenta: string, sede: string, matriz: Matriz) => `cond-cache:${cuenta}:${sede}:${matriz}`
 const idPend = (id: string) => `cond-pend:${id}`
 const idFoto = (id: string, clave: string) => `cond-foto:${id}:${clave}`
 
-export const leerCache = (cuenta: string, sede: string) => leer<CacheSede>('datos', idCache(cuenta, sede)).catch(() => undefined)
-export const guardarCache = (c: Omit<CacheSede, 'id'>) => guardar('datos', { ...c, id: idCache(c.cuenta, c.sede_id) }).catch(() => undefined)
+export const leerCache = (cuenta: string, sede: string, matriz: Matriz = 'condiciones') => leer<CacheSede>('datos', idCache(cuenta, sede, matriz)).catch(() => undefined)
+export const guardarCache = (c: Omit<CacheSede, 'id'>) => guardar('datos', { ...c, id: idCache(c.cuenta, c.sede_id, c.matriz) }).catch(() => undefined)
 
 export async function guardarPendiente(p: Omit<Pendiente, 'fotos'>, fotos: Record<string, Blob>) {
   const ids: Record<string, string> = {}
@@ -47,10 +49,10 @@ export async function guardarPendiente(p: Omit<Pendiente, 'fotos'>, fotos: Recor
   }
   await guardar('datos', { ...p, fotos: ids, id: idPend(p.id) })
 }
-export async function pendientesDe(cuenta: string, sede: string): Promise<Pendiente[]> {
+export async function pendientesDe(cuenta: string, sede: string, matriz: Matriz = 'condiciones'): Promise<Pendiente[]> {
   try {
     return (await todos<Pendiente & { id: string }>('datos'))
-      .filter((x) => x.id.startsWith('cond-pend:') && x.cuenta === cuenta && x.sede_id === sede)
+      .filter((x) => x.id.startsWith('cond-pend:') && x.cuenta === cuenta && x.sede_id === sede && (x.matriz ?? 'condiciones') === matriz)
       .map((x) => ({ ...x, id: x.id.slice('cond-pend:'.length) }))
       .sort((a, b) => b.creado_en.localeCompare(a.creado_en))
   } catch {

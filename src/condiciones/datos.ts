@@ -1,7 +1,7 @@
 // Gestión de condiciones (05/11/2026): lectura con las reglas RLS de la sede y escritura solo con las acciones de la base de datos.
 import { SIN_RESPUESTA, conLimite, db, mensaje, rpc } from '../empresas/datos'
 import { solicitarCambio } from '../solicitudes/datos'
-import type { Columna, Fila, Tarjeta } from './reglas'
+import type { Columna, Fila, Matriz, Tarjeta } from './reglas'
 import { type Pendiente, leerFoto, marcarErrorPendiente, quitarPendiente, todosLosPendientes } from './local'
 
 export type Condicion = Fila & {
@@ -13,9 +13,9 @@ export type Condicion = Fila & {
   borrador: boolean
 }
 export type CambioColumnas =
-  | { operacion: 'agregar'; nombre: string; tipo: string; opciones?: string[]; obligatoria?: boolean }
-  | { operacion: 'modificar'; clave: string; nombre?: string; tipo?: string; opciones?: string[]; obligatoria?: boolean }
-  | { operacion: 'ocultar' | 'mostrar' | 'eliminar'; clave: string }
+  | { operacion: 'agregar'; nombre: string; tipo: string; opciones?: string[]; obligatoria?: boolean; matriz?: Matriz }
+  | { operacion: 'modificar'; clave: string; nombre?: string; tipo?: string; opciones?: string[]; obligatoria?: boolean; matriz?: Matriz }
+  | { operacion: 'ocultar' | 'mostrar' | 'eliminar'; clave: string; matriz?: Matriz }
 
 async function leer<T>(q: PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>): Promise<T> {
   const { data, error } = await q
@@ -24,24 +24,24 @@ async function leer<T>(q: PromiseLike<{ data: unknown; error: { message: string;
 }
 
 /** Crea las columnas base de la sede si es la primera vez y devuelve la configuración. */
-export async function leerColumnas(sedeId: string): Promise<Columna[]> {
-  await rpc<void>('preparar_condiciones', { p_sede: sedeId })
-  return leer<Columna[]>(conLimite(db().from('condiciones_columnas').select('id, clave, nombre, tipo, opciones, obligatoria, visible, orden, es_base').eq('sede_id', sedeId).order('orden')))
+export async function leerColumnas(sedeId: string, matriz: Matriz = 'condiciones'): Promise<Columna[]> {
+  await rpc<void>('preparar_condiciones', { p_sede: sedeId, p_matriz: matriz })
+  return leer<Columna[]>(conLimite(db().from('condiciones_columnas').select('id, clave, nombre, tipo, opciones, obligatoria, visible, orden, es_base').eq('sede_id', sedeId).eq('matriz', matriz).order('orden')))
 }
-export const listarCondiciones = (sedeId: string) =>
-  leer<Condicion[]>(conLimite(db().from('condiciones').select('id, sede_id, fecha_hallazgo, fecha_programada, fecha_cierre, datos, creado_por, creado_por_nombre, creado_en, borrador').eq('sede_id', sedeId).order('fecha_hallazgo', { ascending: false }).order('creado_en', { ascending: false }).limit(1000)))
+export const listarCondiciones = (sedeId: string, matriz: Matriz = 'condiciones') =>
+  leer<Condicion[]>(conLimite(db().from('condiciones').select('id, sede_id, fecha_hallazgo, fecha_programada, fecha_cierre, datos, creado_por, creado_por_nombre, creado_en, borrador, hallazgo_id').eq('sede_id', sedeId).eq('matriz', matriz).order('fecha_hallazgo', { ascending: false }).order('creado_en', { ascending: false }).limit(1000)))
 export const personasDeSede = (sedeId: string) => rpc<{ id: string; nombre: string }[]>('personas_de_sede', { p_sede: sedeId })
 
-export const guardarCondicion = (id: string, sedeId: string, datos: Record<string, unknown>, borrador = false) =>
-  rpc<string>('guardar_condicion', { p_id: id, p_sede: sedeId, p_datos: datos, p_borrador: borrador })
+export const guardarCondicion = (id: string, sedeId: string, datos: Record<string, unknown>, borrador = false, matriz: Matriz = 'condiciones') =>
+  rpc<string>('guardar_condicion', { p_id: id, p_sede: sedeId, p_datos: datos, p_borrador: borrador, p_matriz: matriz })
 
 /** Pone la fecha de cierre de una condición ya completa. */
 export const validarCierre = (id: string, fecha: string) => rpc<void>('validar_cierre_condicion', { p_id: id, p_fecha: fecha })
 
-export const leerTarjetas = (sedeId: string) =>
-  leer<Tarjeta[]>(conLimite(db().from('condiciones_tarjetas').select('id, sede_id, titulo, columna, operador, valor, fija, orden').eq('sede_id', sedeId).order('orden')))
-export const guardarTarjeta = (sedeId: string, id: string | null, t: { titulo: string; columna: string; operador: string; valor: string | null }) =>
-  rpc<string>('guardar_tarjeta_condicion', { p_sede: sedeId, p_id: id, p_titulo: t.titulo, p_columna: t.columna, p_operador: t.operador, p_valor: t.valor })
+export const leerTarjetas = (sedeId: string, matriz: Matriz = 'condiciones') =>
+  leer<Tarjeta[]>(conLimite(db().from('condiciones_tarjetas').select('id, sede_id, titulo, columna, operador, valor, fija, orden').eq('sede_id', sedeId).eq('matriz', matriz).order('orden')))
+export const guardarTarjeta = (sedeId: string, id: string | null, t: { titulo: string; columna: string; operador: string; valor: string | null }, matriz: Matriz = 'condiciones') =>
+  rpc<string>('guardar_tarjeta_condicion', { p_sede: sedeId, p_id: id, p_titulo: t.titulo, p_columna: t.columna, p_operador: t.operador, p_valor: t.valor, p_matriz: matriz })
 export const quitarTarjeta = (id: string) => rpc<void>('quitar_tarjeta_condicion', { p_id: id })
 
 /** ¿Es un fallo de señal (conviene reintentar luego) y no un rechazo del servidor? */
@@ -60,7 +60,7 @@ export async function enviarPendientes(cuenta: string): Promise<{ enviadas: numb
         const blob = await leerFoto(fid)
         if (blob) valores[clave] = await subirFotoCondicion(p.empresa_id, p.id, blob)
       }
-      await guardarCondicion(p.id, p.sede_id, valores, true)
+      await guardarCondicion(p.id, p.sede_id, valores, true, p.matriz ?? 'condiciones')
       await quitarPendiente(p)
       enviadas++
     } catch (e) {
@@ -89,9 +89,9 @@ export async function enlaceFotoCondicion(ruta: string) {
 }
 
 /** El administrador cambia las columnas directo. */
-export const cambiarColumnas = (sedeId: string, cambio: CambioColumnas) => rpc<void>('cambiar_columnas_condiciones', { p_sede: sedeId, p_cambio: cambio })
+export const cambiarColumnas = (sedeId: string, cambio: CambioColumnas, matriz: Matriz = 'condiciones') => rpc<void>('cambiar_columnas_condiciones', { p_sede: sedeId, p_cambio: { ...cambio, matriz } })
 /** El gestor propone el cambio; un administrador lo aprueba o lo deniega desde «Solicitudes». */
-export const proponerCambioColumnas = (sedeId: string, cambio: CambioColumnas, motivo: string) => solicitarCambio('cambio_columnas_condiciones', sedeId, cambio as unknown as Record<string, unknown>, motivo)
+export const proponerCambioColumnas = (sedeId: string, cambio: CambioColumnas, motivo: string, matriz: Matriz = 'condiciones') => solicitarCambio('cambio_columnas_condiciones', sedeId, { ...cambio, matriz } as unknown as Record<string, unknown>, motivo)
 /** ¿Ya hay una propuesta de columnas esperando respuesta en esta sede? */
 export async function propuestasPendientes(sedeId: string): Promise<number> {
   const { count } = await db().from('solicitudes_cambio').select('id', { count: 'exact', head: true }).eq('tipo', 'cambio_columnas_condiciones').eq('objetivo_id', sedeId).eq('estado', 'pendiente')

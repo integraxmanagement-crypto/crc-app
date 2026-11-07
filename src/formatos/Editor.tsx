@@ -7,7 +7,7 @@ import { ir } from '../ruta'
 import { hayPendiente, solicitarCambio } from '../solicitudes/datos'
 import {
   type Lista, type Logo, NOMBRE_ESTADO, NOMBRE_FRECUENCIA, type Plantilla, type TipoActivo, type Version, cambiarVigenciaPlantilla,
-  descartarBorrador, guardarBorrador, guardarPlantilla, leerPlantilla, listarListas, listarTipos, listarTiposBase, nuevoBorrador,
+  descartarBorrador, fijarDestinoFormato, guardarBorrador, guardarPlantilla, leerPlantilla, listarListas, listarTipos, listarTiposBase, nuevoBorrador,
   publicarVersion,
 } from './datos'
 import type { Rutas } from './Formatos'
@@ -368,6 +368,39 @@ export function Editor({
   )
 }
 
+/** A dónde van los hallazgos de este formato: gestión de condiciones o gestión de planes de acción (06/11/2026). */
+function DestinoHallazgos({ plantilla, puedeCambiar, onCambio }: { plantilla: Plantilla; puedeCambiar: boolean; onCambio: () => void }) {
+  const [error, setError] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const valor = plantilla.destino_hallazgos ?? ''
+  async function cambiar(v: string) {
+    setError(null)
+    setOcupado(true)
+    try {
+      await fijarDestinoFormato(plantilla.id, v === '' ? null : (v as 'condiciones' | 'planes'))
+      onCambio()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+  return (
+    <div className="field">
+      <label>
+        <span>Los hallazgos de este formato van a</span>
+        <select value={valor} disabled={!puedeCambiar || ocupado} onChange={(e) => void cambiar(e.target.value)}>
+          <option value="">Por defecto (el IPF a condiciones; los demás a planes de acción)</option>
+          <option value="condiciones">Gestión de condiciones</option>
+          <option value="planes">Gestión de planes de acción</option>
+        </select>
+      </label>
+      {!puedeCambiar && <small className="ayuda">Lo cambia el administrador general de la empresa.</small>}
+      <Aviso>{error}</Aviso>
+    </div>
+  )
+}
+
 function claveSeccion(r: Receta) {
   for (let n = 1; ; n++) if (!r.secciones.some((s) => s.clave === `seccion-${n}`)) return `seccion-${n}`
 }
@@ -437,6 +470,7 @@ function DatosPlantilla({ plantilla, puedePublicar, solicita, onCambio }: { plan
         Un formato no tiene un período propio: la frecuencia (semanal, mensual…) se define en la actividad del programa anual de SST a la que se vincula (solo el administrador). El nombre y la
         descripción no forman parte de la versión.
       </p>
+      <DestinoHallazgos plantilla={plantilla} puedeCambiar={puedePublicar} onCambio={onCambio} />
       {abierto && (
         <div className="form subform">
           <Campo etiqueta="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={160} />
