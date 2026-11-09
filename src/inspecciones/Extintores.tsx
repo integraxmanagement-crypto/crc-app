@@ -3,7 +3,7 @@ import { InsigniaListo } from '../InsigniaListo'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
 import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FormActivo, FormBaja, useContextoActivos } from '../activos/Activos'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -62,7 +62,10 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   const [ultimas, setUltimas] = useState<Map<string, UltimaInspeccion> | null>(null)
   const [filas, setFilas] = useState<FilaAvance[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [vista, setVista] = useState<Vista>(vistaInicial ?? 'ninguna')
+  // Caseta de ataque rápido (pedido del dueño, 09/11/2026): la pantalla se arma con pestañas estilo navegador.
+  const conPestanas = variante === 'caseta'
+  const [vista, setVista] = useState<Vista>(vistaInicial ?? (conPestanas ? 'inspeccion' : 'ninguna'))
+  const [noopAbierto, setNoopAbierto] = useState(false)
   const [sede, setSede] = useState(copia.sedes[0]?.id ?? '')
   const hoy = hoyLocal()
   // La frecuencia es la del formato (semanal por defecto): con frecuencia mensual, todo se mide por mes, una inspección al mes por extintor.
@@ -116,27 +119,30 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   const porVencer = activos.filter((a) => estadoMantenimiento(a.datos.proximo_mantenimiento, hoy) === 'por_vencer')
   const vencidos = activos.filter((a) => estadoMantenimiento(a.datos.proximo_mantenimiento, hoy) === 'vencido')
   const alternar = (v: Vista) => setVista((x) => (x === v ? 'ninguna' : v))
+  // Con pestañas, «No operativos» se abre dentro de la primera; sin ellas sigue siendo una vista más.
+  const alternarNoop = () => (conPestanas ? setNoopAbierto((x) => !x) : alternar('noop'))
+  const noopVisible = conPestanas ? noopAbierto : vista === 'noop'
 
-  return (
-    <>
-      <Aviso>{error ?? errCtx}</Aviso>
-      <div className="fila2 no-imprimir">
-        {copia.sedes.length > 1 && (
-          <label className="field">
-            <span>Sede</span>
-            <select value={sede} onChange={(e) => setSede(e.target.value)}>
-              {copia.sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
-          </label>
-        )}
+  const filtros = (
+    <div className="fila2 no-imprimir">
+      {copia.sedes.length > 1 && (
         <label className="field">
-          <span>{unPeriodo[0].toUpperCase() + unPeriodo.slice(1)}</span>
-          <select value={semana} onChange={(e) => setSemana(e.target.value)}>
-            {semanas.map((s) => <option key={s.clave} value={s.clave}>{s.etiqueta}</option>)}
+          <span>Sede</span>
+          <select value={sede} onChange={(e) => setSede(e.target.value)}>
+            {copia.sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
         </label>
-      </div>
-
+      )}
+      <label className="field">
+        <span>{unPeriodo[0].toUpperCase() + unPeriodo.slice(1)}</span>
+        <select value={semana} onChange={(e) => setSemana(e.target.value)}>
+          {semanas.map((s) => <option key={s.clave} value={s.clave}>{s.etiqueta}</option>)}
+        </select>
+      </label>
+    </div>
+  )
+  const tarjetas = (
+    <>
       <p className="nota">Cada {N.s} se inspecciona {VEZ[frecuencia]} (frecuencia del formato). El estado de cada equipo se mide en {unPeriodo === 'semana' ? 'la' : 'el'} {unPeriodo} elegid{unPeriodo === 'semana' ? 'a' : 'o'}.</p>
       <div className="tarjetas-ext">
         <div className="tarjeta-ext">
@@ -144,7 +150,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           <b>{pct} %</b>
           <span>{hechos} de {total} {N.p} inspeccionados</span>
         </div>
-        <button type="button" className={`tarjeta-ext ${noOperativos.length ? 'mal' : ''}`} aria-pressed={vista === 'noop'} onClick={() => alternar('noop')}>
+        <button type="button" className={`tarjeta-ext ${noOperativos.length ? 'mal' : ''}`} aria-pressed={noopVisible} onClick={alternarNoop}>
           <small>No operativos</small>
           <b>{noOperativos.length}</b>
           <span>{esExt ? 'punto crítico en X en su última inspección, o algo vencido' : 'punto crítico en X en su última inspección'}</span>
@@ -157,11 +163,91 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           </button>
         )}
       </div>
-
-      {contexto && (
-        <BuscadorExtintor variante={variante} subtipos={subtipos} activos={activos} filas={filas} ultimas={ultimas} formato={formato} contexto={contexto} copia={copia}
-          nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} semanaActual={semanas[0]?.clave === semana} onCambio={() => (cargarActivos(), cargarSemana(), contexto.recargar())} />
+    </>
+  )
+  const buscador = contexto && (
+    <BuscadorExtintor variante={variante} subtipos={subtipos} activos={activos} filas={filas} ultimas={ultimas} formato={formato} contexto={contexto} copia={copia}
+      nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} semanaActual={semanas[0]?.clave === semana} onCambio={() => (cargarActivos(), cargarSemana(), contexto.recargar())} />
+  )
+  const listaNoop = noopVisible && (
+    <Seccion titulo={`No operativos (${noOperativos.length})`}>
+      {!noOperativos.length ? <p className="aviso-ok">Ningún {N.s} está no operativo.</p> : (
+        <ul className="lista">
+          {noOperativos.map((a) => (
+            <li key={a.id}><div><b>{a.codigo}</b><small>{nombreUbic(a.ubicacion_id) || 'Sin ubicación'} · {nombreArea(a.unidad_id) || 'Sin área'} · {motivoNoOp(a)}</small></div></li>
+          ))}
+        </ul>
       )}
+    </Seccion>
+  )
+  const listaVencer = esExt && vista === 'vencer' && (
+    <Seccion titulo={`Por vencer (${porVencer.length})`}>
+      <p className="nota">El mantenimiento vence 1 año después del último. El aviso sale desde el primer día del mes anterior al del vencimiento.</p>
+      {!porVencer.length ? <p className="aviso-ok">Ningún extintor está por vencer.</p> : (
+        <ul className="lista">
+          {porVencer.map((a) => (
+            <li key={a.id}><div><b>{a.codigo}</b><small>{nombreUbic(a.ubicacion_id) || 'Sin ubicación'} · vence {datoDeActivo(a.datos, 'activo.proximo_mantenimiento.mes_texto')}</small></div></li>
+          ))}
+        </ul>
+      )}
+    </Seccion>
+  )
+  const catastro = <Catastro variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />
+  const tabla = <TablaInspeccion activos={activos} filas={filas} formato={formato} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />
+  const planes = <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />
+  const registro = <GenerarRegistro nombreArchivo={esExt ? 'Extintores' : variante === 'caseta' ? 'CAR' : 'DACI'} formato={formato} copia={copia} sede={sede} semanas={semanas} hoy={hoy} cuenta={cuenta} esSemanal={esSemanal} unPeriodo={unPeriodo} conOpcionFirma={conPestanas} />
+
+  if (conPestanas) {
+    const pestanas: { v: Vista; texto: string; icono: ReactNode }[] = [
+      { v: 'inspeccion', texto: 'Realizar inspección', icono: <ClipboardCheck size={16} aria-hidden="true" /> },
+      { v: 'catastro', texto: 'Ver catastro', icono: <Search size={16} aria-hidden="true" /> },
+      { v: 'hallazgos', texto: 'Ver planes de acción', icono: <ListChecks size={16} aria-hidden="true" /> },
+      { v: 'registro', texto: 'Generar registro', icono: <FileSpreadsheet size={16} aria-hidden="true" /> },
+    ]
+    const activa = pestanas.some((p) => p.v === vista) ? vista : 'inspeccion'
+    // Flechas, inicio y fin mueven la pestaña (teclado).
+    const teclas = (e: KeyboardEvent<HTMLDivElement>) => {
+      const i = pestanas.findIndex((p) => p.v === activa)
+      const j = e.key === 'ArrowRight' ? (i + 1) % pestanas.length : e.key === 'ArrowLeft' ? (i + pestanas.length - 1) % pestanas.length : e.key === 'Home' ? 0 : e.key === 'End' ? pestanas.length - 1 : -1
+      if (j < 0) return
+      e.preventDefault()
+      setVista(pestanas[j].v)
+      requestAnimationFrame(() => document.getElementById(`pest-${pestanas[j].v}`)?.focus())
+    }
+    return (
+      <>
+        <Aviso>{error ?? errCtx}</Aviso>
+        <div className="pestanas no-imprimir" role="tablist" aria-label="Secciones de la inspección" onKeyDown={teclas}>
+          {pestanas.map((p) => (
+            <button key={p.v} id={`pest-${p.v}`} type="button" role="tab" aria-selected={activa === p.v} aria-controls="pest-panel" tabIndex={activa === p.v ? 0 : -1} onClick={() => setVista(p.v)}>
+              {p.icono} {p.texto}
+            </button>
+          ))}
+        </div>
+        <div className="pestana-panel" id="pest-panel" role="tabpanel" aria-labelledby={`pest-${activa}`}>
+          {activa === 'inspeccion' && (
+            <>
+              {filtros}
+              {tarjetas}
+              {listaNoop}
+              {buscador}
+              {tabla}
+            </>
+          )}
+          {activa === 'catastro' && catastro}
+          {activa === 'hallazgos' && planes}
+          {activa === 'registro' && registro}
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Aviso>{error ?? errCtx}</Aviso>
+      {filtros}
+      {tarjetas}
+      {buscador}
 
       <div className="acciones no-imprimir">
         <button className="btn-sec" type="button" aria-pressed={vista === 'catastro'} onClick={() => alternar('catastro')}>
@@ -178,37 +264,12 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
         </button>
       </div>
 
-      {vista === 'noop' && (
-        <Seccion titulo={`No operativos (${noOperativos.length})`}>
-          {!noOperativos.length ? <p className="aviso-ok">Ningún {N.s} está no operativo.</p> : (
-            <ul className="lista">
-              {noOperativos.map((a) => (
-                <li key={a.id}><div><b>{a.codigo}</b><small>{nombreUbic(a.ubicacion_id) || 'Sin ubicación'} · {nombreArea(a.unidad_id) || 'Sin área'} · {motivoNoOp(a)}</small></div></li>
-              ))}
-            </ul>
-          )}
-        </Seccion>
-      )}
-      {esExt && vista === 'vencer' && (
-        <Seccion titulo={`Por vencer (${porVencer.length})`}>
-          <p className="nota">El mantenimiento vence 1 año después del último. El aviso sale desde el primer día del mes anterior al del vencimiento.</p>
-          {!porVencer.length ? <p className="aviso-ok">Ningún extintor está por vencer.</p> : (
-            <ul className="lista">
-              {porVencer.map((a) => (
-                <li key={a.id}><div><b>{a.codigo}</b><small>{nombreUbic(a.ubicacion_id) || 'Sin ubicación'} · vence {datoDeActivo(a.datos, 'activo.proximo_mantenimiento.mes_texto')}</small></div></li>
-              ))}
-            </ul>
-          )}
-        </Seccion>
-      )}
-      {vista === 'catastro' && <Catastro variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />}
-      {vista === 'inspeccion' && (
-        <TablaInspeccion activos={activos} filas={filas} formato={formato} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />
-      )}
-
-
-      {vista === 'hallazgos' && <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />}
-      {vista === 'registro' && <GenerarRegistro nombreArchivo={esExt ? 'Extintores' : variante === 'caseta' ? 'CAR' : 'DACI'} formato={formato} copia={copia} sede={sede} semanas={semanas} hoy={hoy} cuenta={cuenta} esSemanal={esSemanal} unPeriodo={unPeriodo} />}
+      {listaNoop}
+      {listaVencer}
+      {vista === 'catastro' && catastro}
+      {vista === 'inspeccion' && tabla}
+      {vista === 'hallazgos' && planes}
+      {vista === 'registro' && registro}
     </>
   )
 }
@@ -503,7 +564,7 @@ export function mesesDelAnio(anio: number) {
 }
 
 /** Generar el registro en Excel o PDF de una semana o de un mes; la fecha de inspección es el domingo de la semana (se puede cambiar) o la que se escriba. */
-function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cuenta, esSemanal, unPeriodo }: { formato: FormatoLocal; copia: CopiaLocal; sede: string; semanas: ReturnType<typeof periodosHasta>; hoy: string; cuenta: string; esSemanal: boolean; unPeriodo: string; nombreArchivo: string }) {
+function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cuenta, esSemanal, unPeriodo, conOpcionFirma = false }: { conOpcionFirma?: boolean; formato: FormatoLocal; copia: CopiaLocal; sede: string; semanas: ReturnType<typeof periodosHasta>; hoy: string; cuenta: string; esSemanal: boolean; unPeriodo: string; nombreArchivo: string }) {
   void cuenta
   // Con frecuencia semanal se puede elegir una semana o un mes del calendario; con otra frecuencia (mensual…), un período del formato.
   // Con frecuencia semanal el mes se elige con dos listas, año y mes (pedido del dueño, 05/11/2026); empieza en el mes de hoy.
@@ -521,6 +582,9 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
   const [registro, setRegistro] = useState({ nombre: '', cargo: '' })
   const [firma, setFirma] = useState<Uint8Array | null>(null)
   const [firmando, setFirmando] = useState(false)
+  // Firma electrónica avanzada (se firma en pantalla) o firma física (el espacio sale en blanco, se firma a mano en el papel).
+  const [tipoFirma, setTipoFirma] = useState<'electronica' | 'fisica'>('electronica')
+  const firmaFisica = conOpcionFirma && tipoFirma === 'fisica'
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [armando, setArmando] = useState(false)
@@ -571,13 +635,13 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
     setAviso(null)
     if (!elegido) return
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return setError('Escribe la fecha de la inspección.')
-    if (registro.nombre.trim().length < 3 || !registro.cargo.trim() || !firma) return setError('Escribe tu nombre y apellido, tu cargo y firma: el pie del formato los pide.')
+    if (registro.nombre.trim().length < 3 || !registro.cargo.trim() || (!firmaFisica && !firma)) return setError(firmaFisica ? 'Escribe tu nombre y apellido y tu cargo: el pie del formato los pide.' : 'Escribe tu nombre y apellido, tu cargo y firma: el pie del formato los pide.')
     setArmando(true)
     setArmandoDe(como)
     setListoDe(null)
     try {
       const filas = await avancePeriodo(formato.plantilla.id, sede, elegido.desde, elegido.hasta)
-      const r = await armarRegistro({ formato, copia, sede, periodo: { etiqueta: elegido.etiqueta, desde: elegido.desde, hasta: elegido.hasta }, filas, registro: { ...registro, fecha }, firma })
+      const r = await armarRegistro({ formato, copia, sede, periodo: { etiqueta: elegido.etiqueta, desde: elegido.desde, hasta: elegido.hasta }, filas, registro: { ...registro, fecha }, firma: firmaFisica ? null : firma })
       if (!r) return setAviso('Este formato no tiene un Excel de la organización. Súbelo en el formato.')
       const vista = await entregarRegistro(r.bytes, como, `Inspección ${nombreArchivo}- ${elegido.clave}`)
       if (vista) setVistaPdf(vista)
@@ -641,7 +705,20 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
           <input type="text" maxLength={120} value={registro.cargo} onChange={(e) => setRegistro((r) => ({ ...r, cargo: e.target.value }))} />
         </label>
       </div>
-      {firmando ? (
+      {conOpcionFirma && (
+        <fieldset className="opciones-firma">
+          <legend>Firma del registro</legend>
+          <label className={tipoFirma === 'electronica' ? 'marcada' : ''}>
+            <input type="radio" name="tipo-firma" checked={tipoFirma === 'electronica'} onChange={() => setTipoFirma('electronica')} />
+            <span><b>Firma electrónica avanzada</b><small>Firmas aquí en pantalla y tu firma sale en el registro.</small></span>
+          </label>
+          <label className={tipoFirma === 'fisica' ? 'marcada' : ''}>
+            <input type="radio" name="tipo-firma" checked={tipoFirma === 'fisica'} onChange={() => (setTipoFirma('fisica'), setFirmando(false))} />
+            <span><b>Firma física</b><small>El espacio de la firma sale en blanco para firmar a mano en el papel.</small></span>
+          </label>
+        </fieldset>
+      )}
+      {firmaFisica ? null : firmando ? (
         <PanelFirma onListo={(png) => void png.arrayBuffer().then((b) => (setFirma(new Uint8Array(b)), setFirmando(false)))} onCancelar={() => setFirmando(false)} />
       ) : (
         <div className="acciones">

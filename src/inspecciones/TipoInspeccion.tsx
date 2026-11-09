@@ -92,7 +92,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
                   <Upload size={18} aria-hidden="true" /> Cargar equipos
                 </button>
               )}
-              {!esLoto && !esIpf && <button className="btn" type="button" onClick={() => ir(`/inspecciones/nueva/${id}`)}>
+              {!esLoto && !esIpf && !esCaseta && <button className="btn" type="button" onClick={() => ir(`/inspecciones/nueva/${id}`)}>
                 <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
               </button>}
             </span>
