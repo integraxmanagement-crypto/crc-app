@@ -1396,3 +1396,109 @@ body {
     stroke-dashoffset: 0;
   }
 }
+
+/* ───── Botón de eliminar que se mantiene pulsado (06/11/2026) ───── */
+.btn-eliminar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+  padding: 0 0.35rem 0 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.btn-eliminar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-eliminar:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.be-svg {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  overflow: visible;
+}
+
+.be-compacto {
+  padding: 0;
+}
+
+.be-pista {
+  fill: none;
+  stroke: var(--ink);
+  stroke-opacity: 0.1;
+  stroke-width: 8;
+}
+
+.be-arco {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  opacity: 0;
+}
+
+.be-pulso {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 4;
+  opacity: 0;
+}
+
+.be-cuerpo {
+  fill: var(--surface-3);
+  stroke: var(--rule);
+  stroke-width: 3;
+}
+
+.be-basura {
+  fill: none;
+  stroke: var(--mal);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.be-visto {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 7.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  opacity: 0;
+}
+
+.be-cap {
+  display: grid;
+  min-width: 7.5rem;
+  text-align: left;
+}
+
+.be-cap > span {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+
+.be-hecho {
+  color: var(--teal-ink);
+  font-weight: 700;
+}

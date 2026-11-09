@@ -1,3 +1,4 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -42,7 +43,7 @@ export function TarjetasConfig({ sedeId, matriz, columnas, tarjetas, online, onC
             {!x.fija && online && (
               <span className="acciones">
                 <button className="btn-link" type="button" disabled={ocupado} onClick={() => { setT({ id: x.id, titulo: x.titulo, columna: x.columna, operador: x.operador, valor: x.valor ?? '' }); setAbierto(true); setError(null) }}>Editar</button>
-                <button className="btn-link" type="button" disabled={ocupado} onClick={() => { if (window.confirm(`¿Quitar la tarjeta «${x.titulo}»?`)) void hacer(() => quitarTarjeta(x.id)) }}>Quitar</button>
+                <BotonEliminar etiqueta={`Quitar la tarjeta ${x.titulo}`} verbo="quitar" disabled={ocupado} onEliminar={() => void hacer(() => quitarTarjeta(x.id))} />
               </span>
             )}
           </li>

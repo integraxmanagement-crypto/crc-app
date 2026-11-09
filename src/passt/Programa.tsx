@@ -1,6 +1,7 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
-import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileSpreadsheet, FileText, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileSpreadsheet, FileText, Pencil, Plus, TriangleAlert } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -322,8 +323,7 @@ function Estructura({ d, arbol, puedeCambiar, esAdmin, personas, formatos, areas
                       <>
                         <button className="btn-link" type="button" aria-label="Subir" onClick={() => void hacer((motivo) => moverNodo(n.id, { direccion: 'subir', motivo: motivo ?? undefined }))}><ArrowUp size={16} aria-hidden="true" /></button>
                         <button className="btn-link" type="button" aria-label="Bajar" onClick={() => void hacer((motivo) => moverNodo(n.id, { direccion: 'bajar', motivo: motivo ?? undefined }))}><ArrowDown size={16} aria-hidden="true" /></button>
-                        <button className="btn-link" type="button" aria-label="Dar de baja"
-                          onClick={() => window.confirm(`¿Dar de baja «${n.texto}» y todo lo que tiene debajo?`) && void hacer((motivo) => bajaNodo(n.id, motivo))}><Trash2 size={16} aria-hidden="true" /></button>
+                        <BotonEliminar etiqueta={`Dar de baja ${n.texto} y todo lo que tiene debajo`} verbo="dar de baja" compacto onEliminar={() => void hacer((motivo) => bajaNodo(n.id, motivo))} />
                       </>
                     )}
                     {hijo && <button className="btn-link" type="button" onClick={() => setAgregando(agregando === n.id ? null : n.id)}><Plus size={16} aria-hidden="true" /> {NOMBRE_TIPO[hijo]}</button>}

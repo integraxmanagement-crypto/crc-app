@@ -1,6 +1,7 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
-import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, Trash2, TriangleAlert } from 'lucide-react'
+import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, TriangleAlert } from 'lucide-react'
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { todosLosPuntos } from '../formatos/receta'
@@ -211,7 +212,6 @@ export function ListaRecibidas({ recibidas, error, online }: { recibidas: Resume
 }
 
 export function FilaBorrador({ b }: { b: Borrador }) {
-  const [seguro, setSeguro] = useState(false)
   return (
     <li>
       <PenLine aria-hidden="true" />
@@ -226,15 +226,7 @@ export function FilaBorrador({ b }: { b: Borrador }) {
         <button className="btn-link" type="button" onClick={() => ir(`/inspecciones/llenar/${b.id}`)}>
           Continuar
         </button>
-        {seguro ? (
-          <button className="btn-link peligro" type="button" onClick={() => void descartarBorrador(b)}>
-            ¿Descartar? Sí
-          </button>
-        ) : (
-          <button className="btn-link" type="button" aria-label="Descartar" onClick={() => setSeguro(true)}>
-            <Trash2 size={16} aria-hidden="true" />
-          </button>
-        )}
+        <BotonEliminar etiqueta="Descartar el borrador" verbo="descartar" compacto onEliminar={() => void descartarBorrador(b)} />
       </span>
     </li>
   )

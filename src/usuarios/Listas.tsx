@@ -1,5 +1,6 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { Esqueleto } from '../Esqueleto'
-import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus } from 'lucide-react'
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import {
@@ -214,9 +215,7 @@ const { hijos, edicion, setEdicion, ocupado, hacer, setError, guardar, formNueva
             <button className="btn-link" type="button" disabled={ocupado} onClick={() => void hacer(() => cambiarVigenciaUnidad(u.id, !u.vigente))}>
               {u.vigente ? 'Desactivar' : 'Activar'}
             </button>
-            <button className="btn-link" type="button" disabled={ocupado} onClick={() => void hacer(() => borrarUnidad(u.id))} aria-label={`Borrar ${u.nombre}`}>
-              <Trash2 size={16} aria-hidden="true" /> Borrar
-            </button>
+            <BotonEliminar etiqueta={`Borrar ${u.nombre}`} verbo="borrar" disabled={ocupado} onEliminar={() => void hacer(() => borrarUnidad(u.id))} />
           </span>
         )}
       </div>
@@ -282,9 +281,7 @@ function EditorPuestos({ empresaId, items, onCambio }: { empresaId: string; item
                   <button className="btn-link" type="button" disabled={ocupado} onClick={() => void hacer(() => cambiarVigenciaPuesto(i.id, !i.vigente))}>
                     {i.vigente ? 'Desactivar' : 'Activar'}
                   </button>
-                  <button className="btn-link" type="button" disabled={ocupado} onClick={() => void hacer(() => borrarPuesto(i.id))} aria-label={`Borrar ${i.nombre}`}>
-                    <Trash2 size={16} aria-hidden="true" /> Borrar
-                  </button>
+                  <BotonEliminar etiqueta={`Borrar ${i.nombre}`} verbo="borrar" disabled={ocupado} onEliminar={() => void hacer(() => borrarPuesto(i.id))} />
                 </span>
               )}
             </li>

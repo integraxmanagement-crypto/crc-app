@@ -1,5 +1,6 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { Esqueleto } from '../Esqueleto'
-import { ArrowLeft, MessageCircle, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Pencil, Plus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion } from '../empresas/campos'
 import { ir } from '../ruta'
@@ -41,7 +42,7 @@ function Tarjeta({ n, whatsapp, puede, onEditar, onRama, onQuitar }: { n: Arbol;
         <span className="org-acciones">
           <button className="btn-link" type="button" onClick={onEditar} title="Cambiar puesto y nombre"><Pencil size={15} aria-hidden="true" /> Editar</button>
           <button className="btn-link" type="button" onClick={onRama} title="Agregar un puesto debajo de este"><Plus size={15} aria-hidden="true" /> Rama</button>
-          <button className="btn-link" type="button" onClick={onQuitar} title="Quitar este puesto y sus ramas"><Trash2 size={15} aria-hidden="true" /> Quitar</button>
+          <BotonEliminar etiqueta={`Quitar el puesto ${n.puesto} y sus ramas`} verbo="quitar" onEliminar={onQuitar} />
         </span>
       )}
     </div>
@@ -92,7 +93,6 @@ export function EquipoSst({ online, inicio = false, puedeEditar = false, esGener
   const puedeNodo = (n: Nodo) => puedeEditar && !inicio && (n.sede_id ? esGeneral || misSedes.has(n.sede_id) : esGeneral)
 
   async function quitar(n: Nodo) {
-    if (!window.confirm(`¿Quitar «${n.puesto}» y todas sus ramas?`)) return
     try {
       await quitarNodo(n.id)
       cargar()

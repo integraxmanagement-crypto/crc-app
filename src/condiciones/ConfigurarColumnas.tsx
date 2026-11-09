@@ -1,4 +1,5 @@
-import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BotonEliminar } from '../BotonEliminar'
+import { Eye, EyeOff, Pencil, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { type CambioColumnas, cambiarColumnas, proponerCambioColumnas, propuestasPendientes } from './datos'
@@ -101,10 +102,7 @@ export function ConfigurarColumnas({ sedeId, matriz, columnas, tarjetas, esAdmin
                     {c.visible ? <><EyeOff size={14} aria-hidden="true" /> Ocultar</> : <><Eye size={14} aria-hidden="true" /> Mostrar</>}
                   </button>
                   {!c.es_base && (
-                    <button className="btn-link" type="button" disabled={ocupado}
-                      onClick={() => void enviar({ operacion: 'eliminar', clave: c.clave }, `¿Eliminar la columna «${c.nombre}»? Se borran sus datos en las condiciones de esta sede.`)}>
-                      <Trash2 size={14} aria-hidden="true" /> Eliminar
-                    </button>
+                    <BotonEliminar etiqueta={`Eliminar la columna ${c.nombre} (se borran sus datos en esta sede)`} verbo="eliminar" disabled={ocupado} onEliminar={() => void enviar({ operacion: 'eliminar', clave: c.clave })} />
                   )}
                 </td>
               </tr>

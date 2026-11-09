@@ -1,4 +1,5 @@
-import { ArrowLeft, Camera, Check, PenLine, Plus, Trash2, X } from 'lucide-react'
+import { BotonEliminar } from '../BotonEliminar'
+import { ArrowLeft, Camera, Check, PenLine, Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SelectorArea } from '../SelectorArea'
 import type { Unidad } from '../usuarios/datos'
@@ -384,14 +385,12 @@ export function Llenar({ id, cuenta, sinEspacio }: { id: string; cuenta: string;
                           </button>
                         )
                       )}
-                      <button className="btn-link" type="button" aria-label="Quitar firmante"
-                        onClick={() => {
+                      <BotonEliminar etiqueta="Quitar firmante" verbo="quitar" compacto
+                        onEliminar={() => {
                           const quita = f.persona_id === cuenta && b.mi_firma?.rol_clave === rol.clave
                           if (quita) void quitarArchivo(b.mi_firma!.archivo_id)
                           cambiar((x) => ({ ...x, mi_firma: quita ? null : x.mi_firma, firmantes: x.firmantes.filter((_, j) => j !== k) }))
-                        }}>
-                        <Trash2 size={16} aria-hidden="true" />
-                      </button>
+                        }} />
                     </div>
                   )
                 })}

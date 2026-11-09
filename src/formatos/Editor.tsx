@@ -1,5 +1,6 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { Esqueleto } from '../Esqueleto'
-import { ArrowDown, ArrowLeft, ArrowUp, FlaskConical, Lock, Pencil, Plus, Save, Send, Trash2, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, FlaskConical, Lock, Pencil, Plus, Save, Send, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Aviso, Campo, Seccion as Caja } from '../empresas/campos'
 import { ExcelFormato } from '../inspecciones/ExcelFormato'
@@ -173,7 +174,7 @@ export function Editor({
   }
 
   function descartar() {
-    if (!version || !window.confirm('¿Descartar este borrador? Se pierden sus cambios.')) return
+    if (!version) return
     const unico = versiones.length === 1
     void (async () => {
       setOcupado(true)
@@ -267,9 +268,7 @@ export function Editor({
           <FlaskConical size={18} aria-hidden="true" /> {probar ? 'Cerrar prueba' : 'Probar el formato'}
         </button>
         {editable && (
-          <button className="btn-link" type="button" disabled={ocupado} onClick={descartar}>
-            <Trash2 size={16} aria-hidden="true" /> Descartar borrador
-          </button>
+          <BotonEliminar etiqueta="Descartar borrador" verbo="descartar el borrador" disabled={ocupado} onEliminar={() => void descartar()} />
         )}
       </div>
       {editable && !puedePublicar && !solicita && <p className="nota">Puedes guardar el borrador; lo publica un administrador de la empresa.</p>}

@@ -1,6 +1,7 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
-import { FileSpreadsheet, Trash2, Upload } from 'lucide-react'
+import { FileSpreadsheet, Upload } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { db, mensaje, rpc } from '../empresas/datos'
@@ -91,9 +92,7 @@ export function ExcelFormato({ plantillaId, empresaId, receta, puedeEditar }: { 
             </div>
             {puedeEditar && (
               <span className="lista-acciones">
-                <button className="btn-link" type="button" disabled={ocupado} onClick={() => void quitar()}>
-                  <Trash2 size={16} aria-hidden="true" /> Quitar
-                </button>
+                <BotonEliminar etiqueta="Quitar el Excel del formato" verbo="quitar" disabled={ocupado} onEliminar={() => void quitar()} />
               </span>
             )}
           </li>

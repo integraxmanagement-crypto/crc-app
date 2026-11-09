@@ -1,5 +1,6 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { Esqueleto } from '../Esqueleto'
-import { ImageUp, Trash2 } from 'lucide-react'
+import { ImageUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Aviso, Seccion } from './campos'
 import { type Empresa, quitarLogoNegativo, revisarLogo, subirLogo, verLogo } from './datos'
@@ -153,9 +154,7 @@ function CajaLogo({
             </button>
           )}
           {onQuitar && !pendiente && (
-            <button className="btn-link" type="button" onClick={onQuitar}>
-              <Trash2 size={16} aria-hidden="true" /> Quitar
-            </button>
+            <BotonEliminar etiqueta="Quitar el logo" verbo="quitar" onEliminar={onQuitar} />
           )}
         </div>
       )}
