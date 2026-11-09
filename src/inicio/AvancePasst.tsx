@@ -1,5 +1,5 @@
 import { Esqueleto } from '../Esqueleto'
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Aviso } from '../empresas/campos'
 import { hoyLocal } from '../inspecciones/ayudas'
@@ -49,14 +49,21 @@ export function AvancePasst({ empresaId, online }: { empresaId: string; online: 
         <h2>
           <CalendarDays size={18} aria-hidden="true" /> Programa anual de SST {anio}
         </h2>
-        {programas && programas.length > 1 && (
-          <select aria-label="Programa" value={id ?? ''} onChange={(e) => setElegido(e.target.value)}>
-            {programas.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
+        {programas && programas.length > 0 && id && (
+          <div className="avance-passt-acciones">
+            {programas.length > 1 && (
+              <select aria-label="Programa" value={id} onChange={(e) => setElegido(e.target.value)}>
+                {programas.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button className="btn-calendario" type="button" onClick={() => ir(`/passt/${id}`)}>
+              <CalendarRange size={16} aria-hidden="true" /> Ver calendario
+            </button>
+          </div>
         )}
       </header>
       <Aviso>{error}</Aviso>
@@ -74,7 +81,7 @@ export function AvancePasst({ empresaId, online }: { empresaId: string; online: 
       ) : !meses || !d ? (
         !error && <Esqueleto forma="tarjetas" filas={1} />
       ) : (
-        <Carrusel key={id} meses={meses} meta={Number(d.programa.meta_cumplimiento)} anio={anio} mesActual={mesDeHoy(anio, hoy)} programaId={d.programa.id} />
+        <Carrusel key={id} meses={meses} meta={Number(d.programa.meta_cumplimiento)} anio={anio} mesActual={mesDeHoy(anio, hoy)} />
       )}
     </section>
   )
@@ -113,7 +120,7 @@ function resorteF(t: number) {
  * arrastrando con el mouse; al soltar, un resorte lleva la tarjeta a su lugar. Debajo, puntos que siguen el deslizamiento:
  * el activo se estira en una píldora de turquesa a cian.
  */
-function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; meta: number; anio: number; mesActual: number; programaId: string }) {
+function Carrusel({ meses, meta, anio, mesActual }: { meses: Mes[]; meta: number; anio: number; mesActual: number }) {
   const pista = useRef<HTMLDivElement>(null)
   const animacion = useRef(0)
   const arrastre = useRef<{ x: number; scroll: number; movido: boolean } | null>(null)
@@ -210,18 +217,6 @@ function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; 
 
   return (
     <div className="carrusel">
-      <div className="carrusel-nav">
-        <button className="btn-icono" type="button" aria-label="Mes anterior" disabled={visible <= 1} onClick={() => llevarA(visible - 2)}>
-          <ChevronLeft size={20} aria-hidden="true" />
-        </button>
-        <span>
-          {MESES[visible - 1]} {anio}
-          {visible === mesActual && <small> · este mes</small>}
-        </span>
-        <button className="btn-icono" type="button" aria-label="Mes siguiente" disabled={visible >= 12} onClick={() => llevarA(visible)}>
-          <ChevronRight size={20} aria-hidden="true" />
-        </button>
-      </div>
       <div className="carrusel-pista" ref={pista} onScroll={alDeslizar} onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerCancel={alSoltar}>
         {meses.map((m, k) => {
           // Un mes que todavía no llega no tiene % (saldría 0 %): se dice cuántas actividades hay programadas.
@@ -229,7 +224,10 @@ function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; 
           const lejos = Math.min(1, Math.abs(k - p))
           return (
           <article key={k} className="carrusel-mes" aria-label={`${MESES[k]} ${anio}`} style={{ opacity: 1 - 0.5 * lejos, transform: `scale(${1 - 0.04 * lejos})` }}>
-            <h3 className="mes-titulo">{MESES[k]}</h3>
+            <h3 className="mes-titulo">
+              {MESES[k]} <span>{anio}</span>
+              {k + 1 === mesActual && <em>este mes</em>}
+            </h3>
             <div className="mes-total">
               <Anillo t={futuro ? { ...m.total, pct: null } : m.total} meta={meta} />
               <p>
@@ -263,7 +261,11 @@ function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; 
           )
         })}
       </div>
-      <div className="carrusel-puntos" role="tablist" aria-label="Meses">
+      <div className="carrusel-pie">
+        <button className="btn-icono" type="button" aria-label="Mes anterior" disabled={visible <= 1} onClick={() => llevarA(visible - 2)}>
+          <ChevronLeft size={18} aria-hidden="true" />
+        </button>
+        <div className="carrusel-puntos" role="tablist" aria-label="Meses">
         {meses.map((_, k) => {
           const a = Math.max(0, 1 - Math.abs(p - k))
           return (
@@ -272,10 +274,11 @@ function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; 
             </button>
           )
         })}
+        </div>
+        <button className="btn-icono" type="button" aria-label="Mes siguiente" disabled={visible >= 12} onClick={() => llevarA(visible)}>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
       </div>
-      <button className="btn-link" type="button" onClick={() => ir(`/passt/${programaId}`)}>
-        Ver el calendario del programa
-      </button>
     </div>
   )
 }
