@@ -73,7 +73,7 @@ export type ResultadoPeriodo = { bytes: Uint8Array; filas: number; usadasDelForm
  * Llena el Excel con una fila por elemento de `filas` (cada uno da el valor de sus marcas {{fila.X}} sin el «fila.»),
  * y el resto de las marcas con `general`. Si el Excel no tiene fila modelo, solo llena las marcas generales.
  */
-export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: string) => string | null, filas: ((marca: string) => string | null)[], imagenes?: Map<string, Uint8Array>): Promise<ResultadoPeriodo> {
+export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: string) => string | null, filas: ((marca: string) => string | null)[], imagenes?: Map<string, Uint8Array>, opciones?: { conservarVacias?: boolean }): Promise<ResultadoPeriodo> {
   const lista = await partes(archivo)
   const leer = (nombre: string) => {
     const p = lista.find((x) => x.nombre === nombre)
@@ -158,7 +158,7 @@ export async function llenarExcelPeriodo(archivo: Uint8Array, general: (marca: s
 
   // 3b. Si sobran filas dibujadas y vacías: se quitan antes de entregar el archivo (pedido del dueño, 29/10/2026: tantas filas como equipos),
   //     y todo lo que está debajo (pie, firmas) sube. Las celdas combinadas, las imágenes, el filtro y el área de impresión suben igual.
-  if (Number.isFinite(capacidad) && total < capacidad) {
+  if (!opciones?.conservarVacias && Number.isFinite(capacidad) && total < capacidad) {
     const sobran = capacidad - total
     const ini = modelo + total
     const fin = modelo + capacidad - 1

@@ -1,4 +1,4 @@
-import { UsersRound, CalendarDays, ChevronDown, ClipboardList, Home, ListChecks, ListTodo, X } from 'lucide-react'
+import { UsersRound, CalendarDays, ChevronDown, ClipboardList, HardHat, Home, ListChecks, ListTodo, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { type CopiaLocal, leerCopia } from './inspecciones/campo'
 import { listarInspecciones } from './inspecciones/datos'
@@ -134,6 +134,11 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
           {perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? '') && (
             <button type="button" onClick={ir_('/planes')} {...aqui(ruta[0] === 'planes')}>
               <ListTodo size={18} aria-hidden="true" /> Gestión de planes de acción
+            </button>
+          )}
+          {perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? '') && (
+            <button type="button" onClick={ir_('/epp')} {...aqui(ruta[0] === 'epp')}>
+              <HardHat size={18} aria-hidden="true" /> Gestión de EPPs
             </button>
           )}
           {perfil.empresaId && (

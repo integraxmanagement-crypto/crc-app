@@ -40,6 +40,7 @@ import { ir, useRuta } from './ruta'
 import { elegirSede, useSedeActiva, validarSede } from './sedeActiva'
 import { type Perfil, esAdminDeEmpresa, puede, useSesion } from './sesion'
 import { EquipoSst } from './equipo/EquipoSst'
+import { GestionEpp } from './epp/GestionEpp'
 import { Solicitudes } from './solicitudes/Solicitudes'
 import { Intentos } from './usuarios/Intentos'
 import { Listas } from './usuarios/Listas'
@@ -261,6 +262,9 @@ function Gestion({ perfil, ruta, online }: { perfil: Perfil; ruta: string[]; onl
   // Gestión de planes de acción: la misma pantalla con la matriz de planes (06/11/2026).
   if (ruta[0] === 'planes' && perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? ''))
     return <Condiciones key="planes" matriz="planes" cuenta={perfil.id} empresaId={perfil.empresaId} sedes={perfil.sedes} rolCodigo={perfil.rolCodigo ?? ''} online={online} />
+  // Gestión de EPPs: control de entrega de equipos de protección personal (09/11/2026). La base de datos decide lo que cada uno hace.
+  if (ruta[0] === 'epp' && perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? ''))
+    return <GestionEpp key="epp" cuenta={perfil.id} empresaId={perfil.empresaId} nombre={perfil.apellidosNombres} cargo={perfil.puesto} esAdmin={esAdminDeEmpresa(perfil)} online={online} />
   if (ruta[0] === 'hallazgos' && perfil.empresaId)
     return <Hallazgos key={ruta[1] ?? 'todos'} empresaId={perfil.empresaId} cuenta={perfil.id} gestiona={esEquipoSso(perfil)} online={online} inspeccionId={ruta[1]} />
   if ((ruta[0] === 'formatos' || ruta[0] === 'activos') && esEquipoSso(perfil) && perfil.empresaId) {
