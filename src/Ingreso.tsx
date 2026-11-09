@@ -1,3 +1,4 @@
+import { SelectorTema } from './SelectorTema'
 import { LogIn } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { CampoClave, CampoFlotante, type EstadoCampo, SelectorFlotante } from './CamposIngreso'
@@ -87,6 +88,7 @@ export function Ingreso({ aviso, onIngreso }: { aviso?: string; onIngreso: (clav
       </button>
 
       <p className="form-note">¿Olvidaste tu contraseña? Pide al administrador de tu empresa que te dé una nueva.</p>
+      <SelectorTema />
     </form>
   )
 }

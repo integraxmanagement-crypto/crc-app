@@ -1,4 +1,5 @@
 import { Esqueleto } from '../Esqueleto'
+import { SelectorTema } from '../SelectorTema'
 import { ArrowLeft, Building2, ChevronDown, Database, Inbox, LogOut, UserRound, Users, Wifi, WifiOff } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Aviso, Dato, Seccion } from '../empresas/campos'
@@ -49,6 +50,10 @@ export function MenuPerfil({ perfil }: { perfil: Perfil }) {
               <Inbox size={18} aria-hidden="true" /> Solicitudes de cambio
             </button>
           )}
+          <div className="perfil-tema">
+            <small>Apariencia</small>
+            <SelectorTema />
+          </div>
           <button type="button" role="menuitem" onClick={elegir(() => void salir())}>
             <LogOut size={18} aria-hidden="true" /> Cerrar sesión
           </button>

@@ -209,7 +209,7 @@
 }
 
 .anillo[data-tono='bajo'] .anillo-valor {
-  stroke: #d98e04;
+  stroke: var(--aviso-solid);
 }
 
 .anillo text {
@@ -253,7 +253,7 @@
 .mes-obj-barra span {
   display: block;
   height: 100%;
-  background: #d98e04;
+  background: var(--aviso-solid);
 }
 
 .mes-obj-barra span[data-bien='true'] {
@@ -291,7 +291,7 @@
   height: 1.05rem;
   padding: 0 0.2rem;
   border-radius: 999px;
-  background: #e5484d;
+  background: var(--mal-fuerte);
   color: #fff;
   font-size: 0.6875rem;
   font-weight: 800;
@@ -334,12 +334,12 @@
   width: 0.6rem;
   height: 0.6rem;
   border-radius: 50%;
-  background: #2ecc71;
+  background: var(--ok-dot);
   box-shadow: 0 0 0 3px rgb(46 204 113 / 0.25);
 }
 
 .conexion[data-online='false'] .conexion-luz {
-  background: #e5484d;
+  background: var(--mal-fuerte);
   box-shadow: 0 0 0 3px rgb(229 72 77 / 0.3);
 }
 
@@ -361,7 +361,7 @@
     right: 0;
     top: 100%;
     padding: 0.2rem 1rem;
-    background: #b4232a;
+    background: var(--mal-fuerte);
     color: #fff;
     font-size: 0.8125rem;
     text-align: center;
@@ -406,7 +406,7 @@
   color: var(--ink);
   border: 1px solid var(--rule);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgb(11 34 51 / 0.18);
+  box-shadow: 0 10px 30px rgb(var(--sombra) / 0.18);
 }
 
 .perfil-quien {
@@ -455,7 +455,7 @@
   font-size: clamp(1.4rem, 5vw, 1.9rem);
   font-weight: 750;
   line-height: 1.2;
-  color: var(--blue);
+  color: var(--blue-text);
   text-wrap: balance;
 }
 
@@ -507,7 +507,7 @@
 .seccion-cab h2 {
   font-size: 1.0625rem;
   font-weight: 700;
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .seccion .ficha {
@@ -558,19 +558,19 @@
 }
 
 .chip-ok {
-  background: rgb(27 163 156 / 0.15);
+  background: rgb(var(--teal-rgb) / 0.15);
   color: var(--teal-ink);
 }
 
 .chip-mal {
-  background: #fbeeeb;
-  color: #8a2f1f;
+  background: var(--mal-bg);
+  color: var(--mal-fg);
 }
 
 .chip-prueba,
 .chip-aviso {
-  background: #fff4dc;
-  color: #7a5200;
+  background: var(--aviso-bg);
+  color: var(--aviso-fg);
 }
 
 .lista .chip-gris {
@@ -595,7 +595,7 @@
 .btn-sec {
   border: 1px solid var(--rule);
   background: var(--surface);
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .btn-sec:hover {
@@ -605,13 +605,13 @@
 .btn-peligro {
   align-self: flex-start;
   min-height: 3rem;
-  border: 1px solid #b4432f;
+  border: 1px solid var(--mal);
   background: var(--surface);
-  color: #8a2f1f;
+  color: var(--mal-fg);
 }
 
 .btn-peligro:hover {
-  background: #fbeeeb;
+  background: var(--mal-bg);
 }
 
 .acciones {
@@ -640,7 +640,7 @@
 .form legend {
   padding: 0 0.4rem;
   font-weight: 700;
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .subform {
@@ -680,7 +680,7 @@
 }
 
 .field input[aria-invalid="true"] {
-  border-color: #b4432f;
+  border-color: var(--mal);
 }
 
 .check-linea {
@@ -702,7 +702,7 @@
   padding: 0.75rem 1rem;
   border-left: 4px solid var(--teal);
   border-radius: 8px;
-  background: rgb(27 163 156 / 0.1);
+  background: rgb(var(--teal-rgb) / 0.1);
   color: var(--teal-ink);
   font-weight: 600;
 }
@@ -738,13 +738,13 @@
 .buscador input:focus {
   outline: none;
   border-color: var(--teal-ink);
-  box-shadow: 0 0 0 3px rgb(27 163 156 / 0.25);
+  box-shadow: 0 0 0 3px rgb(var(--teal-rgb) / 0.25);
 }
 
 .ciiu-elegido {
   padding: 0.6rem 0.8rem;
   border-radius: 8px;
-  background: rgb(27 163 156 / 0.1);
+  background: rgb(var(--teal-rgb) / 0.1);
   font-weight: 500;
   line-height: 1.35;
 }
@@ -785,7 +785,7 @@
 
 .ciiu-resultados button:hover,
 .ciiu-resultados button[aria-selected="true"] {
-  background: rgb(27 163 156 / 0.1);
+  background: rgb(var(--teal-rgb) / 0.1);
 }
 
 .lista {
@@ -875,7 +875,7 @@
 .lista-empresas button > svg {
   width: 1.4rem;
   height: 1.4rem;
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .lista-empresas b {
@@ -926,7 +926,7 @@
 }
 
 .logo-positivo {
-  background: #fff;
+  background: var(--surface);
 }
 
 .logo-negativo {
@@ -959,7 +959,7 @@
   padding: 1rem;
   border: 2px solid var(--teal);
   border-radius: 12px;
-  background: rgb(27 163 156 / 0.08);
+  background: rgb(var(--teal-rgb) / 0.08);
   line-height: 1.45;
 }
 
@@ -1036,11 +1036,11 @@
 }
 
 .btn-sec-peligro {
-  color: #8a2f1f;
+  color: var(--mal-fg);
 }
 
 .btn-sec-peligro:hover {
-  border-color: #b4432f;
+  border-color: var(--mal);
 }
 
 .btn-sec:disabled,
@@ -1127,7 +1127,7 @@
 }
 
 .texto-mal {
-  color: #8a2f1f;
+  color: var(--mal-fg);
 }
 
 /* ───── Tarea 3.6: estructura de la empresa en árbol (Gerencia → Área → Subárea) ───── */
@@ -1208,9 +1208,9 @@
 
 .faltantes {
   padding: 0.9rem;
-  border: 1px solid #e8c26a;
+  border: 1px solid var(--aviso-borde);
   border-radius: 12px;
-  background: #fffaf0;
+  background: var(--aviso-bg-2);
 }
 
 .faltantes h3 {
@@ -1236,11 +1236,11 @@
 }
 
 .tabla-carga tr.fila-error td:first-child {
-  box-shadow: inset 4px 0 0 #b4432f;
+  box-shadow: inset 4px 0 0 var(--mal);
 }
 
 .tabla-carga tr.fila-falta_lista td:first-child {
-  box-shadow: inset 4px 0 0 #e3a93b;
+  box-shadow: inset 4px 0 0 var(--aviso-borde);
 }
 
 /* Carga desde Excel en celular: filtros en dos filas y cada persona como tarjeta, con el motivo a la vista. */
@@ -1318,11 +1318,11 @@
   }
 
   .tabla-carga tr.fila-error {
-    box-shadow: inset 4px 0 0 #b4432f;
+    box-shadow: inset 4px 0 0 var(--mal);
   }
 
   .tabla-carga tr.fila-falta_lista {
-    box-shadow: inset 4px 0 0 #e3a93b;
+    box-shadow: inset 4px 0 0 var(--aviso-borde);
   }
 }
 
@@ -1410,9 +1410,9 @@
   display: grid;
   gap: 0.6rem;
   padding: 0.85rem 0.95rem;
-  border: 1px solid #e8c26a;
+  border: 1px solid var(--aviso-borde);
   border-radius: 12px;
-  background: #fffaf0;
+  background: var(--aviso-bg-2);
 }
 
 .aviso-revisar p,
@@ -1445,7 +1445,7 @@
   border: 1px solid var(--rule);
   border-radius: 999px;
   background: var(--surface);
-  color: var(--blue);
+  color: var(--blue-text);
   font: inherit;
   font-weight: 650;
   cursor: pointer;
@@ -1453,7 +1453,7 @@
 
 .pestanas button[aria-pressed="true"],
 .botones-respuesta button[aria-pressed="true"] {
-  border-color: var(--blue);
+  border-color: var(--blue-text);
   background: var(--blue);
   color: var(--on-blue);
 }
@@ -1472,7 +1472,7 @@
 
 .icono:hover {
   border-color: var(--rule);
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .mover {
@@ -1487,7 +1487,7 @@
   padding: 0.6rem;
   border: 1px solid var(--rule);
   border-radius: 12px;
-  background: rgb(255 255 255 / 0.95);
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
 }
 
 .selector-version {
@@ -1516,7 +1516,7 @@
 .subtitulo {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .titulo-seccion {
@@ -1527,7 +1527,7 @@
   border-radius: 8px;
   font: inherit;
   font-weight: 700;
-  color: var(--blue);
+  color: var(--blue-text);
   background: var(--surface);
 }
 
@@ -1667,7 +1667,7 @@
 
 .regla-tipo {
   align-self: center;
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .problemas {
@@ -1675,7 +1675,7 @@
   flex-direction: column;
   gap: 0.3rem;
   padding-left: 1.2rem;
-  color: #8a2f1f;
+  color: var(--mal-fg);
 }
 
 .prueba {
@@ -1689,12 +1689,12 @@
   z-index: 4;
   padding: 0.7rem 0.9rem;
   border-radius: 10px;
-  background: rgb(27 163 156 / 0.12);
+  background: rgb(var(--teal-rgb) / 0.12);
   color: var(--ink);
 }
 
 .resultado-prueba.incompleta {
-  background: #fff4dc;
+  background: var(--aviso-bg);
 }
 
 .resultado-prueba summary {
@@ -1710,7 +1710,7 @@
 
 .prueba-seccion h3 {
   font-size: 1rem;
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 .prueba-fila {
@@ -1732,7 +1732,7 @@
 }
 
 .prueba-punto.no-cumple {
-  background: #fbeeeb;
+  background: var(--mal-bg);
 }
 
 .prueba-punto input,
@@ -1812,9 +1812,9 @@
 
 .estado-equipo.falta,
 .aviso-suave {
-  border: 1px solid #e8c26a;
-  background: #fff8e8;
-  color: #6b4a00;
+  border: 1px solid var(--aviso-borde);
+  background: var(--aviso-bg);
+  color: var(--aviso-fg);
 }
 
 .aviso-suave {
@@ -1825,20 +1825,20 @@
 
 .error-linea {
   display: block;
-  color: #8a2f1f;
+  color: var(--mal-fg);
 }
 
 .btn-link.peligro,
 .btn.peligro {
-  color: #8a2f1f;
+  color: var(--mal-fg);
 }
 
 .btn.peligro {
-  background: #fbeeeb;
+  background: var(--mal-bg);
 }
 
 .prueba-punto .obligatorio {
-  color: #8a2f1f;
+  color: var(--mal-fg);
   font-weight: 700;
 }
 
@@ -1887,7 +1887,7 @@
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: rgb(11 34 51 / 0.75);
+  background: rgb(var(--sombra) / 0.75);
   color: #fff;
   cursor: pointer;
 }
@@ -1973,7 +1973,7 @@
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: 10px;
-  box-shadow: 0 10px 30px rgb(11 34 51 / 0.18);
+  box-shadow: 0 10px 30px rgb(var(--sombra) / 0.18);
 }
 
 .buscar-firmante-lista button {
@@ -2033,14 +2033,14 @@
   height: 11rem;
   border: 1px dashed var(--ink-2);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   touch-action: none;
 }
 
 .firma-mini .mini-foto {
   width: 6rem;
   height: 3rem;
-  background: #fff;
+  background: var(--surface);
 }
 
 .firma-mini .mini-foto img {
@@ -2053,7 +2053,7 @@
   display: grid;
   gap: 0.5rem;
   margin-top: 1rem;
-  box-shadow: 0 6px 24px rgb(11 34 51 / 0.12);
+  box-shadow: 0 6px 24px rgb(var(--sombra) / 0.12);
 }
 
 .hallazgos {
@@ -2067,8 +2067,8 @@
   margin: 0 0 0.75rem;
   padding: 0.6rem 0.85rem 0.6rem 1.8rem;
   border-radius: 10px;
-  background: #fff8e8;
-  color: #6b4a00;
+  background: var(--aviso-bg);
+  color: var(--aviso-fg);
 }
 
 .lista > li.con-panel > div {
@@ -2140,7 +2140,7 @@
 }
 
 .filtros button[aria-pressed="true"] {
-  border-color: var(--blue);
+  border-color: var(--blue-text);
   background: var(--blue);
   color: var(--on-blue);
 }
@@ -2150,7 +2150,7 @@
 }
 
 .icono-mal {
-  color: #8a2f1f;
+  color: var(--mal-fg);
 }
 
 .panel-hallazgo {
@@ -2201,7 +2201,7 @@
 }
 
 .arbol-passt .nodo-objetivo_general {
-  border-color: var(--blue);
+  border-color: var(--blue-text);
 }
 
 .grilla-scroll {
@@ -2363,25 +2363,25 @@
 }
 
 .c-p {
-  background: #e7eef4;
-  color: var(--blue);
+  background: var(--surface-3);
+  color: var(--blue-text);
   font-weight: 700;
 }
 
 .c-e {
-  background: rgb(27 163 156 / 0.25);
+  background: rgb(var(--teal-rgb) / 0.25);
   color: var(--teal-ink);
   font-weight: 700;
 }
 
 .c-x {
-  background: rgb(27 163 156 / 0.1);
+  background: rgb(var(--teal-rgb) / 0.1);
   color: var(--teal-ink);
 }
 
 .c-v {
-  background: #fbeeeb;
-  color: #8a2f1f;
+  background: var(--mal-bg);
+  color: var(--mal-fg);
   font-weight: 700;
 }
 
@@ -2399,7 +2399,7 @@
 }
 
 .pct-bajo {
-  color: #8a5300;
+  color: var(--aviso-fg);
   font-weight: 700;
 }
 
@@ -2486,10 +2486,10 @@
 .alerta-formatos {
   margin: 0.25rem 0 0.75rem;
   padding: 0.75rem 1rem;
-  border: 1px solid #e3a93b;
+  border: 1px solid var(--aviso-borde);
   border-left-width: 4px;
   border-radius: 10px;
-  background: #fff7e8;
+  background: var(--aviso-bg);
 }
 
 .alerta-formatos p {
@@ -2527,7 +2527,7 @@
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: 14px;
-  box-shadow: 0 1px 3px rgb(11 34 51 / 0.06);
+  box-shadow: 0 1px 3px rgb(var(--sombra) / 0.06);
 }
 
 @media (min-width: 640px) {
@@ -2568,19 +2568,19 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #9aa7b1;
+  background: var(--ink-3);
 }
 
 .sismos-estado[data-tipo='vivo'] span {
-  background: #2ecc71;
+  background: var(--ok-dot);
 }
 
 .sismos-estado[data-tipo='error'] {
-  color: #b4232a;
+  color: var(--mal-fuerte);
 }
 
 .sismos-estado[data-tipo='error'] span {
-  background: #e5484d;
+  background: var(--mal-fuerte);
 }
 
 .sismos-alerta {
@@ -2588,10 +2588,10 @@
   gap: 0.5rem;
   margin: 0.75rem 0 0;
   padding: 0.65rem 0.85rem;
-  border: 1px solid #e5484d;
+  border: 1px solid var(--mal-fuerte);
   border-radius: 10px;
-  background: #fdecec;
-  color: #8f1d22;
+  background: var(--mal-bg);
+  color: var(--mal-fg);
   font-size: 0.875rem;
 }
 
@@ -2795,14 +2795,14 @@
   padding: 0.9rem;
   text-align: left;
   color: var(--ink);
-  background: var(--paper, #fff);
+  background: var(--paper);
   border: 1px solid var(--rule);
   border-radius: 10px;
   cursor: pointer;
 }
 
 .tarjetas-tipos button:hover {
-  border-color: var(--blue);
+  border-color: var(--blue-text);
 }
 
 .tarjetas-tipos small {
@@ -2823,7 +2823,7 @@
   padding: 0.9rem;
   text-align: left;
   color: var(--ink);
-  background: var(--paper, #fff);
+  background: var(--paper);
   border: 1px solid var(--rule);
   border-radius: 10px;
 }
@@ -2843,15 +2843,15 @@ button.tarjeta-ext {
 }
 
 .tarjeta-ext.mal b {
-  color: var(--bad, #b3261e);
+  color: var(--bad);
 }
 
 .tarjeta-ext.aviso b {
-  color: var(--warn, #b26a00);
+  color: var(--warn);
 }
 
 .tarjeta-ext[aria-pressed='true'] {
-  border-color: var(--blue);
+  border-color: var(--blue-text);
 }
 
 .tabla-scroll {
@@ -2936,7 +2936,7 @@ button.tarjeta-ext {
   width: min(60rem, 100%);
   max-height: 90vh;
   padding: 1rem;
-  background: var(--paper, #fff);
+  background: var(--paper);
   border-radius: 12px;
 }
 
@@ -2953,7 +2953,7 @@ button.tarjeta-ext {
 .acciones button[aria-pressed='true'] {
   color: var(--on-blue);
   background: var(--blue);
-  border-color: var(--blue);
+  border-color: var(--blue-text);
 }
 
 .tabla-catastro button.celda-btn {
@@ -2961,7 +2961,7 @@ button.tarjeta-ext {
   padding: 0.1rem 0.4rem;
   font: inherit;
   font-weight: 700;
-  color: var(--blue);
+  color: var(--blue-text);
   text-decoration: underline;
   background: none;
   border: 0;
@@ -2983,32 +2983,32 @@ button.tarjeta-ext {
   margin: 0;
   padding: 0.7rem 1rem;
   color: #fff;
-  background: #1f7a3d;
+  background: var(--ok-fuerte);
   border-radius: 10px;
   box-shadow: 0 4px 14px rgb(0 0 0 / 25%);
 }
 
 .toast-aviso.mal {
-  background: #b3261e;
+  background: var(--mal-fuerte);
 }
 
 /* Calendario del programa: el mes y la semana de hoy, en colores pastel */
 .grilla-passt thead th.mes-hoy {
-  color: #3d2f00;
-  background: #ffd96b;
+  color: var(--aviso-fg);
+  background: var(--aviso-fuerte);
 }
 
 .grilla-passt thead th.col-hoy {
-  color: #3d2f00;
-  background: #ffe9a3;
+  color: var(--aviso-fg);
+  background: var(--aviso-fuerte);
 }
 
 .grilla-passt td.celda.col-hoy:not(.c-p):not(.c-e):not(.c-x):not(.c-v) {
-  background: #fff4c9;
+  background: var(--aviso-bg);
 }
 
 .grilla-passt td.celda.col-hoy {
-  box-shadow: inset 0 0 0 1px #e6c24f;
+  box-shadow: inset 0 0 0 1px var(--aviso-borde);
 }
 
 /* Gráfico de barras de los resultados (IPF) y registros con descarga */
@@ -3071,7 +3071,7 @@ button.tarjeta-ext {
   flex-direction: column;
   width: min(19rem, 86vw);
   color: #fff;
-  background: var(--blue, #0b3c5d);
+  background: var(--blue, var(--blue));
   box-shadow: 4px 0 18px rgb(0 0 0 / 30%);
   transform: translateX(-105%);
   visibility: hidden;
@@ -3182,7 +3182,7 @@ button.tarjeta-ext {
 
 /* Teléfono rojo de emergencias, junto a la campana */
 .barra nav .emergencias > button {
-  color: #ff4d4d;
+  color: var(--mal);
 }
 
 .barra nav .emergencias > button:hover {
@@ -3205,7 +3205,7 @@ button.tarjeta-ext {
 
 .emergencia-fila b {
   font-size: 1.1rem;
-  color: #d62828;
+  color: var(--mal-fuerte);
 }
 
 .emergencia-fila:hover {
@@ -3328,7 +3328,7 @@ button.tarjeta-ext {
   max-width: 14rem;
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--rule);
-  border-top: 4px solid #1ba39c;
+  border-top: 4px solid var(--teal);
   border-radius: 10px;
   background: var(--surface);
   text-align: center;
@@ -3477,7 +3477,7 @@ a:not([class]) {
 }
 
 a:not([class]):hover {
-  color: var(--blue);
+  color: var(--blue-text);
 }
 
 /* Barra superior en el celular: los botones no se aplastan (el teléfono de emergencias quedaba en 14 px) y miden 44 px */
@@ -3508,7 +3508,7 @@ a:not([class]):hover {
 }
 
 .campana-numero {
-  background: #c4343a; /* el rojo anterior daba 3,9:1 con el texto blanco */
+  background: var(--mal-fuerte); /* el rojo anterior daba 3,9:1 con el texto blanco */
 }
 
 /* «Saltar al contenido»: solo se ve al llegar con el teclado */
@@ -3521,10 +3521,10 @@ a:not([class]):hover {
   border: 0;
   border-radius: 8px;
   background: var(--surface);
-  color: var(--blue);
+  color: var(--blue-text);
   font: inherit;
   font-weight: 700;
-  box-shadow: 0 4px 14px rgb(11 34 51 / 0.3);
+  box-shadow: 0 4px 14px rgb(var(--sombra) / 0.3);
   transform: translateY(-200%);
   transition: transform 0.15s var(--ease-out);
 }
@@ -3613,7 +3613,7 @@ input[type='radio'] {
 .tarjetas-tipos button:hover,
 .lista-empresas button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px -8px rgb(11 34 51 / 0.35);
+  box-shadow: 0 6px 16px -8px rgb(var(--sombra) / 0.35);
 }
 
 .tarjetas-tipos button:active,
@@ -3636,8 +3636,8 @@ input[type='radio'] {
 }
 
 .btn-sec:hover {
-  border-color: var(--blue);
-  background: #eaf1f5;
+  border-color: var(--blue-text);
+  background: var(--surface-3);
 }
 
 .btn-sec:active {
@@ -3727,7 +3727,7 @@ input[type='radio'] {
 
 /* Gestión de condiciones (05/11/2026): la matriz se desplaza de lado y las columnas obligatorias llevan un asterisco. */
 .marca-obligatoria {
-  color: var(--bad, #b3261e);
+  color: var(--bad);
   font-weight: 700;
 }
 .tabla-condiciones th,
@@ -3824,18 +3824,18 @@ fieldset.field legend {
   text-align: center;
 }
 .tarjeta-cond.atencion {
-  background: #fff4dc;
-  border-color: #e0b04c;
+  background: var(--aviso-bg);
+  border-color: var(--aviso-borde);
 }
 .tarjeta-cond.atencion b {
-  color: #8a5a00;
+  color: var(--aviso-fg);
 }
 .tarjeta-cond[aria-pressed='true'] {
   outline: 2px solid var(--teal-ink);
   outline-offset: 1px;
 }
 .fila-borrador td {
-  background: #fffaf0;
+  background: var(--aviso-bg-2);
 }
 .btn-validar {
   white-space: nowrap;
@@ -3857,7 +3857,7 @@ fieldset.field legend {
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(11, 60, 93, 0.18);
+  box-shadow: 0 8px 24px rgb(var(--sombra) / 0.18);
 }
 .combo-lista li {
   padding: 0.55rem 0.7rem;
@@ -3866,10 +3866,10 @@ fieldset.field legend {
   cursor: pointer;
 }
 .combo-lista li.activa {
-  background: #e3f1f0;
+  background: var(--ok-bg);
 }
 .combo-lista small {
-  color: var(--ink-soft, #5a6b78);
+  color: var(--ink-soft);
 }
 .combo-crear {
   color: var(--teal-ink);
@@ -3877,7 +3877,7 @@ fieldset.field legend {
   border-top: 1px solid var(--rule);
 }
 .combo-vacio {
-  color: var(--ink-soft, #5a6b78);
+  color: var(--ink-soft);
   cursor: default;
 }
 
