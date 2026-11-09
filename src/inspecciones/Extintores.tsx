@@ -78,8 +78,8 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   const [filas, setFilas] = useState<FilaAvance[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Caseta de ataque rápido (pedido del dueño, 09/11/2026): la pantalla se arma con pestañas estilo navegador.
-  const conPestanas = variante === 'caseta' || variante === 'extintor' // extintores: 09/11/2026
-  const conObservaciones = variante === 'caseta' // la tarjeta «Observaciones abiertas» es de la caseta
+  const conPestanas = true // caseta, extintores y DACI (09/11/2026)
+  const conObservaciones = variante === 'caseta' || variante === 'daci' // la tarjeta «Observaciones abiertas» es de la caseta y del DACI
   const [vista, setVista] = useState<Vista>(vistaInicial ?? (conPestanas ? 'inspeccion' : 'ninguna'))
   const [noopAbierto, setNoopAbierto] = useState(false)
   const [vencerAbierto, setVencerAbierto] = useState(false)
