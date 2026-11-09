@@ -1,3 +1,4 @@
+import { InsigniaListo } from '../InsigniaListo'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
 import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search, Trash2 } from 'lucide-react'
@@ -522,6 +523,9 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [armando, setArmando] = useState(false)
+  // Qué botón terminó bien (muestra la insignia de «listo» unos 4 s).
+  const [listoDe, setListoDe] = useState<'excel' | 'pdf' | null>(null)
+  const [armandoDe, setArmandoDe] = useState<'excel' | 'pdf' | null>(null)
   const [vistaPdf, setVistaPdf] = useState<ReturnType<typeof vistaDeExcel> | null>(null)
 
   useEffect(() => {
@@ -531,6 +535,12 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
       vivo = false
     }
   }, [formato.plantilla.id])
+
+  useEffect(() => {
+    if (!listoDe) return
+    const t = setTimeout(() => setListoDe(null), 4000)
+    return () => clearTimeout(t)
+  }, [listoDe])
 
   useEffect(() => {
     if (!vistaPdf) return
@@ -562,17 +572,21 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return setError('Escribe la fecha de la inspección.')
     if (registro.nombre.trim().length < 3 || !registro.cargo.trim() || !firma) return setError('Escribe tu nombre y apellido, tu cargo y firma: el pie del formato los pide.')
     setArmando(true)
+    setArmandoDe(como)
+    setListoDe(null)
     try {
       const filas = await avancePeriodo(formato.plantilla.id, sede, elegido.desde, elegido.hasta)
       const r = await armarRegistro({ formato, copia, sede, periodo: { etiqueta: elegido.etiqueta, desde: elegido.desde, hasta: elegido.hasta }, filas, registro: { ...registro, fecha }, firma })
       if (!r) return setAviso('Este formato no tiene un Excel de la organización. Súbelo en el formato.')
       const vista = await entregarRegistro(r.bytes, como, `Inspección ${nombreArchivo}- ${elegido.clave}`)
       if (vista) setVistaPdf(vista)
+      setListoDe(como)
       setAviso(`Registro listo: ${plural(r.filas, 'equipo', 'equipos')}${r.agregadas ? `; se agregaron ${r.agregadas} filas al formato` : ''}.`)
     } catch (e) {
       setError(`No se pudo armar el registro: ${(e as Error).message}`)
     } finally {
       setArmando(false)
+      setArmandoDe(null)
     }
   }
 
@@ -646,10 +660,10 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
       ) : (
         <div className="acciones">
           <button className="btn" type="button" disabled={armando || tieneExcel === null} onClick={() => void generar('excel')}>
-            <FileSpreadsheet size={18} aria-hidden="true" /> {armando ? 'Armando…' : 'Generar en Excel'}
+            {armandoDe === 'excel' || listoDe === 'excel' ? <InsigniaListo armando={armandoDe === 'excel'} listo={listoDe === 'excel'} /> : <FileSpreadsheet size={18} aria-hidden="true" />} {armando ? 'Armando…' : listoDe === 'excel' ? '¡Listo!' : 'Generar en Excel'}
           </button>
           <button className="btn" type="button" disabled={armando || tieneExcel === null} onClick={() => void generar('pdf')}>
-            <FileText size={18} aria-hidden="true" /> {armando ? 'Armando…' : 'Generar en PDF'}
+            {armandoDe === 'pdf' || listoDe === 'pdf' ? <InsigniaListo armando={armandoDe === 'pdf'} listo={listoDe === 'pdf'} /> : <FileText size={18} aria-hidden="true" />} {armando ? 'Armando…' : listoDe === 'pdf' ? '¡Listo!' : 'Generar en PDF'}
           </button>
         </div>
       )}

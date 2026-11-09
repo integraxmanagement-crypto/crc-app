@@ -1226,3 +1226,173 @@ body {
     transition: none;
   }
 }
+
+/* ───── Insignia de «listo» en los botones de generar (06/11/2026) ───── */
+.insignia {
+  --visto: #0e7068;
+  display: inline-block;
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+:root[data-theme='dark'] .insignia {
+  --visto: #03131c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .insignia {
+    --visto: #03131c;
+  }
+}
+
+.insignia svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ins-pista {
+  fill: none;
+  stroke: currentColor;
+  stroke-opacity: 0.3;
+  stroke-width: 11;
+}
+
+.ins-arco {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 11;
+  stroke-linecap: round;
+  stroke-dasharray: 484;
+  stroke-dashoffset: 484;
+}
+
+.ins-relleno {
+  fill: currentColor;
+  opacity: 0;
+}
+
+.ins-visto {
+  fill: none;
+  stroke: var(--visto);
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 105;
+  stroke-dashoffset: 105;
+}
+
+.ins-grupo {
+  transform-origin: 0 0;
+}
+
+/* Armando: un arco gira */
+.insignia-gira .ins-arco {
+  stroke-dasharray: 150 334;
+  stroke-dashoffset: 0;
+  animation: ins-gira 0.9s linear infinite;
+  transform-origin: 0 0;
+}
+
+@keyframes ins-gira {
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+/* Listo: 4 s — aro 0,4–2,0 s; círculo 2,0–2,2 s; visto 2,2–2,5 s; rebote 2,15–2,6 s; se desvanece 3,6–3,95 s */
+.insignia-ok .ins-grupo {
+  animation: ins-grupo 4s both;
+}
+
+.insignia-ok .ins-arco {
+  stroke-dasharray: 484;
+  stroke-dashoffset: 484;
+  animation: ins-arco 4s ease-in-out both;
+}
+
+.insignia-ok .ins-relleno {
+  animation: ins-relleno 4s both;
+  filter: drop-shadow(0 0 6px rgb(var(--cyan-rgb) / 0.8));
+}
+
+.insignia-ok .ins-visto {
+  animation: ins-visto 4s ease-out both;
+}
+
+@keyframes ins-arco {
+  0%,
+  10% {
+    stroke-dashoffset: 484;
+  }
+  50%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ins-relleno {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  55%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes ins-visto {
+  0%,
+  55% {
+    stroke-dashoffset: 105;
+  }
+  62.5%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ins-grupo {
+  0%,
+  53.75% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  59.4% {
+    transform: scale(1.12);
+  }
+  65% {
+    transform: scale(1);
+  }
+  90% {
+    opacity: 1;
+  }
+  98.75%,
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insignia-gira .ins-arco {
+    animation: none;
+  }
+  .insignia-ok .ins-grupo,
+  .insignia-ok .ins-arco,
+  .insignia-ok .ins-relleno,
+  .insignia-ok .ins-visto {
+    animation: none;
+  }
+  .insignia-ok .ins-arco {
+    stroke-dashoffset: 0;
+  }
+  .insignia-ok .ins-relleno {
+    opacity: 1;
+  }
+  .insignia-ok .ins-visto {
+    stroke-dashoffset: 0;
+  }
+}
