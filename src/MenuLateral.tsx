@@ -1,4 +1,4 @@
-import { UsersRound, CalendarDays, ChevronDown, ClipboardCheck, ClipboardList, Home, ListChecks, ListTodo, X } from 'lucide-react'
+import { UsersRound, CalendarDays, ChevronDown, ClipboardList, Home, ListChecks, ListTodo, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { type CopiaLocal, leerCopia } from './inspecciones/campo'
 import { listarInspecciones } from './inspecciones/datos'
@@ -9,7 +9,7 @@ import { Logo } from './marca/Logo'
 
 /**
  * Menú lateral (pedido del dueño, 29/10/2026): se abre desde las tres líneas de la barra y se desliza desde la izquierda. Trae Inicio,
- * Programa anual de SST, Inspecciones (con las cuatro inspecciones más usadas y «Ver todas») y Formatos. Reemplaza esos botones de la barra.
+ * Programa anual de SST e Inspecciones (con las cuatro inspecciones más usadas y «Ver todas»). Reemplaza esos botones de la barra.
  */
 export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { perfil: Perfil; equipoSso: boolean; online: boolean; abierto: boolean; onCerrar: () => void }) {
   const [masUsadas, setMasUsadas] = useState<{ id: string; nombre: string }[]>([])
@@ -134,11 +134,6 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
           {perfil.empresaId && ['admin_empresa', 'admin_sede', 'gestor'].includes(perfil.rolCodigo ?? '') && (
             <button type="button" onClick={ir_('/planes')} {...aqui(ruta[0] === 'planes')}>
               <ListTodo size={18} aria-hidden="true" /> Gestión de planes de acción
-            </button>
-          )}
-          {equipoSso && (
-            <button type="button" onClick={ir_('/formatos')} {...aqui(ruta[0] === 'formatos' || ruta[0] === 'activos')}>
-              <ClipboardCheck size={18} aria-hidden="true" /> Formatos
             </button>
           )}
           {perfil.empresaId && (
