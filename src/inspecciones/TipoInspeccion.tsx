@@ -87,12 +87,12 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
                   <CalendarDays size={18} aria-hidden="true" /> Ver por mes
                 </button>
               )}
-              {cargaMasiva && (
+              {cargaMasiva && !esExtintor && (
                 <button className="btn-sec" type="button" onClick={() => setCargando(true)}>
                   <Upload size={18} aria-hidden="true" /> Cargar equipos
                 </button>
               )}
-              {!esLoto && !esIpf && !esCaseta && <button className="btn" type="button" onClick={() => ir(`/inspecciones/nueva/${id}`)}>
+              {!esLoto && !esIpf && !esCaseta && !esExtintor && <button className="btn" type="button" onClick={() => ir(`/inspecciones/nueva/${id}`)}>
                 <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
               </button>}
             </span>
@@ -142,7 +142,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
             </>
           )}
           {esExtintor || esDaci || esCaseta ? (
-            <Extintores key={cargaVersion} variante={esExtintor ? 'extintor' : esCaseta ? 'caseta' : 'daci'} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formato={formato} vistaInicial={abrir === 'registro' ? 'registro' : undefined} />
+            <Extintores key={cargaVersion} variante={esExtintor ? 'extintor' : esCaseta ? 'caseta' : 'daci'} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formato={formato} vistaInicial={abrir === 'registro' ? 'registro' : undefined} alCargar={cargaMasiva && esExtintor ? () => setCargando(true) : undefined} />
           ) : null}
           {/* En la eficacia del LOTO no se muestra «En este equipo» (pedido del dueño, 29/10/2026). */}
           {!esLoto && !esDaci && !esCaseta && (borradores.length > 0 || cola.length > 0) && (

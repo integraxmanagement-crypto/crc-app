@@ -2,7 +2,7 @@ import { BotonEliminar } from '../BotonEliminar'
 import { InsigniaListo } from '../InsigniaListo'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
-import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search } from 'lucide-react'
+import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search, Upload } from 'lucide-react'
 import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FormActivo, FormBaja, useContextoActivos } from '../activos/Activos'
@@ -65,7 +65,7 @@ type Vista = 'ninguna' | 'catastro' | 'inspeccion' | 'noop' | 'vencer' | 'regist
  * Pantalla de la inspección de extintores (pedido del dueño, 29/10/2026, paquete SO.R.G.085): cumplimiento de la semana, no operativos,
  * por vencer, catastro (doble entrada), tabla para inspeccionar, buscador por código con su ficha y el botón para generar el registro.
  */
-export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato, variante = 'extintor', vistaInicial }: { empresaId: string; cuenta: string; gestiona: boolean; online: boolean; copia: CopiaLocal; formato: FormatoLocal; variante?: 'extintor' | 'daci' | 'caseta'; vistaInicial?: Vista }) {
+export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato, variante = 'extintor', vistaInicial, alCargar }: { alCargar?: () => void; empresaId: string; cuenta: string; gestiona: boolean; online: boolean; copia: CopiaLocal; formato: FormatoLocal; variante?: 'extintor' | 'daci' | 'caseta'; vistaInicial?: Vista }) {
   // La misma pantalla sirve para extintores, para los dispositivos del sistema DACI (pedido del dueño, 29/10/2026) y para las casetas de
   // ataque rápido (02/11/2026); solo cambian los textos, el catastro, la ficha y que el DACI y la CAR no tienen vencimientos.
   const esExt = variante === 'extintor'
@@ -77,9 +77,11 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   const [filas, setFilas] = useState<FilaAvance[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   // Caseta de ataque rápido (pedido del dueño, 09/11/2026): la pantalla se arma con pestañas estilo navegador.
-  const conPestanas = variante === 'caseta'
+  const conPestanas = variante === 'caseta' || variante === 'extintor' // extintores: 09/11/2026
+  const conObservaciones = variante === 'caseta' // la tarjeta «Observaciones abiertas» es de la caseta
   const [vista, setVista] = useState<Vista>(vistaInicial ?? (conPestanas ? 'inspeccion' : 'ninguna'))
   const [noopAbierto, setNoopAbierto] = useState(false)
+  const [vencerAbierto, setVencerAbierto] = useState(false)
   const [sede, setSede] = useState(copia.sedes[0]?.id ?? '')
   const hoy = hoyLocal()
   // La frecuencia es la del formato (semanal por defecto): con frecuencia mensual, todo se mide por mes, una inspección al mes por extintor.
@@ -101,8 +103,8 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   // Observaciones abiertas: los planes de acción que nacieron de este formato y siguen abiertos o en proceso.
   const [observaciones, setObservaciones] = useState<Hallazgo[] | null>(null)
   useEffect(() => {
-    if (conPestanas && online) listarHallazgos(empresaId).then(setObservaciones, () => setObservaciones([]))
-  }, [conPestanas, online, empresaId, vista])
+    if (conObservaciones && online) listarHallazgos(empresaId).then(setObservaciones, () => setObservaciones([]))
+  }, [conObservaciones, online, empresaId, vista])
   const tipoId = formato.plantilla.tipo_activo_id
   const criticos = useMemo(() => todosLosPuntos(formato.version.receta).filter((x) => x.punto.critico).map((x) => x.punto), [formato])
   const nombrePersona = useMemo(() => new Map(copia.personas.map((p) => [p.persona_id, p.apellidos_nombres])), [copia])
@@ -153,6 +155,8 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   // Con pestañas, «No operativos» se abre dentro de la primera; sin ellas sigue siendo una vista más.
   const alternarNoop = () => (conPestanas ? setNoopAbierto((x) => !x) : alternar('noop'))
   const noopVisible = conPestanas ? noopAbierto : vista === 'noop'
+  const alternarVencer = () => (conPestanas ? setVencerAbierto((x) => !x) : alternar('vencer'))
+  const vencerVisible = conPestanas ? vencerAbierto : vista === 'vencer'
 
   const filtros = (
     <div className={`${conPestanas && copia.sedes.length > 1 ? 'fila3' : 'fila2'} no-imprimir`}>
@@ -189,7 +193,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           <b>{pct} %</b>
           <span>{hechos} de {total} {N.p} inspeccionados</span>
         </div>
-        {conPestanas ? (
+        {conObservaciones ? (
           <button type="button" className={`tarjeta-ext ${abiertas ? 'mal' : ''}`} onClick={() => setVista('hallazgos')}>
             <small>Observaciones abiertas</small>
             <b>{observaciones ? abiertas : '…'}</b>
@@ -203,7 +207,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           </button>
         )}
         {esExt && (
-          <button type="button" className={`tarjeta-ext ${porVencer.length ? 'aviso' : ''}`} aria-pressed={vista === 'vencer'} onClick={() => alternar('vencer')}>
+          <button type="button" className={`tarjeta-ext ${porVencer.length ? 'aviso' : ''}`} aria-pressed={vencerVisible} onClick={alternarVencer}>
             <small>Por vencer</small>
             <b>{porVencer.length}</b>
             <span>vencen este mes o el próximo{vencidos.length ? ` · ${vencidos.length} ${vencidos.length === 1 ? 'ya vencido' : 'ya vencidos'}` : ''}</span>
@@ -227,7 +231,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
       )}
     </Seccion>
   )
-  const listaVencer = esExt && vista === 'vencer' && (
+  const listaVencer = esExt && vencerVisible && (
     <Seccion titulo={`Por vencer (${porVencer.length})`}>
       <p className="nota">El mantenimiento vence 1 año después del último. El aviso sale desde el primer día del mes anterior al del vencimiento.</p>
       {!porVencer.length ? <p className="aviso-ok">Ningún extintor está por vencer.</p> : (
@@ -277,11 +281,23 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
               {filtros}
               {tarjetas}
               {listaNoop}
+              {listaVencer}
               {buscador}
               {tabla}
             </>
           )}
-          {activa === 'catastro' && catastro}
+          {activa === 'catastro' && (
+            <>
+              {alCargar && (
+                <div className="acciones no-imprimir">
+                  <button className="btn-sec" type="button" onClick={alCargar}>
+                    <Upload size={18} aria-hidden="true" /> Cargar equipos
+                  </button>
+                </div>
+              )}
+              {catastro}
+            </>
+          )}
           {activa === 'hallazgos' && planes}
           {activa === 'registro' && registro}
         </div>
