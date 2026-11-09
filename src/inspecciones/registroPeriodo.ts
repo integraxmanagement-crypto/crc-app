@@ -66,5 +66,5 @@ export async function entregarRegistro(bytes: Uint8Array, como: 'excel' | 'pdf',
     guardarExcel(bytes, nombreArchivo)
     return null
   }
-  return vistaDeExcel(await partes(bytes))
+  return vistaDeExcel(await partes(bytes), nombreArchivo)
 }

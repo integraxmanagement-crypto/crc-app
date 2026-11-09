@@ -1,4 +1,5 @@
 import { FileSpreadsheet, FileText, HardHat, PenLine, Plus, Search, ShieldCheck } from 'lucide-react'
+import { usePdfAutomatico } from '../inspecciones/pdf'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BotonEliminar } from '../BotonEliminar'
@@ -332,16 +333,8 @@ function GenerarRegistroEpp({ trabajador, entregas, empresaId, nombre, cargo }: 
     const t = setTimeout(() => setListoDe(null), 4000)
     return () => clearTimeout(t)
   }, [listoDe])
-  useEffect(() => {
-    if (!vistaPdf) return
-    const listo = () => setVistaPdf(null)
-    window.addEventListener('afterprint', listo)
-    const t = setTimeout(() => window.print(), 300)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('afterprint', listo)
-    }
-  }, [vistaPdf])
+  // PDF: se descarga solo, sin abrir «Imprimir» (09/11/2026).
+  usePdfAutomatico(vistaPdf, () => setVistaPdf(null), setError)
 
   async function generar(como: 'excel' | 'pdf') {
     setError(null)

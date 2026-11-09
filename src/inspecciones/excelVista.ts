@@ -101,7 +101,7 @@ function estilosDe(xml: string, tema: string[]): Estilo[] {
 }
 
 /** Lee la primera hoja del Excel (ya lleno) y la deja lista para dibujar. medias: nombre de la parte → bytes de la imagen. */
-export function vistaDeExcel(lista: Parte[]): { vista: VistaHoja; medias: Map<string, Uint8Array> } {
+export function vistaDeExcel(lista: Parte[], nombre = 'Registro'): { vista: VistaHoja; medias: Map<string, Uint8Array>; nombre: string } {
   const texto = (n: string) => {
     const p = lista.find((x) => x.nombre === n)
     return p ? new TextDecoder().decode(p.bytes) : ''
@@ -217,5 +217,5 @@ export function vistaDeExcel(lista: Parte[]): { vista: VistaHoja; medias: Map<st
     }
   }
   const pagina = xml.match(/<pageSetup\b[^>]*\/?>/)?.[0] ?? ''
-  return { vista: { anchos, altos, celdas: salida, imagenes, horizontal: attr(pagina, 'orientation') === 'landscape' }, medias }
+  return { vista: { anchos, altos, celdas: salida, imagenes, horizontal: attr(pagina, 'orientation') === 'landscape' }, medias, nombre }
 }

@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { usePdfAutomatico } from './pdf'
 import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, CalendarRange, Eye, FileSpreadsheet, FileText, PenLine } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -9,6 +10,7 @@ import { ir } from '../ruta'
 import { hoyLocal } from './ayudas'
 import { type CopiaLocal, type FormatoLocal, bajarCopia, leerCopia } from './campo'
 import { type FilaAvance, avancePeriodo, conFrecuencias, frecuenciasActuales } from './datos'
+import { esBombaIncendio } from './BombasIncendio'
 import { armarRegistro, entregarRegistro } from './registroPeriodo'
 import { vistaDeExcel } from './excelVista'
 import { PanelFirma } from './Firma'
@@ -16,6 +18,15 @@ import { CON_PERIODO, type Periodo, periodoDe, periodosHasta } from './periodos'
 import { VistaExcel } from './VistaExcel'
 
 const fechaCorta = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
+type Resumen = { periodo: Periodo; hechos: number; total: number | null }
+/** Junta el avance de motobomba y electrobomba en uno solo (el ítem «Inspección de bomba»). */
+function juntar(rs: (Resumen | string | undefined)[]): Resumen | string | undefined {
+  if (!rs.length || rs.some((x) => x === undefined)) return undefined
+  const error = rs.find((x): x is string => typeof x === 'string')
+  if (error) return error
+  const ok = rs as Resumen[]
+  return { periodo: ok[0].periodo, hechos: ok.reduce((n, x) => n + x.hechos, 0), total: ok.some((x) => x.total == null) ? null : ok.reduce((n, x) => n + (x.total ?? 0), 0) }
+}
 const porcentaje = (hechos: number, total: number) => (total ? Math.round((100 * hechos) / total) : 0)
 
 /** Resumen del avance de una lista de filas: equipos inspeccionados de total (formatos de activo). */
@@ -33,6 +44,7 @@ export function Avance({ empresaId, cuenta, online }: { empresaId: string; cuent
   const [copia, setCopia] = useState<CopiaLocal | null | undefined>(undefined)
   const [sede, setSede] = useState('')
   const [elegido, setElegido] = useState<string | null>(null)
+  const [tipoBomba, setTipoBomba] = useState('')
   const [resumen, setResumen] = useState<Record<string, { periodo: Periodo; hechos: number; total: number | null } | string>>({})
 
   useEffect(() => {
@@ -64,14 +76,18 @@ export function Avance({ empresaId, cuenta, online }: { empresaId: string; cuent
     }
   }, [programados, sede, online])
 
-  const formato = programados.find((f) => f.plantilla.id === elegido)
+  // Motobomba y electrobomba van juntas en un solo ítem, «Inspección de bomba» (09/11/2026); dentro se elige el tipo.
+  const bombas = programados.filter((f) => esBombaIncendio(f.plantilla.nombre))
+  const lista = [...programados.filter((f) => !esBombaIncendio(f.plantilla.nombre)), ...(bombas.length ? [{ ...bombas[0], plantilla: { ...bombas[0].plantilla, id: 'bombas', nombre: 'Inspección de bomba' } }] : [])]
+  const bombaElegida = bombas.find((f) => f.plantilla.id === tipoBomba) ?? bombas[0]
+  const formato = elegido === 'bombas' ? bombaElegida : programados.find((f) => f.plantilla.id === elegido)
   return (
     <div className="detalle">
       <button className="btn-link volver" type="button" onClick={() => (elegido ? setElegido(null) : ir('/inspecciones'))}>
         <ArrowLeft size={18} aria-hidden="true" /> {elegido ? 'Avance por período' : 'Inspecciones'}
       </button>
       <header className="detalle-cab">
-        <h1>{formato ? formato.plantilla.nombre : 'Avance por período'}</h1>
+        <h1>{elegido === 'bombas' ? 'Inspección de bomba' : formato ? formato.plantilla.nombre : 'Avance por período'}</h1>
         <p>
           Equipos inspeccionados de los que tiene la sede en cada período, según la frecuencia de cada formato. Las semanas van de lunes a domingo y cada
           una cuenta en el mes de su jueves.
@@ -95,15 +111,26 @@ export function Avance({ empresaId, cuenta, online }: { empresaId: string; cuent
           </label>
           {!online && <p className="aviso-suave">El avance se calcula con lo que ya llegó al servidor: necesita señal.</p>}
           {formato ? (
-            <DetalleAvance key={`${formato.plantilla.id}-${sede}`} formato={formato} sede={sede} copia={copia} online={online} />
+            <>
+              {elegido === 'bombas' && bombas.length > 1 && (
+                <div className="filtros" role="group" aria-label="Tipo de bomba">
+                  {bombas.map((b) => (
+                    <button key={b.plantilla.id} type="button" aria-pressed={b.plantilla.id === formato.plantilla.id} onClick={() => setTipoBomba(b.plantilla.id)}>
+                      {/electro/i.test(b.plantilla.nombre) ? 'Electrobomba' : 'Motobomba'}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <DetalleAvance key={`${formato.plantilla.id}-${sede}`} formato={formato} sede={sede} copia={copia} online={online} />
+            </>
           ) : (
             <Seccion titulo="Período actual">
               {!programados.length ? (
                 <p className="nota">Ningún formato vigente tiene frecuencia. El administrador la define en cada formato.</p>
               ) : (
                 <ul className="lista">
-                  {programados.map((f) => {
-                    const r = resumen[f.plantilla.id]
+                  {lista.map((f) => {
+                    const r = f.plantilla.id === 'bombas' ? juntar(bombas.map((b) => resumen[b.plantilla.id])) : resumen[f.plantilla.id]
                     return (
                       <li key={f.plantilla.id}>
                         <CalendarRange aria-hidden="true" />
@@ -172,16 +199,8 @@ function DetalleAvance({ formato, sede, copia, online }: { formato: FormatoLocal
   const [vistaPdf, setVistaPdf] = useState<ReturnType<typeof vistaDeExcel> | null>(null)
   const pideRegistro = Boolean(formato.excel?.marcas.some((m) => m.startsWith('firma.registro.')))
   // PDF igual al Excel: cuando la hoja ya está dibujada, se abre «Imprimir» (ahí se elige «Guardar como PDF»).
-  useEffect(() => {
-    if (!vistaPdf) return
-    const listo = () => setVistaPdf(null)
-    window.addEventListener('afterprint', listo)
-    const t = setTimeout(() => window.print(), 300)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('afterprint', listo)
-    }
-  }, [vistaPdf])
+  // PDF: se descarga solo, sin abrir «Imprimir» (09/11/2026).
+  usePdfAutomatico(vistaPdf, () => setVistaPdf(null), setError)
   const esActivo = formato.plantilla.aplica_a === 'activo'
   const nombreUbicacion = (id: string | null) => (id ? (copia.ubicaciones.find((u) => u.id === id)?.nombre ?? '') : '')
   const nombreSede = copia.sedes.find((s) => s.id === sede)?.nombre ?? ''

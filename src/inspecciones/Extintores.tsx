@@ -1,4 +1,5 @@
 import { BotonEliminar } from '../BotonEliminar'
+import { usePdfAutomatico } from './pdf'
 import { InsigniaListo } from '../InsigniaListo'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
@@ -724,16 +725,8 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
     return () => clearTimeout(t)
   }, [listoDe])
 
-  useEffect(() => {
-    if (!vistaPdf) return
-    const listo = () => setVistaPdf(null)
-    window.addEventListener('afterprint', listo)
-    const t = setTimeout(() => window.print(), 300)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('afterprint', listo)
-    }
-  }, [vistaPdf])
+  // PDF: se descarga solo, sin abrir «Imprimir» (09/11/2026).
+  usePdfAutomatico(vistaPdf, () => setVistaPdf(null), setError)
 
   // Alerta (pedido del dueño, 29/10/2026): el registro lleva código, versión y fecha de aprobación del formato.
   const faltaVersion = [

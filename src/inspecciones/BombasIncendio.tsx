@@ -1,4 +1,5 @@
 import { Esqueleto } from '../Esqueleto'
+import { usePdfAutomatico } from './pdf'
 import { ArrowLeft, ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Search, Upload } from 'lucide-react'
 import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -55,13 +56,13 @@ export function BombasIncendio({ empresaId, cuenta, gestiona, online, abrir }: {
         <ArrowLeft size={18} aria-hidden="true" /> Inspecciones
       </button>
       <header className="detalle-cab">
-        <h1>Inspección de bomba contra incendio</h1>
+        <h1>Inspección de bomba</h1>
         <p>Electrobomba y motobomba: cada bomba se inspecciona una vez por semana, según el programa anual de SST.</p>
       </header>
       {copia === undefined ? (
         <Esqueleto forma="lista" />
       ) : !copia || !formatos.length ? (
-        <Aviso>No hay formatos de bomba contra incendio en este equipo. Vuelve a Inspecciones y pulsa «Actualizar».</Aviso>
+        <Aviso>No hay formatos de bomba en este equipo. Vuelve a Inspecciones y pulsa «Actualizar».</Aviso>
       ) : !online ? (
         <p className="nota">La pantalla de bombas necesita señal. Sin señal, empieza una inspección desde «Nueva inspección» en Inspecciones.</p>
       ) : (
@@ -405,16 +406,8 @@ function Registro({ grupos, sede, hoy, copia, nombreUbic }: { grupos: Grupo[]; s
     const t = setTimeout(() => setListoDe(null), 4000)
     return () => clearTimeout(t)
   }, [listoDe])
-  useEffect(() => {
-    if (!vistaPdf) return
-    const listo = () => setVistaPdf(null)
-    window.addEventListener('afterprint', listo)
-    const t = setTimeout(() => window.print(), 300)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('afterprint', listo)
-    }
-  }, [vistaPdf])
+  // PDF: se descarga solo, sin abrir «Imprimir» (09/11/2026).
+  usePdfAutomatico(vistaPdf, () => setVistaPdf(null), setError)
 
   async function generar(como: 'excel' | 'pdf') {
     setError(null)

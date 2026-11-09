@@ -1,4 +1,5 @@
 import { plural } from '../plural'
+import { usePdfAutomatico } from './pdf'
 import { Esqueleto } from '../Esqueleto'
 import { ArrowLeft, Ban, FileSpreadsheet, FileText, Pencil, Printer } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -55,16 +56,8 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto
     if (online) cargar()
   }, [online, cargar])
   // PDF igual al Excel: cuando la hoja ya está dibujada, se abre «Imprimir» (ahí se elige «Guardar como PDF»).
-  useEffect(() => {
-    if (!vistaPdf) return
-    const listo = () => setVistaPdf(null)
-    window.addEventListener('afterprint', listo)
-    const t = setTimeout(() => window.print(), 300)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('afterprint', listo)
-    }
-  }, [vistaPdf])
+  // PDF: se descarga solo, sin abrir «Imprimir» (09/11/2026).
+  usePdfAutomatico(vistaPdf, () => setVistaPdf(null), setError)
   useEffect(() => {
     void leerCopia(cuenta, empresaId).then((c) => (c ? setCopia(c) : online ? bajarCopia(cuenta, empresaId).then(setCopia, () => {}) : null))
   }, [cuenta, empresaId, online])
@@ -160,7 +153,7 @@ export function DetalleInspeccion({ id, cuenta, empresaId, online, esAdmin, auto
       const lleno = await armarExcel()
       if (!lleno) return
       if (como === 'excel') guardarExcel(lleno, `Inspeccion-${i.numero}-${i.plantillas?.nombre ?? 'formato'}`)
-      else setVistaPdf(vistaDeExcel(await partes(lleno)))
+      else setVistaPdf(vistaDeExcel(await partes(lleno), `Inspeccion-${i.numero}-${i.plantillas?.nombre ?? 'formato'}`))
     } catch (e) {
       setError(`No se pudo armar el ${como === 'excel' ? 'Excel' : 'PDF'}: ${(e as Error).message}`)
     }

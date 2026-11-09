@@ -1,4 +1,5 @@
 import { BotonEliminar } from '../BotonEliminar'
+import { usePdfAutomatico } from '../inspecciones/pdf'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
 import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, FileSpreadsheet, FileText, Pencil, Plus, TriangleAlert } from 'lucide-react'
@@ -79,16 +80,8 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
   }, [personas])
 
   // PDF: cuando la hoja ya está dibujada, se abre «Imprimir» (ahí se elige «Guardar como PDF»).
-  useEffect(() => {
-    if (!vistaPdf) return
-    const listo = () => setVistaPdf(null)
-    window.addEventListener('afterprint', listo)
-    const t = setTimeout(() => window.print(), 300)
-    return () => {
-      clearTimeout(t)
-      window.removeEventListener('afterprint', listo)
-    }
-  }, [vistaPdf])
+  // PDF: se descarga solo, sin abrir «Imprimir» (09/11/2026).
+  usePdfAutomatico(vistaPdf, () => setVistaPdf(null), setError)
 
   if (!online && !d) return <p className="nota">El programa anual se ve con señal.</p>
   if (!d) return error ? <Aviso>{error}</Aviso> : <Esqueleto forma="detalle" />
@@ -105,7 +98,7 @@ export function ProgramaAnual({ id, empresaId, online, permisos }: { id: string;
       const logo = await logoPng(copiaEmpresa, 'positivo').catch(() => null)
       const lleno = await llenarExcel(base, () => '', logo ? new Map([['logo', logo]]) : undefined)
       if (como === 'excel') guardarExcel(lleno, `PASST-${p.anio}-${p.nombre}`)
-      else setVistaPdf(vistaDeExcel(await partes(lleno)))
+      else setVistaPdf(vistaDeExcel(await partes(lleno), `PASST-${p.anio}-${p.nombre}`))
     } catch (e) {
       setError(`No se pudo armar el ${como === 'excel' ? 'Excel' : 'PDF'}: ${(e as Error).message}`)
     }

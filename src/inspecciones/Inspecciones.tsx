@@ -171,9 +171,9 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
   )
 }
 
-/** La tarjeta que reúne motobomba y electrobomba bajo «Inspección de bomba contra incendio» (su pantalla propone las dos). */
+/** La tarjeta que reúne motobomba y electrobomba bajo «Inspección de bomba» (su pantalla propone las dos). */
 const GRUPO_BOMBAS = (formatos: FormatoLocal[]): FormatoLocal => ({
-  plantilla: { id: 'bombas', nombre: 'Inspección de bomba contra incendio', aplica_a: 'activo', tipo_activo_id: null, frecuencia: formatos[0].plantilla.frecuencia },
+  plantilla: { id: 'bombas', nombre: 'Inspección de bomba', aplica_a: 'activo', tipo_activo_id: null, frecuencia: formatos[0].plantilla.frecuencia },
   version: formatos[0].version,
   excel: null,
 })
@@ -319,6 +319,8 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
     [copia.formatos],
   )
 
+  const bombas = formatosOrdenados.filter(({ x }) => esBombaIncendio(x.plantilla.nombre))
+
   async function crear(e?: FormEvent) {
     e?.preventDefault()
     setError(null)
@@ -373,14 +375,24 @@ function NuevaInspeccion({ copia, cuenta, preset, onCancelar }: { copia: CopiaLo
     <form className="form subform" onSubmit={crear} noValidate>
       <label className="field">
         <span>Formato</span>
-        <select value={formatoId} onChange={(e) => (setFormatoId(e.target.value), setActivoId(''))}>
-          {formatosOrdenados.map(({ x, etiqueta }) => (
+        {/* Motobomba y electrobomba son un solo ítem, «Inspección de bomba»; dentro se elige el tipo (09/11/2026). */}
+        <select value={f && esBombaIncendio(f.plantilla.nombre) ? 'bombas' : formatoId} onChange={(e) => (setFormatoId(e.target.value === 'bombas' ? (bombas[0]?.x.plantilla.id ?? '') : e.target.value), setActivoId(''))}>
+          {formatosOrdenados.filter(({ x }) => !esBombaIncendio(x.plantilla.nombre)).map(({ x, etiqueta }) => (
             <option key={x.plantilla.id} value={x.plantilla.id}>
               {etiqueta}
             </option>
           ))}
+          {bombas.length > 0 && <option value="bombas">Inspección de bomba</option>}
         </select>
       </label>
+      {f && esBombaIncendio(f.plantilla.nombre) && (
+        <label className="field">
+          <span>Tipo de bomba</span>
+          <select value={formatoId} onChange={(e) => (setFormatoId(e.target.value), setActivoId(''))}>
+            {bombas.map(({ x }) => <option key={x.plantilla.id} value={x.plantilla.id}>{/electro/i.test(x.plantilla.nombre) ? 'Electrobomba' : 'Motobomba'}</option>)}
+          </select>
+        </label>
+      )}
       {f?.plantilla.aplica_a === 'activo' ? (
         <div className="fila2">
           <label className="field">
