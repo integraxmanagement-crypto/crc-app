@@ -1,7 +1,8 @@
+import { BotonEliminar } from '../BotonEliminar'
 import { InsigniaListo } from '../InsigniaListo'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
-import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Pencil, Plus, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FormActivo, FormBaja, useContextoActivos } from '../activos/Activos'
@@ -424,7 +425,7 @@ export function BuscadorExtintor({ variante, subtipos, activos, filas, ultimas, 
             <h3>{a.codigo}</h3>
             <span className="acciones">
               <button className="btn-link" type="button" aria-label="Modificar equipo" title="Modificar" onClick={() => setModo('editar')}><Pencil size={18} aria-hidden="true" /> Modificar</button>
-              <button className="btn-link peligro" type="button" aria-label="Eliminar equipo" title="Eliminar" onClick={() => setModo('baja')}><Trash2 size={18} aria-hidden="true" /> Eliminar</button>
+              <BotonEliminar etiqueta="Eliminar equipo" verbo="eliminar" onEliminar={() => setModo('baja')} />
             </span>
           </div>
           <dl className="datos-ficha">

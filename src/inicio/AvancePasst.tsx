@@ -99,45 +99,137 @@ function calcularMeses(d: DatosPrograma, hoy: string): Mes[] {
   return total.map((t, k) => ({ total: t, objetivos: porObjetivo.map(({ o, meses }) => ({ id: o.id, numero: o.numero, texto: o.texto, total: meses[k] })) }))
 }
 
+/** Resorte amortiguado (ω₀ 15, ζ 0,68): sube de 0 a 1 con un rebote de ~3 %, como el gesto del diseño del dueño. */
+function resorteF(t: number) {
+  if (t <= 0) return 0
+  const w0 = 15
+  const z = 0.68
+  const wd = w0 * Math.sqrt(1 - z * z)
+  return 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + ((z * w0) / wd) * Math.sin(wd * t))
+}
+
+/**
+ * Carrusel de meses (06/11/2026): tarjetas anchas donde se asoman las vecinas a los lados, deslizables con el dedo o
+ * arrastrando con el mouse; al soltar, un resorte lleva la tarjeta a su lugar. Debajo, puntos que siguen el deslizamiento:
+ * el activo se estira en una píldora de turquesa a cian.
+ */
 function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; meta: number; anio: number; mesActual: number; programaId: string }) {
   const pista = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(mesActual)
+  const animacion = useRef(0)
+  const arrastre = useRef<{ x: number; scroll: number; movido: boolean } | null>(null)
+  // Posición fraccionaria: 0 = enero, 1 = febrero, 1,5 = entre febrero y marzo…
+  const [p, setP] = useState(mesActual - 1)
+  const visible = Math.min(12, Math.max(1, Math.round(p) + 1))
 
-  // Al abrir, se ve el mes actual; después, la persona desliza con el dedo o con las flechas.
+  /** Scroll que deja centrada la tarjeta k y paso entre tarjetas. */
+  const medidas = () => {
+    const el = pista.current
+    const tarjetas = el ? (Array.from(el.children) as HTMLElement[]) : []
+    if (!el || !tarjetas.length) return null
+    const paso = tarjetas.length > 1 ? tarjetas[1].offsetLeft - tarjetas[0].offsetLeft : el.clientWidth
+    const base = tarjetas[0].offsetLeft - (el.clientWidth - tarjetas[0].offsetWidth) / 2
+    return { el, paso, base }
+  }
+  const destinoDe = (k: number) => {
+    const m = medidas()
+    return m ? m.base + k * m.paso : 0
+  }
+
   useEffect(() => {
-    const p = pista.current
-    if (p) p.scrollLeft = (mesActual - 1) * p.clientWidth
+    const m = medidas()
+    if (m) {
+      m.el.scrollLeft = destinoDe(mesActual - 1)
+      setP(mesActual - 1) // eslint-disable-line react-hooks/set-state-in-effect
+    }
+    return () => cancelAnimationFrame(animacion.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesActual])
 
-  const ir_a = (mes: number) => {
-    const p = pista.current
-    if (p) p.scrollTo({ left: (mes - 1) * p.clientWidth, behavior: 'smooth' })
+  function llevarA(k: number) {
+    const m = medidas()
+    if (!m) return
+    const mes = Math.min(11, Math.max(0, k))
+    const fin = destinoDe(mes)
+    cancelAnimationFrame(animacion.current)
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      m.el.scrollLeft = fin
+      return
+    }
+    const ini = m.el.scrollLeft
+    const t0 = performance.now()
+    m.el.style.scrollSnapType = 'none'
+    const cuadro = (ahora: number) => {
+      const t = (ahora - t0) / 1000
+      m.el.scrollLeft = ini + (fin - ini) * resorteF(t)
+      if (t < 1.1) animacion.current = requestAnimationFrame(cuadro)
+      else {
+        m.el.scrollLeft = fin
+        m.el.style.scrollSnapType = ''
+      }
+    }
+    animacion.current = requestAnimationFrame(cuadro)
   }
+
   const alDeslizar = () => {
-    const p = pista.current
-    if (p) setVisible(Math.min(12, Math.max(1, Math.round(p.scrollLeft / p.clientWidth) + 1)))
+    const m = medidas()
+    if (m) setP(Math.min(11, Math.max(0, (m.el.scrollLeft - m.base) / m.paso)))
+  }
+
+  // Con el mouse se arrastra la tarjeta; con el dedo manda el deslizamiento nativo.
+  const alBajar = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || !pista.current) return
+    cancelAnimationFrame(animacion.current)
+    pista.current.style.scrollSnapType = 'none'
+    arrastre.current = { x: e.clientX, scroll: pista.current.scrollLeft, movido: false }
+  }
+  const alMover = (e: React.PointerEvent<HTMLDivElement>) => {
+    const a = arrastre.current
+    if (!a || !pista.current) return
+    const dx = e.clientX - a.x
+    if (Math.abs(dx) > 4) a.movido = true
+    if (a.movido) {
+      pista.current.setPointerCapture?.(e.pointerId)
+      pista.current.scrollLeft = a.scroll - dx
+    }
+  }
+  const alSoltar = (e: React.PointerEvent<HTMLDivElement>) => {
+    const a = arrastre.current
+    arrastre.current = null
+    const m = medidas()
+    if (!a || !m) return
+    if (!a.movido) {
+      m.el.style.scrollSnapType = ''
+      return
+    }
+    // Se pasa a la vecina si se arrastró más de ~15 % de una tarjeta (como el gesto del diseño: 40 % y resorte).
+    const dx = e.clientX - a.x
+    const origen = Math.round((a.scroll - m.base) / m.paso)
+    const salto = Math.abs(dx) > m.paso * 0.15 ? (dx < 0 ? 1 : -1) : 0
+    llevarA(origen + salto)
   }
 
   return (
     <div className="carrusel">
       <div className="carrusel-nav">
-        <button className="btn-icono" type="button" aria-label="Mes anterior" disabled={visible <= 1} onClick={() => ir_a(visible - 1)}>
+        <button className="btn-icono" type="button" aria-label="Mes anterior" disabled={visible <= 1} onClick={() => llevarA(visible - 2)}>
           <ChevronLeft size={20} aria-hidden="true" />
         </button>
         <span>
           {MESES[visible - 1]} {anio}
           {visible === mesActual && <small> · este mes</small>}
         </span>
-        <button className="btn-icono" type="button" aria-label="Mes siguiente" disabled={visible >= 12} onClick={() => ir_a(visible + 1)}>
+        <button className="btn-icono" type="button" aria-label="Mes siguiente" disabled={visible >= 12} onClick={() => llevarA(visible)}>
           <ChevronRight size={20} aria-hidden="true" />
         </button>
       </div>
-      <div className="carrusel-pista" ref={pista} onScroll={alDeslizar}>
+      <div className="carrusel-pista" ref={pista} onScroll={alDeslizar} onPointerDown={alBajar} onPointerMove={alMover} onPointerUp={alSoltar} onPointerCancel={alSoltar}>
         {meses.map((m, k) => {
           // Un mes que todavía no llega no tiene % (saldría 0 %): se dice cuántas actividades hay programadas.
           const futuro = k + 1 > mesActual
+          const lejos = Math.min(1, Math.abs(k - p))
           return (
-          <article key={k} className="carrusel-mes" aria-label={`${MESES[k]} ${anio}`}>
+          <article key={k} className="carrusel-mes" aria-label={`${MESES[k]} ${anio}`} style={{ opacity: 1 - 0.5 * lejos, transform: `scale(${1 - 0.04 * lejos})` }}>
+            <h3 className="mes-titulo">{MESES[k]}</h3>
             <div className="mes-total">
               <Anillo t={futuro ? { ...m.total, pct: null } : m.total} meta={meta} />
               <p>
@@ -168,6 +260,16 @@ function Carrusel({ meses, meta, anio, mesActual, programaId }: { meses: Mes[]; 
               {!m.objetivos.length && <li className="nota">El programa todavía no tiene objetivos específicos.</li>}
             </ul>
           </article>
+          )
+        })}
+      </div>
+      <div className="carrusel-puntos" role="tablist" aria-label="Meses">
+        {meses.map((_, k) => {
+          const a = Math.max(0, 1 - Math.abs(p - k))
+          return (
+            <button key={k} type="button" role="tab" aria-selected={Math.round(p) === k} aria-label={MESES[k]} className="punto" style={{ width: `${0.5 + 1.1 * a}rem`, background: `color-mix(in srgb, var(--ink) ${Math.round(a * 55)}%, var(--rule))` }} onClick={() => llevarA(k)}>
+              <span style={{ opacity: a > 0.5 ? 2 * a - 1 : 0 }} />
+            </button>
           )
         })}
       </div>
