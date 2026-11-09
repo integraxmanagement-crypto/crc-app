@@ -47,7 +47,7 @@ function estadoMantenimiento(proximo: unknown, hoy: string): 'vencido' | 'por_ve
 }
 
 /** Los períodos de un año del calendario (para elegir mes y año por separado): los 12 meses, o las semanas ISO si la frecuencia es semanal. */
-function periodosDelAnio(anio: number, frecuencia: Parameters<typeof periodoDe>[1]): Periodo[] {
+export function periodosDelAnio(anio: number, frecuencia: Parameters<typeof periodoDe>[1]): Periodo[] {
   const fechas = frecuencia === 'semanal'
     ? Array.from({ length: semanasDelAnio(anio) }, (_, k) => lunesDeSemana(anio, k + 1))
     : Array.from({ length: 12 }, (_, k) => `${anio}-${String(k + 1).padStart(2, '0')}-15`)

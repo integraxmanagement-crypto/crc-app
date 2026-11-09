@@ -1,17 +1,18 @@
 import { Esqueleto } from '../Esqueleto'
-import { ArrowLeft, ClipboardCheck, FilePlus2, FileSpreadsheet, FileText, ListChecks, Search, Upload } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, ClipboardCheck, FileSpreadsheet, FileText, ListChecks, Search, Upload } from 'lucide-react'
+import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { CargaMasivaEquipos } from '../activos/CargaMasiva'
-import { useContextoActivos } from '../activos/Activos'
+import { FormActivo, useContextoActivos } from '../activos/Activos'
 import { Aviso, Seccion } from '../empresas/campos'
 import { type Activo, listarActivos } from '../formatos/datos'
+import { type Hallazgo, listarHallazgos } from '../hallazgos/datos'
 import { Hallazgos } from '../hallazgos/Hallazgos'
 import { ir } from '../ruta'
 import { hoyLocal } from './ayudas'
 import { type CopiaLocal, type FormatoLocal, leerCopia } from './campo'
 import { type FilaAvance, type UltimaInspeccion, avancePeriodo, ultimasInspecciones } from './datos'
-import { BuscadorExtintor } from './Extintores'
-import { periodosHasta } from './periodos'
+import { BuscadorExtintor, periodosDelAnio } from './Extintores'
+import { periodoDe, periodosHasta } from './periodos'
 import { Ventana } from './Ventana'
 
 /** Los formatos que forman «Inspección de bomba contra incendio» (se reconocen por su nombre). */
@@ -67,13 +68,26 @@ function Panel({ abrir, empresaId, cuenta, gestiona, online, copia, formatos }: 
   const hoy = hoyLocal()
   const semanas = useMemo(() => periodosHasta(hoy, 'semanal', 13), [hoy])
   const [semana, setSemana] = useState(semanas[0]?.clave ?? '')
-  const periodo = semanas.find((s) => s.clave === semana) ?? semanas[0]
+  // La semana se elige con dos listas, semana y año (pedido del dueño, 09/11/2026), igual que en la caseta.
+  const [anio, setAnio] = useState(Number(hoy.slice(0, 4)))
+  const periodosAnio = useMemo(() => periodosDelAnio(anio, 'semanal'), [anio])
+  const periodo = periodosAnio.find((s) => s.clave === semana) ?? periodosAnio[0]
+  const cambiarAnio = (nuevo: number) => {
+    setAnio(nuevo)
+    const mismo = periodo ? periodoDe(`${nuevo}${periodo.desde.slice(4)}`, 'semanal') : null
+    if (mismo) setSemana(mismo.clave)
+  }
   const [sede, setSede] = useState(copia.sedes[0]?.id ?? '')
-  const [vista, setVista] = useState<Vista>(abrir === 'registro' ? 'registro' : 'ninguna')
+  const [vista, setVista] = useState<Vista>(abrir === 'registro' ? 'registro' : 'inspeccion')
   const [grupos, setGrupos] = useState<Grupo[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState<'elegir' | Clave | null>(null)
   const [version, setVersion] = useState(0)
+  // Observaciones abiertas: los planes de acción de estas inspecciones que siguen abiertos o en proceso.
+  const [observaciones, setObservaciones] = useState<Hallazgo[] | null>(null)
+  useEffect(() => {
+    listarHallazgos(empresaId).then(setObservaciones, () => setObservaciones([]))
+  }, [empresaId, vista])
   const { contexto } = useContextoActivos(empresaId, true, false)
   const nombrePersona = useMemo(() => new Map(copia.personas.map((p) => [p.persona_id, p.apellidos_nombres])), [copia])
   const nombreArea = (id: string | null) => copia.unidades.find((u) => u.id === id)?.nombre ?? ''
@@ -101,21 +115,32 @@ function Panel({ abrir, empresaId, cuenta, gestiona, online, copia, formatos }: 
   const total = grupos.reduce((n, g) => n + g.filas.length, 0)
   const hechos = grupos.reduce((n, g) => n + g.filas.filter((f) => f.inspeccion_id).length, 0)
   const pct = total ? Math.round((100 * hechos) / total) : 0
-  const hallazgos = grupos.reduce((n, g) => n + g.filas.reduce((m, f) => m + (f.hallazgos ?? 0), 0), 0)
-  const alternar = (v: Vista) => setVista((x) => (x === v ? 'ninguna' : v))
+  const nombresFormato = grupos.map((g) => g.formato.plantilla.nombre)
+  const propias = (observaciones ?? []).filter((h) => nombresFormato.includes(h.plantillas?.nombre ?? '') && h.estado !== 'anulado')
+  const generadas = propias.length
+  const abiertas = propias.filter((h) => h.estado === 'abierto' || h.estado === 'en_proceso').length
   const recargar = () => (setVersion((v) => v + 1), contexto?.recargar())
+
+  const pestanas: { v: Vista; texto: string; icono: ReactNode }[] = [
+    { v: 'inspeccion', texto: 'Realizar inspección', icono: <ClipboardCheck size={16} aria-hidden="true" /> },
+    { v: 'catastro', texto: 'Ver catastro', icono: <Search size={16} aria-hidden="true" /> },
+    { v: 'hallazgos', texto: 'Ver planes de acción', icono: <ListChecks size={16} aria-hidden="true" /> },
+    { v: 'registro', texto: 'Generar registro', icono: <FileSpreadsheet size={16} aria-hidden="true" /> },
+  ]
+  const activa = pestanas.some((p) => p.v === vista) ? vista : 'inspeccion'
+  // Flechas, inicio y fin mueven la pestaña (teclado).
+  const teclas = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = pestanas.findIndex((p) => p.v === activa)
+    const j = e.key === 'ArrowRight' ? (i + 1) % pestanas.length : e.key === 'ArrowLeft' ? (i + pestanas.length - 1) % pestanas.length : e.key === 'Home' ? 0 : e.key === 'End' ? pestanas.length - 1 : -1
+    if (j < 0) return
+    e.preventDefault()
+    setVista(pestanas[j].v)
+    requestAnimationFrame(() => document.getElementById(`pest-${pestanas[j].v}`)?.focus())
+  }
 
   return (
     <>
       <Aviso>{error}</Aviso>
-      <div className="acciones no-imprimir">
-        <button className="btn-sec" type="button" onClick={() => setCargando('elegir')}>
-          <Upload size={18} aria-hidden="true" /> Cargar equipos
-        </button>
-        <button className="btn" type="button" onClick={() => setVista('inspeccion')}>
-          <FilePlus2 size={18} aria-hidden="true" /> Nueva inspección
-        </button>
-      </div>
       {cargando === 'elegir' && (
         <Ventana titulo="Cargar equipos" onCerrar={() => setCargando(null)}>
           <p className="nota">¿Qué tipo de bomba vas a cargar?</p>
@@ -132,59 +157,69 @@ function Panel({ abrir, empresaId, cuenta, gestiona, online, copia, formatos }: 
         ) : null
       })()}
 
-      <div className="fila2 no-imprimir">
-        {copia.sedes.length > 1 && (
-          <label className="field">
-            <span>Sede</span>
-            <select value={sede} onChange={(e) => setSede(e.target.value)}>
-              {copia.sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </select>
-          </label>
+      <div className="pestanas no-imprimir" role="tablist" aria-label="Secciones de la inspección" onKeyDown={teclas}>
+        {pestanas.map((p) => (
+          <button key={p.v} id={`pest-${p.v}`} type="button" role="tab" aria-selected={activa === p.v} aria-controls="pest-panel" tabIndex={activa === p.v ? 0 : -1} onClick={() => setVista(p.v)}>
+            {p.icono} {p.texto}
+          </button>
+        ))}
+      </div>
+      <div className="pestana-panel" id="pest-panel" role="tabpanel" aria-labelledby={`pest-${activa}`}>
+        {activa === 'inspeccion' && (
+          <>
+            <div className={`${copia.sedes.length > 1 ? 'fila3' : 'fila2'} no-imprimir`}>
+              {copia.sedes.length > 1 && (
+                <label className="field">
+                  <span>Sede</span>
+                  <select value={sede} onChange={(e) => setSede(e.target.value)}>
+                    {copia.sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
+                </label>
+              )}
+              <label className="field">
+                <span>Semana</span>
+                <select value={periodo?.clave ?? ''} onChange={(e) => setSemana(e.target.value)}>
+                  {periodosAnio.map((s) => <option key={s.clave} value={s.clave}>{s.etiqueta.replace(` de ${anio}`, '')}</option>)}
+                </select>
+              </label>
+              <label className="field">
+                <span>Año</span>
+                <select value={anio} onChange={(e) => cambiarAnio(Number(e.target.value))}>
+                  {Array.from({ length: 7 }, (_, k) => Number(hoy.slice(0, 4)) + 1 - k).map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
+            </div>
+
+            <div className="tarjetas-ext">
+              <div className="tarjeta-ext">
+                <small>Cumplimiento general de la semana</small>
+                <b>{pct} %</b>
+                <span>{hechos} de {total} bombas inspeccionadas ({grupos.map((g) => `${g.filas.filter((f) => f.inspeccion_id).length}/${g.filas.length} ${g.nombre.toLowerCase()}s`).join(' · ')})</span>
+              </div>
+              <button type="button" className={`tarjeta-ext ${abiertas ? 'mal' : ''}`} onClick={() => setVista('hallazgos')}>
+                <small>Observaciones abiertas</small>
+                <b>{observaciones ? abiertas : '…'}</b>
+                <span>{observaciones ? `de ${generadas} ${generadas === 1 ? 'observación generada' : 'observaciones generadas'} como plan de acción` : 'leyendo los planes de acción'}</span>
+              </button>
+            </div>
+
+            {contexto && <Buscador grupos={grupos} contexto={contexto} copia={copia} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} semanaActual={semanas[0]?.clave === semana} onCambio={recargar} />}
+            <TablaInspeccion grupos={grupos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />
+          </>
         )}
-        <label className="field">
-          <span>Semana</span>
-          <select value={semana} onChange={(e) => setSemana(e.target.value)}>
-            {semanas.map((s) => <option key={s.clave} value={s.clave}>{s.etiqueta}</option>)}
-          </select>
-        </label>
+        {activa === 'catastro' && (
+          <>
+            <div className="acciones no-imprimir">
+              <button className="btn-sec" type="button" onClick={() => setCargando('elegir')}>
+                <Upload size={18} aria-hidden="true" /> Cargar equipos
+              </button>
+            </div>
+            {grupos.map((g) => <Catastro key={g.clave} g={g} contexto={contexto} onCambio={recargar} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />)}
+          </>
+        )}
+        {activa === 'hallazgos' && <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuentes={nombresFormato} />}
+        {activa === 'registro' && <Registro grupos={grupos} periodo={periodo?.etiqueta ?? ''} nombreUbic={nombreUbic} />}
       </div>
-
-      <div className="tarjetas-ext">
-        <div className="tarjeta-ext">
-          <small>Cumplimiento general de la semana</small>
-          <b>{pct} %</b>
-          <span>{hechos} de {total} bombas inspeccionadas ({grupos.map((g) => `${g.filas.filter((f) => f.inspeccion_id).length}/${g.filas.length} ${g.nombre.toLowerCase()}s`).join(' · ')})</span>
-        </div>
-        <button type="button" className={`tarjeta-ext ${hallazgos ? 'mal' : ''}`} aria-pressed={vista === 'hallazgos'} onClick={() => alternar('hallazgos')}>
-          <small>Planes de acción de la semana</small>
-          <b>{hallazgos}</b>
-          <span>encontrados en las inspecciones de la semana elegida</span>
-        </button>
-      </div>
-
-      {contexto && <Buscador grupos={grupos} contexto={contexto} copia={copia} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} semanaActual={semanas[0]?.clave === semana} onCambio={recargar} />}
-
-      <div className="acciones no-imprimir">
-        <button className="btn-sec" type="button" aria-pressed={vista === 'catastro'} onClick={() => alternar('catastro')}>
-          <Search size={18} aria-hidden="true" /> Ver catastro
-        </button>
-        <button className="btn-sec" type="button" aria-pressed={vista === 'inspeccion'} onClick={() => alternar('inspeccion')}>
-          <ClipboardCheck size={18} aria-hidden="true" /> Realizar inspección
-        </button>
-        <button className="btn-sec" type="button" aria-pressed={vista === 'registro'} onClick={() => alternar('registro')}>
-          <FileSpreadsheet size={18} aria-hidden="true" /> Generar registro
-        </button>
-        <button className="btn-sec" type="button" aria-pressed={vista === 'hallazgos'} onClick={() => alternar('hallazgos')}>
-          <ListChecks size={18} aria-hidden="true" /> Ver planes de acción
-        </button>
-      </div>
-
-      {vista === 'catastro' && grupos.map((g) => <Catastro key={g.clave} g={g} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />)}
-      {vista === 'inspeccion' && <TablaInspeccion grupos={grupos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />}
-      {vista === 'registro' && <Registro grupos={grupos} periodo={periodo?.etiqueta ?? ''} nombreUbic={nombreUbic} />}
-      {vista === 'hallazgos' && (
-        <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuentes={grupos.map((g) => g.formato.plantilla.nombre)} />
-      )}
     </>
   )
 }
@@ -210,8 +245,10 @@ function Buscador({ grupos, contexto, copia, nombreArea, nombreUbic, hoy, semana
 }
 
 /** Catastro de un tipo de bomba, con sus características al lado. */
-function Catastro({ g, nombrePersona, nombreArea, nombreUbic }: { g: Grupo; nombrePersona: Map<string, string>; nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string }) {
+function Catastro({ g, contexto, onCambio, nombrePersona, nombreArea, nombreUbic }: { g: Grupo; contexto: NonNullable<ReturnType<typeof useContextoActivos>['contexto']> | null; onCambio: () => void; nombrePersona: Map<string, string>; nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string }) {
   const electro = g.clave === 'electrobomba'
+  const [editando, setEditando] = useState<Activo | null>(null)
+  const tipo = contexto?.tipos.find((t) => t.id === g.formato.plantilla.tipo_activo_id)
   const ficha = (a: Activo, q: 'principal' | 'jockey') =>
     [a.datos[`${q}_marca`], a.datos[`${q}_potencia`], a.datos[`${q}_caudal`], a.datos[`${q}_presion_nominal`] && `${a.datos[`${q}_presion_nominal`]}`, a.datos[`${q}_arranque_parada`], a.datos[`${q}_alimentacion`]]
       .filter(Boolean).join(' · ') || '—'
@@ -219,7 +256,7 @@ function Catastro({ g, nombrePersona, nombreArea, nombreUbic }: { g: Grupo; nomb
     <Seccion titulo={`Catastro de ${g.nombre.toLowerCase()}s (${g.activos.length})`}>
       {!g.activos.length ? <p className="nota">No hay {g.nombre.toLowerCase()}s registradas.</p> : (
         <div className="tabla-scroll">
-          <table className="tabla-catastro">
+          <table className={`tabla-catastro ${tipo ? 'tabla-clic' : ''}`}>
             <thead>
               <tr>
                 <th>Código</th><th>Ubicación</th><th>Área</th><th>Responsable</th>
@@ -228,7 +265,7 @@ function Catastro({ g, nombrePersona, nombreArea, nombreUbic }: { g: Grupo; nomb
             </thead>
             <tbody>
               {g.activos.map((a) => (
-                <tr key={a.id}>
+                <tr key={a.id} tabIndex={tipo ? 0 : undefined} onClick={() => tipo && setEditando(a)} onKeyDown={(e) => tipo && e.key === 'Enter' && setEditando(a)}>
                   <td><b>{a.codigo}</b></td>
                   <td>{nombreUbic(a.ubicacion_id)}</td>
                   <td>{nombreArea(a.unidad_id)}</td>
@@ -240,6 +277,12 @@ function Catastro({ g, nombrePersona, nombreArea, nombreUbic }: { g: Grupo; nomb
           </table>
         </div>
       )}
+      {!!g.activos.length && <p className="nota">Toca una fila para ver o modificar su información.</p>}
+      {editando && tipo && contexto && (
+        <Ventana titulo={`Modificar ${editando.codigo}`} onCerrar={() => setEditando(null)}>
+          <FormActivo exigirTodo={false} ctx={contexto} tipo={tipo} activo={editando} materiales={[]} onListo={() => (setEditando(null), onCambio())} onCancelar={() => setEditando(null)} />
+        </Ventana>
+      )}
     </Seccion>
   )
 }
@@ -248,11 +291,12 @@ function Catastro({ g, nombrePersona, nombreArea, nombreUbic }: { g: Grupo; nomb
 function TablaInspeccion({ grupos, nombrePersona, nombreArea, nombreUbic }: { grupos: Grupo[]; nombrePersona: Map<string, string>; nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string }) {
   const [tipo, setTipo] = useState<'todas' | Clave>('todas')
   const [estado, setEstado] = useState<'todos' | 'pendiente' | 'realizado'>('todos')
-  const [buscar, setBuscar] = useState('')
+  const [resp, setResp] = useState('')
   const filas = grupos.filter((g) => tipo === 'todas' || g.clave === tipo).flatMap((g) => g.activos.map((a) => ({ g, a, f: g.filas.find((x) => x.activo_id === a.id) })))
-  const lista = filas.filter(({ a, f }) => (estado === 'todos' || (estado === 'realizado') === Boolean(f?.inspeccion_id)) && (!buscar || a.codigo.toLowerCase().includes(buscar.trim().toLowerCase())))
+  const lista = filas.filter(({ a, f }) => (estado === 'todos' || (estado === 'realizado') === Boolean(f?.inspeccion_id)) && (!resp || a.responsable_id === resp))
+  const responsables = [...new Set(grupos.flatMap((g) => g.activos.map((a) => a.responsable_id)).filter((x): x is string => Boolean(x)))].sort((x, y) => (nombrePersona.get(x) ?? '').localeCompare(nombrePersona.get(y) ?? '', 'es'))
   return (
-    <Seccion titulo={`Realizar inspección (${lista.length} de ${filas.length})`}>
+    <section className="seccion">
       <div className="fila3 no-imprimir">
         <label className="field">
           <span>Tipo de bomba</span>
@@ -270,8 +314,11 @@ function TablaInspeccion({ grupos, nombrePersona, nombreArea, nombreUbic }: { gr
           </select>
         </label>
         <label className="field">
-          <span>Buscar por código</span>
-          <input type="search" autoComplete="off" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Ej.: EB-001" />
+          <span>Responsable</span>
+          <select value={resp} onChange={(e) => setResp(e.target.value)}>
+            <option value="">Todos los responsables</option>
+            {responsables.map((r) => <option key={r} value={r}>{nombrePersona.get(r) ?? 'Persona de la empresa'}</option>)}
+          </select>
         </label>
       </div>
       {!lista.length ? <p className="nota">No hay bombas con este filtro.</p> : (
@@ -300,7 +347,7 @@ function TablaInspeccion({ grupos, nombrePersona, nombreArea, nombreUbic }: { gr
         </div>
       )}
       <p className="nota">Toca una fila: si está pendiente empieza su inspección; si ya está inspeccionada, la abre.</p>
-    </Seccion>
+    </section>
   )
 }
 
