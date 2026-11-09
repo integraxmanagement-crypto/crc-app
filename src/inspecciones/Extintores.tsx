@@ -18,7 +18,8 @@ import { datoDeActivo } from './excel'
 import { type Valor, datosVencidos, textoVencido } from '../formatos/motor'
 import type { vistaDeExcel } from './excelVista'
 import { PanelFirma } from './Firma'
-import { CON_PERIODO, periodosHasta } from './periodos'
+import { type Hallazgo, listarHallazgos } from '../hallazgos/datos'
+import { CON_PERIODO, type Periodo, lunesDeSemana, periodoDe, periodosHasta, semanasDelAnio } from './periodos'
 import { excelDeFormato } from './hoja'
 import { armarRegistro, entregarRegistro } from './registroPeriodo'
 import { Ventana } from './Ventana'
@@ -43,6 +44,19 @@ function estadoMantenimiento(proximo: unknown, hoy: string): 'vencido' | 'por_ve
   const actual = hoy.slice(0, 7)
   if (mes < actual) return 'vencido'
   return mes <= sumarMeses(actual, 1) ? 'por_vencer' : 'vigente'
+}
+
+/** Los períodos de un año del calendario (para elegir mes y año por separado): los 12 meses, o las semanas ISO si la frecuencia es semanal. */
+function periodosDelAnio(anio: number, frecuencia: Parameters<typeof periodoDe>[1]): Periodo[] {
+  const fechas = frecuencia === 'semanal'
+    ? Array.from({ length: semanasDelAnio(anio) }, (_, k) => lunesDeSemana(anio, k + 1))
+    : Array.from({ length: 12 }, (_, k) => `${anio}-${String(k + 1).padStart(2, '0')}-15`)
+  const vistos = new Map<string, Periodo>()
+  for (const f of fechas) {
+    const p = periodoDe(f, frecuencia)
+    if (p && !vistos.has(p.clave)) vistos.set(p.clave, p)
+  }
+  return [...vistos.values()]
 }
 
 type Vista = 'ninguna' | 'catastro' | 'inspeccion' | 'noop' | 'vencer' | 'registro' | 'hallazgos'
@@ -74,7 +88,21 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   const unPeriodo = NOMBRE_PERIODO[frecuencia]
   const semanas = useMemo(() => periodosHasta(hoy, frecuencia, 13), [hoy, frecuencia])
   const [semana, setSemana] = useState(semanas[0]?.clave ?? '')
-  const periodo = semanas.find((s) => s.clave === semana) ?? semanas[0]
+  // Caseta: el período se elige con dos listas, mes y año (pedido del dueño, 09/11/2026); se puede ir a años anteriores.
+  const [anio, setAnio] = useState(Number(hoy.slice(0, 4)))
+  const periodosAnio = useMemo(() => (conPestanas ? periodosDelAnio(anio, frecuencia) : []), [conPestanas, anio, frecuencia])
+  const listaFiltro = conPestanas ? periodosAnio : semanas
+  const periodo = listaFiltro.find((s) => s.clave === semana) ?? listaFiltro[0]
+  const cambiarAnio = (nuevo: number) => {
+    setAnio(nuevo)
+    const mismo = periodo ? periodoDe(`${nuevo}${periodo.desde.slice(4)}`, frecuencia) : null
+    if (mismo) setSemana(mismo.clave)
+  }
+  // Observaciones abiertas: los planes de acción que nacieron de este formato y siguen abiertos o en proceso.
+  const [observaciones, setObservaciones] = useState<Hallazgo[] | null>(null)
+  useEffect(() => {
+    if (conPestanas && online) listarHallazgos(empresaId).then(setObservaciones, () => setObservaciones([]))
+  }, [conPestanas, online, empresaId, vista])
   const tipoId = formato.plantilla.tipo_activo_id
   const criticos = useMemo(() => todosLosPuntos(formato.version.receta).filter((x) => x.punto.critico).map((x) => x.punto), [formato])
   const nombrePersona = useMemo(() => new Map(copia.personas.map((p) => [p.persona_id, p.apellidos_nombres])), [copia])
@@ -118,13 +146,16 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   const noOperativos = activos.filter((a) => motivoNoOp(a))
   const porVencer = activos.filter((a) => estadoMantenimiento(a.datos.proximo_mantenimiento, hoy) === 'por_vencer')
   const vencidos = activos.filter((a) => estadoMantenimiento(a.datos.proximo_mantenimiento, hoy) === 'vencido')
+  const propias = (observaciones ?? []).filter((h) => h.plantillas?.nombre === formato.plantilla.nombre && h.estado !== 'anulado')
+  const generadas = propias.length
+  const abiertas = propias.filter((h) => h.estado === 'abierto' || h.estado === 'en_proceso').length
   const alternar = (v: Vista) => setVista((x) => (x === v ? 'ninguna' : v))
   // Con pestañas, «No operativos» se abre dentro de la primera; sin ellas sigue siendo una vista más.
   const alternarNoop = () => (conPestanas ? setNoopAbierto((x) => !x) : alternar('noop'))
   const noopVisible = conPestanas ? noopAbierto : vista === 'noop'
 
   const filtros = (
-    <div className="fila2 no-imprimir">
+    <div className={`${conPestanas && copia.sedes.length > 1 ? 'fila3' : 'fila2'} no-imprimir`}>
       {copia.sedes.length > 1 && (
         <label className="field">
           <span>Sede</span>
@@ -135,10 +166,18 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
       )}
       <label className="field">
         <span>{unPeriodo[0].toUpperCase() + unPeriodo.slice(1)}</span>
-        <select value={semana} onChange={(e) => setSemana(e.target.value)}>
-          {semanas.map((s) => <option key={s.clave} value={s.clave}>{s.etiqueta}</option>)}
+        <select value={periodo?.clave ?? ''} onChange={(e) => setSemana(e.target.value)}>
+          {listaFiltro.map((s) => <option key={s.clave} value={s.clave}>{conPestanas ? s.etiqueta.split(' · ')[0].replace(` de ${anio}`, '').replace(` ${anio}`, '') : s.etiqueta}</option>)}
         </select>
       </label>
+      {conPestanas && (
+        <label className="field">
+          <span>Año</span>
+          <select value={anio} onChange={(e) => cambiarAnio(Number(e.target.value))}>
+            {Array.from({ length: 7 }, (_, k) => Number(hoy.slice(0, 4)) + 1 - k).map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </label>
+      )}
     </div>
   )
   const tarjetas = (
@@ -150,11 +189,19 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
           <b>{pct} %</b>
           <span>{hechos} de {total} {N.p} inspeccionados</span>
         </div>
-        <button type="button" className={`tarjeta-ext ${noOperativos.length ? 'mal' : ''}`} aria-pressed={noopVisible} onClick={alternarNoop}>
-          <small>No operativos</small>
-          <b>{noOperativos.length}</b>
-          <span>{esExt ? 'punto crítico en X en su última inspección, o algo vencido' : 'punto crítico en X en su última inspección'}</span>
-        </button>
+        {conPestanas ? (
+          <button type="button" className={`tarjeta-ext ${abiertas ? 'mal' : ''}`} onClick={() => setVista('hallazgos')}>
+            <small>Observaciones abiertas</small>
+            <b>{observaciones ? abiertas : '…'}</b>
+            <span>{observaciones ? `de ${plural(generadas, 'observación generada', 'observaciones generadas')} como plan de acción` : 'leyendo los planes de acción'}</span>
+          </button>
+        ) : (
+          <button type="button" className={`tarjeta-ext ${noOperativos.length ? 'mal' : ''}`} aria-pressed={noopVisible} onClick={alternarNoop}>
+            <small>No operativos</small>
+            <b>{noOperativos.length}</b>
+            <span>{esExt ? 'punto crítico en X en su última inspección, o algo vencido' : 'punto crítico en X en su última inspección'}</span>
+          </button>
+        )}
         {esExt && (
           <button type="button" className={`tarjeta-ext ${porVencer.length ? 'aviso' : ''}`} aria-pressed={vista === 'vencer'} onClick={() => alternar('vencer')}>
             <small>Por vencer</small>
@@ -193,7 +240,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
     </Seccion>
   )
   const catastro = <Catastro variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />
-  const tabla = <TablaInspeccion activos={activos} filas={filas} formato={formato} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} />
+  const tabla = <TablaInspeccion activos={activos} filas={filas} formato={formato} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} compacta={conPestanas} />
   const planes = <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />
   const registro = <GenerarRegistro nombreArchivo={esExt ? 'Extintores' : variante === 'caseta' ? 'CAR' : 'DACI'} formato={formato} copia={copia} sede={sede} semanas={semanas} hoy={hoy} cuenta={cuenta} esSemanal={esSemanal} unPeriodo={unPeriodo} conOpcionFirma={conPestanas} />
 
@@ -384,8 +431,13 @@ function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, n
 }
 
 /** Tabla para realizar la inspección: todos los extintores con su estado en la semana elegida arriba, y filtros. */
-function TablaInspeccion({ activos, filas, formato, nombrePersona, nombreArea, nombreUbic }: {
-  activos: Activo[]; filas: FilaAvance[]; formato: FormatoLocal; nombrePersona: Map<string, string>; nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string
+/** Marco de la tabla: con título y caja propia; en la caseta (compacta) va sin título porque ya lo da la pestaña. */
+function Marco({ compacta, titulo, children }: { compacta: boolean; titulo: string; children: ReactNode }) {
+  return compacta ? <section className="seccion">{children}</section> : <Seccion titulo={titulo}>{children}</Seccion>
+}
+
+function TablaInspeccion({ activos, filas, formato, nombrePersona, nombreArea, nombreUbic, compacta = false }: {
+  compacta?: boolean; activos: Activo[]; filas: FilaAvance[]; formato: FormatoLocal; nombrePersona: Map<string, string>; nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string
 }) {
   const [estado, setEstado] = useState<'todos' | 'pendiente' | 'realizado'>('todos')
   const [buscar, setBuscar] = useState('')
@@ -398,8 +450,8 @@ function TablaInspeccion({ activos, filas, formato, nombrePersona, nombreArea, n
       && (!buscar || a.codigo.toLowerCase().includes(buscar.trim().toLowerCase())) && (!resp || a.responsable_id === resp)
   })
   return (
-    <Seccion titulo={`Realizar inspección (${lista.length} de ${activos.length})`}>
-      <div className="fila3 no-imprimir">
+    <Marco compacta={compacta} titulo={`Realizar inspección (${lista.length} de ${activos.length})`}>
+      <div className={`${compacta ? 'fila2' : 'fila3'} no-imprimir`}>
         <label className="field">
           <span>Estado</span>
           <select value={estado} onChange={(e) => setEstado(e.target.value as typeof estado)}>
@@ -408,13 +460,13 @@ function TablaInspeccion({ activos, filas, formato, nombrePersona, nombreArea, n
             <option value="realizado">Solo realizados</option>
           </select>
         </label>
-        <label className="field">
+        {!compacta && <label className="field">
           <span>Buscar por código</span>
           <input type="search" list="codigos-ext-tabla" autoComplete="off" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Ej.: P1-001" />
           <datalist id="codigos-ext-tabla">
             {activos.filter((a) => !buscar || a.codigo.toLowerCase().includes(buscar.toLowerCase())).slice(0, 30).map((a) => <option key={a.id} value={a.codigo} />)}
           </datalist>
-        </label>
+        </label>}
         <label className="field">
           <span>Responsable</span>
           <select value={resp} onChange={(e) => setResp(e.target.value)}>
@@ -449,7 +501,7 @@ function TablaInspeccion({ activos, filas, formato, nombrePersona, nombreArea, n
         </div>
       )}
       <p className="nota">Toca una fila: si está pendiente empieza su inspección; si ya está inspeccionado, la abre.</p>
-    </Seccion>
+    </Marco>
   )
 }
 
