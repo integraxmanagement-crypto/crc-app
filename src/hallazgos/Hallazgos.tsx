@@ -8,7 +8,7 @@ import { enlaceEvidencia } from '../inspecciones/datos'
 import { prepararFoto } from '../inspecciones/imagen'
 import { ir } from '../ruta'
 import {
-  type CambioHallazgo, type EstadoHallazgo, type Hallazgo, NOMBRE_CAMBIO, NOMBRE_ESTADO_HALLAZGO, cerrarHallazgo, gestionarHallazgo, hallazgoEnProceso,
+  type CambioHallazgo, type EstadoHallazgo, type Hallazgo, NOMBRE_CAMBIO, NOMBRE_ESTADO_HALLAZGO, PlanIncompleto, cerrarHallazgo, gestionarHallazgo, hallazgoEnProceso,
   historialHallazgo, listarHallazgos, reabrirHallazgo, vencido,
 } from './datos'
 
@@ -195,7 +195,13 @@ function PanelHallazgo({ h, gestiona, cuenta, personas, nombre, onCambio }: {
       setOk(texto)
       onCambio()
     } catch (e) {
-      setError((e as Error).message)
+      // Plan con columnas obligatorias sin completar: quien gestiona va directo a la matriz de gestión de planes de acción (09/11/2026).
+      if (e instanceof PlanIncompleto && gestiona) {
+        try { sessionStorage.setItem('crc-aviso-planes', e.message) } catch { /* sin almacenamiento: no se muestra el aviso */ }
+        ir('/planes')
+        return
+      }
+      setError(e instanceof PlanIncompleto ? `${e.message} Pídeselo al gestor.` : (e as Error).message)
     } finally {
       setOcupado(false)
     }

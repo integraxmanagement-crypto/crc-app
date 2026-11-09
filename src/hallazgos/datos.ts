@@ -63,15 +63,28 @@ export const gestionarHallazgo = (id: string, datos: { responsable_id: string | 
 export const hallazgoEnProceso = (id: string) => rpc<void>('hallazgo_en_proceso', { p_id: id })
 export const reabrirHallazgo = (id: string, motivo: string) => rpc<void>('reabrir_hallazgo', { p_id: id, p_motivo: motivo })
 
+/** El plan de acción tiene columnas obligatorias sin completar en la matriz de gestión de planes de acción (09/11/2026): no se puede cerrar desde la inspección. */
+export class PlanIncompleto extends Error {}
+const MENSAJE_PLAN_INCOMPLETO = 'Antes de cerrarlo, completa las columnas obligatorias de este plan en la matriz de gestión de planes de acción.'
+
 /** Cierra con comentario y, si hay, la foto de evidencia (se sube antes al almacén privado). Necesita señal. */
 export async function cerrarHallazgo(h: Hallazgo, comentario: string, foto: Blob | null) {
+  // Si su fila de la matriz sigue como borrador (faltan columnas obligatorias), no se cierra: se avisa antes de subir la foto.
+  const { data: fila } = await db().from('condiciones').select('borrador').eq('hallazgo_id', h.id).eq('matriz', 'planes').maybeSingle()
+  if (fila?.borrador) throw new PlanIncompleto(MENSAJE_PLAN_INCOMPLETO)
   let ruta: string | null = null
   if (foto) {
     ruta = `${h.empresa_id}/${h.inspeccion_id}/cierre-${h.id}-${crypto.randomUUID().slice(0, 8)}.jpg`
     const { error } = await db().storage.from('evidencias').upload(ruta, foto, { contentType: 'image/jpeg', upsert: false })
     if (error) throw new Error(mensaje(error))
   }
-  await rpc<void>('cerrar_hallazgo', { p_id: h.id, p_comentario: comentario, p_foto_ruta: ruta, p_foto_bytes: foto?.size ?? null })
+  try {
+    await rpc<void>('cerrar_hallazgo', { p_id: h.id, p_comentario: comentario, p_foto_ruta: ruta, p_foto_bytes: foto?.size ?? null })
+  } catch (e) {
+    // La base de datos también lo exige (por si la matriz cambió entre tanto).
+    if ((e as Error).message.includes('matriz de gestión de planes de acción')) throw new PlanIncompleto((e as Error).message)
+    throw e
+  }
 }
 
 /** Vencido: con plazo pasado y todavía abierto o en proceso. */

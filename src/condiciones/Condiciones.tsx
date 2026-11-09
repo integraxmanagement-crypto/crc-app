@@ -57,7 +57,16 @@ export function Condiciones({ cuenta, empresaId, sedes, rolCodigo, online, matri
   const [cerrando, setCerrando] = useState<Fila | null>(null)
   const [filtro, setFiltro] = useState<{ tipo: 'estado'; valor: EstadoCondicion } | { tipo: 'tarjeta'; id: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [aviso, setAviso] = useState<string | null>(null)
+  // Con aviso desde el cierre de un plan en Inspecciones (plan incompleto): se muestra una sola vez al llegar.
+  const [aviso, setAviso] = useState<string | null>(() => {
+    try {
+      const m = matriz === 'planes' ? sessionStorage.getItem('crc-aviso-planes') : null
+      if (m) sessionStorage.removeItem('crc-aviso-planes')
+      return m
+    } catch {
+      return null
+    }
+  })
   const sede = sedes.find((s) => s.id === sedeId)
   const esAdmin = rolCodigo === 'admin_empresa' || rolCodigo === 'admin_sede'
   const datos = cargado?.sede_id === sedeId && cargado.matriz === matriz ? cargado : null
