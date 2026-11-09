@@ -243,7 +243,10 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
       )}
     </Seccion>
   )
-  const catastro = <Catastro variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />
+  // Caseta: el catastro es una lista simple (área, ubicación y código) donde se puede modificar cada caseta (09/11/2026).
+  const catastro = variante === 'caseta' && contexto
+    ? <CatastroCaseta activos={activos} contexto={contexto} formato={formato} nombreArea={nombreArea} nombreUbic={nombreUbic} onCambio={() => (cargarActivos(), cargarSemana(), contexto.recargar())} />
+    : <Catastro variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />
   const tabla = <TablaInspeccion activos={activos} filas={filas} formato={formato} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} compacta={conPestanas} />
   const planes = <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />
   const registro = <GenerarRegistro nombreArchivo={esExt ? 'Extintores' : variante === 'caseta' ? 'CAR' : 'DACI'} formato={formato} copia={copia} sede={sede} semanas={semanas} hoy={hoy} cuenta={cuenta} esSemanal={esSemanal} unPeriodo={unPeriodo} conOpcionFirma={conPestanas} />
@@ -334,6 +337,52 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
       {vista === 'hallazgos' && planes}
       {vista === 'registro' && registro}
     </>
+  )
+}
+
+/** Catastro de las casetas de ataque rápido: solo área, ubicación y código del equipo; al tocar una fila se abre su información para modificarla. */
+function CatastroCaseta({ activos, contexto, formato, nombreArea, nombreUbic, onCambio }: {
+  activos: Activo[]; contexto: NonNullable<ReturnType<typeof useContextoActivos>['contexto']>; formato: FormatoLocal
+  nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string; onCambio: () => void
+}) {
+  const [editando, setEditando] = useState<Activo | null>(null)
+  const tipo = contexto.tipos.find((t) => t.id === formato.plantilla.tipo_activo_id)
+  const orden = (a: Activo) => [nombreArea(a.unidad_id), nombreUbic(a.ubicacion_id), a.codigo]
+  const lista = [...activos].sort((x, y) => {
+    const p = orden(x), q = orden(y)
+    for (let i = 0; i < 3; i++) {
+      const c = p[i].localeCompare(q[i], 'es', { numeric: true })
+      if (c) return c
+    }
+    return 0
+  })
+  return (
+    <Seccion titulo={`Catastro de casetas (${activos.length})`}>
+      <p className="nota">Toca una caseta para ver o modificar su información.</p>
+      {!lista.length ? <p className="nota">Aún no hay casetas registradas. Usa «Cargar equipos».</p> : (
+        <div className="tabla-scroll">
+          <table className="tabla-catastro tabla-clic">
+            <thead>
+              <tr><th>Área</th><th>Ubicación</th><th>Código</th></tr>
+            </thead>
+            <tbody>
+              {lista.map((a) => (
+                <tr key={a.id} tabIndex={0} onClick={() => setEditando(a)} onKeyDown={(e) => e.key === 'Enter' && setEditando(a)}>
+                  <td>{nombreArea(a.unidad_id) || 'Sin área'}</td>
+                  <td>{nombreUbic(a.ubicacion_id) || 'Sin ubicación'}</td>
+                  <td><b>{a.codigo}</b></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editando && tipo && (
+        <Ventana titulo={`Modificar ${editando.codigo}`} onCerrar={() => setEditando(null)}>
+          <FormActivo exigirTodo={false} ctx={contexto} tipo={tipo} activo={editando} materiales={[]} onListo={() => (setEditando(null), onCambio())} onCancelar={() => setEditando(null)} />
+        </Ventana>
+      )}
+    </Seccion>
   )
 }
 

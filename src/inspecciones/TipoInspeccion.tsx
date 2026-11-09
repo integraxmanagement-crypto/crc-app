@@ -52,7 +52,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
   const formato = copia?.formatos.find((x) => x.plantilla.id === id)
   // Carga masiva de equipos: extintores y dispositivos del sistema DACI (alarma).
   const nombreTipo = (copia?.tipos.find((t) => t.id === formato?.plantilla.tipo_activo_id)?.nombre ?? '').toLowerCase()
-  const cargaMasiva = formato?.plantilla.aplica_a === 'activo' && (nombreTipo.startsWith('extintor') || nombreTipo.includes('alarma'))
+  const cargaMasiva = formato?.plantilla.aplica_a === 'activo' && (nombreTipo.startsWith('extintor') || nombreTipo.includes('alarma') || nombreTipo.startsWith('caseta'))
   const esDaci = Boolean(formato?.plantilla.aplica_a === 'activo' && nombreTipo.includes('alarma'))
   // La caseta de ataque rápido usa la misma pantalla que el DACI (pedido del dueño, 02/11/2026).
   const esCaseta = Boolean(formato?.plantilla.aplica_a === 'activo' && nombreTipo.startsWith('caseta'))
@@ -87,7 +87,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
                   <CalendarDays size={18} aria-hidden="true" /> Ver por mes
                 </button>
               )}
-              {cargaMasiva && !esExtintor && (
+              {cargaMasiva && !esExtintor && !esCaseta && (
                 <button className="btn-sec" type="button" onClick={() => setCargando(true)}>
                   <Upload size={18} aria-hidden="true" /> Cargar equipos
                 </button>
@@ -142,7 +142,7 @@ export function TipoInspeccion({ id, empresaId, cuenta, gestiona, online, abrir 
             </>
           )}
           {esExtintor || esDaci || esCaseta ? (
-            <Extintores key={cargaVersion} variante={esExtintor ? 'extintor' : esCaseta ? 'caseta' : 'daci'} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formato={formato} vistaInicial={abrir === 'registro' ? 'registro' : undefined} alCargar={cargaMasiva && esExtintor ? () => setCargando(true) : undefined} />
+            <Extintores key={cargaVersion} variante={esExtintor ? 'extintor' : esCaseta ? 'caseta' : 'daci'} empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} copia={copia} formato={formato} vistaInicial={abrir === 'registro' ? 'registro' : undefined} alCargar={cargaMasiva && (esExtintor || esCaseta) ? () => setCargando(true) : undefined} />
           ) : null}
           {/* En la eficacia del LOTO no se muestra «En este equipo» (pedido del dueño, 29/10/2026). */}
           {!esLoto && !esDaci && !esCaseta && (borradores.length > 0 || cola.length > 0) && (
