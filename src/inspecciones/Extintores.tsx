@@ -660,10 +660,10 @@ function GenerarRegistro({ nombreArchivo, formato, copia, sede, semanas, hoy, cu
       ) : (
         <div className="acciones">
           <button className="btn" type="button" disabled={armando || tieneExcel === null} onClick={() => void generar('excel')}>
-            {armandoDe === 'excel' || listoDe === 'excel' ? <InsigniaListo armando={armandoDe === 'excel'} listo={listoDe === 'excel'} /> : <FileSpreadsheet size={18} aria-hidden="true" />} {armando ? 'Armando…' : listoDe === 'excel' ? '¡Listo!' : 'Generar en Excel'}
+            {armandoDe === 'excel' || listoDe === 'excel' ? <InsigniaListo armando={armandoDe === 'excel'} listo={listoDe === 'excel'} /> : <FileSpreadsheet size={18} aria-hidden="true" />} {armandoDe === 'excel' ? 'Armando…' : listoDe === 'excel' ? '¡Listo!' : 'Generar en Excel'}
           </button>
           <button className="btn" type="button" disabled={armando || tieneExcel === null} onClick={() => void generar('pdf')}>
-            {armandoDe === 'pdf' || listoDe === 'pdf' ? <InsigniaListo armando={armandoDe === 'pdf'} listo={listoDe === 'pdf'} /> : <FileText size={18} aria-hidden="true" />} {armando ? 'Armando…' : listoDe === 'pdf' ? '¡Listo!' : 'Generar en PDF'}
+            {armandoDe === 'pdf' || listoDe === 'pdf' ? <InsigniaListo armando={armandoDe === 'pdf'} listo={listoDe === 'pdf'} /> : <FileText size={18} aria-hidden="true" />} {armandoDe === 'pdf' ? 'Armando…' : listoDe === 'pdf' ? '¡Listo!' : 'Generar en PDF'}
           </button>
         </div>
       )}
