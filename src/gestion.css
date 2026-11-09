@@ -4500,3 +4500,33 @@ fieldset.field legend {
   margin-top: 0.2rem;
   accent-color: var(--teal-ink);
 }
+
+/* Subsecciones del menú de inspecciones (09/11/2026) */
+.menu-sub .menu-subseccion {
+  display: grid;
+  gap: 0.1rem;
+  padding-bottom: 0.3rem;
+}
+
+.menu-sub .menu-sub-titulo {
+  padding: 0.5rem 0.7rem 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.menu-sub .menu-subseccion ul {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu-sub .menu-sub-vacio {
+  padding: 0 0.7rem 0.3rem;
+  opacity: 0.6;
+  font-style: italic;
+}

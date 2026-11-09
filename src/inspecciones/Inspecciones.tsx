@@ -13,6 +13,7 @@ import { type Borrador, type CopiaLocal, type EnCola, type FormatoLocal, bajarCo
 import { type ResumenInspeccion, conFrecuencias, frecuenciasActuales, listarInspecciones } from './datos'
 import { espacioLleno, hoyLocal, ordenarUnidades, useUso } from './ayudas'
 import { esBombaIncendio } from './BombasIncendio'
+import { agruparPorCategoria } from './categorias'
 import { esInspeccionDirecta } from './directa'
 
 const fechaCorta = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(0, 4)}`
@@ -138,35 +139,43 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
         </p>
       )}
 
-      {/* Las inspecciones se ordenan por tipo: cada tarjeta abre las de ese formato (pedido del dueño, 29/10/2026). */}
-      <Seccion titulo="Tipos de inspección">
-        {!copia?.formatos.length ? (
+      {/* Las inspecciones se ordenan en subsecciones: Seguridad, Respuesta a emergencias y Salud (pedido del dueño, 09/11/2026). */}
+      {!copia?.formatos.length ? (
+        <Seccion titulo="Tipos de inspección">
           <p className="nota">Todavía no hay formatos para inspeccionar.</p>
-        ) : (
-          <ul className="tarjetas-tipos">
-            {[...copia.formatos.filter((f) => !esBombaIncendio(f.plantilla.nombre)), ...(copia.formatos.some((f) => esBombaIncendio(f.plantilla.nombre)) ? [GRUPO_BOMBAS(copia.formatos.filter((f) => esBombaIncendio(f.plantilla.nombre)))] : [])]
-              .sort((x, y) => x.plantilla.nombre.localeCompare(y.plantilla.nombre, 'es')).map((f) => {
-              const grupo = f.plantilla.id === 'bombas'
-              const ids = grupo ? copia.formatos.filter((x) => esBombaIncendio(x.plantilla.nombre)).map((x) => x.plantilla.id) : [f.plantilla.id]
-              const n = recibidas?.filter((i) => ids.includes(i.plantilla_id) && i.estado !== 'anulada').length
-              const medio = borradores.filter((b) => ids.includes(b.plantilla_id)).length
-              return (
-                <li key={f.plantilla.id}>
-                  <button type="button" onClick={() => ir(`/inspecciones/tipo/${f.plantilla.id}`)}>
-                    <ClipboardCheck aria-hidden="true" />
-                    <b>{f.plantilla.nombre}</b>
-                    <small>
-                      {NOMBRE_FRECUENCIA[f.plantilla.frecuencia]}
-                      {n != null ? ` · ${plural(n, 'recibida', 'recibidas')}` : ''}
-                    </small>
-                    {medio > 0 && <span className="chip chip-aviso">{medio} a medio llenar</span>}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </Seccion>
+        </Seccion>
+      ) : (
+        agruparPorCategoria(copia.formatos.map((f) => ({ id: f.plantilla.id, nombre: f.plantilla.nombre }))).map(({ categoria, items }) => (
+          <Seccion key={categoria.clave} titulo={categoria.nombre}>
+            {!items.length ? (
+              <p className="nota">{categoria.vacio}</p>
+            ) : (
+              <ul className="tarjetas-tipos">
+                {items.map((it) => {
+                  const grupo = it.id === 'bombas'
+                  const f = grupo ? GRUPO_BOMBAS(copia.formatos.filter((x) => esBombaIncendio(x.plantilla.nombre))) : copia.formatos.find((x) => x.plantilla.id === it.id)!
+                  const ids = grupo ? copia.formatos.filter((x) => esBombaIncendio(x.plantilla.nombre)).map((x) => x.plantilla.id) : [f.plantilla.id]
+                  const n = recibidas?.filter((i) => ids.includes(i.plantilla_id) && i.estado !== 'anulada').length
+                  const medio = borradores.filter((b) => ids.includes(b.plantilla_id)).length
+                  return (
+                    <li key={f.plantilla.id}>
+                      <button type="button" onClick={() => ir(`/inspecciones/tipo/${f.plantilla.id}`)}>
+                        <ClipboardCheck aria-hidden="true" />
+                        <b>{f.plantilla.nombre}</b>
+                        <small>
+                          {NOMBRE_FRECUENCIA[f.plantilla.frecuencia]}
+                          {n != null ? ` · ${plural(n, 'recibida', 'recibidas')}` : ''}
+                        </small>
+                        {medio > 0 && <span className="chip chip-aviso">{medio} a medio llenar</span>}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </Seccion>
+        ))
+      )}
     </div>
   )
 }

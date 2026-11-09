@@ -247,7 +247,7 @@ export function Extintores({ empresaId, cuenta, gestiona, online, copia, formato
   // Caseta: el catastro es una lista simple (área, ubicación y código) donde se puede modificar cada caseta (09/11/2026).
   const catastro = variante === 'caseta' && contexto
     ? <CatastroCaseta activos={activos} contexto={contexto} formato={formato} nombreArea={nombreArea} nombreUbic={nombreUbic} onCambio={() => (cargarActivos(), cargarSemana(), contexto.recargar())} />
-    : <Catastro variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />
+    : <Catastro contexto={contexto} formato={formato} onCambio={() => (cargarActivos(), cargarSemana(), contexto?.recargar())} variante={variante} N={N} subtipos={subtipos} activos={activos} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} hoy={hoy} />
   const tabla = <TablaInspeccion activos={activos} filas={filas} formato={formato} nombrePersona={nombrePersona} nombreArea={nombreArea} nombreUbic={nombreUbic} compacta={conPestanas} />
   const planes = <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuenteFija={formato.plantilla.nombre} />
   const registro = <GenerarRegistro nombreArchivo={esExt ? 'Extintores' : variante === 'caseta' ? 'CAR' : 'DACI'} formato={formato} copia={copia} sede={sede} semanas={semanas} hoy={hoy} cuenta={cuenta} esSemanal={esSemanal} unPeriodo={unPeriodo} conOpcionFirma={conPestanas} />
@@ -391,13 +391,18 @@ function CatastroCaseta({ activos, contexto, formato, nombreArea, nombreUbic, on
  * Catastro: cuadro de doble entrada con totales; al elegir una fila o una cantidad se abre la lista de esos equipos.
  * Extintores: agente × capacidad. Dispositivos del sistema DACI: subtipo × área.
  */
-function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, nombreUbic, hoy }: {
+function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, nombreUbic, hoy, contexto, formato, onCambio }: {
+  contexto: ReturnType<typeof useContextoActivos>['contexto']; formato: FormatoLocal; onCambio: () => void
   variante: 'extintor' | 'daci' | 'caseta'; N: { s: string; p: string }; subtipos: { codigo: string; nombre: string }[]; activos: Activo[]; nombrePersona: Map<string, string>
   nombreArea: (id: string | null) => string; nombreUbic: (id: string | null) => string; hoy: string
 }) {
   const esExt = variante === 'extintor'
   const esCaseta = variante === 'caseta'
   const [ver, setVer] = useState<{ fila: string | null; col: string | null } | null>(null)
+  // Doble clic en un equipo de la lista: se abre todo su detalle para modificarlo (09/11/2026).
+  const [editando, setEditando] = useState<Activo | null>(null)
+  const tipoEdicion = contexto?.tipos.find((x) => x.id === formato.plantilla.tipo_activo_id)
+  const abrir = (a: Activo) => tipoEdicion && setEditando(a)
   const capacidad = (a: Activo) => (a.datos.capacidad != null && a.datos.capacidad !== '' ? `${a.datos.capacidad} ${a.datos.capacidad_unidad ?? ''}`.trim() : 'Sin capacidad')
   const subtipoDe = (a: Activo) => subtipos.find((x) => x.codigo === a.subtipo)?.nombre ?? 'Sin subtipo'
   const filaDe = (a: Activo) => (esExt ? String(a.datos.agente ?? 'Sin agente') : esCaseta ? nombreArea(a.unidad_id) || 'Sin área' : subtipoDe(a))
@@ -412,7 +417,7 @@ function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, n
   const lista = ver ? de(ver.fila, ver.col) : []
   return (
     <Seccion titulo={`Catastro de ${N.p} (${activos.length})`}>
-      <p className="nota">Toca {esExt ? 'un agente' : esCaseta ? 'un área' : 'un subtipo'} o una cantidad para ver los equipos.</p>
+      <p className="nota">Toca {esExt ? 'un agente' : esCaseta ? 'un área' : 'un subtipo'} o una cantidad para ver los equipos; en la lista, haz doble clic en uno para ver y modificar todo su detalle.</p>
       <div className="tabla-scroll">
         <table className="tabla-catastro">
           <thead>
@@ -440,6 +445,11 @@ function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, n
           </tfoot>
         </table>
       </div>
+      {editando && tipoEdicion && contexto && (
+        <Ventana titulo={`Modificar ${editando.codigo}`} onCerrar={() => setEditando(null)}>
+          <FormActivo exigirTodo={variante === 'extintor'} ctx={contexto} tipo={tipoEdicion} activo={editando} materiales={[]} onListo={() => (setEditando(null), setVer(null), onCambio())} onCancelar={() => setEditando(null)} />
+        </Ventana>
+      )}
       {ver && (
         <Ventana titulo={`${ver.fila ?? (esExt ? 'Todos los agentes' : esCaseta ? 'Todas las casetas' : 'Todos los dispositivos')}${ver.col ? ` · ${ver.col}` : ''} (${lista.length})`} onCerrar={() => setVer(null)}>
           <div className="tabla-scroll">
@@ -456,7 +466,7 @@ function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, n
                 {lista.map((a) => {
                   const m = estadoMantenimiento(a.datos.proximo_mantenimiento, hoy)
                   return esExt ? (
-                    <tr key={a.id}>
+                    <tr key={a.id} title="Doble clic para ver y modificar todo el detalle" tabIndex={0} onDoubleClick={() => abrir(a)} onKeyDown={(e) => e.key === 'Enter' && abrir(a)}>
                       <td><b>{a.codigo}</b></td>
                       <td>{nombreUbic(a.ubicacion_id)}</td>
                       <td>{nombreArea(a.unidad_id)}</td>
@@ -469,14 +479,14 @@ function Catastro({ variante, N, subtipos, activos, nombrePersona, nombreArea, n
                       <td>{a.responsable_id ? (nombrePersona.get(a.responsable_id) ?? '') : ''}</td>
                     </tr>
                   ) : esCaseta ? (
-                    <tr key={a.id}>
+                    <tr key={a.id} title="Doble clic para ver y modificar todo el detalle" tabIndex={0} onDoubleClick={() => abrir(a)} onKeyDown={(e) => e.key === 'Enter' && abrir(a)}>
                       <td><b>{a.codigo}</b></td>
                       <td>{nombreUbic(a.ubicacion_id)}</td>
                       <td>{nombreArea(a.unidad_id)}</td>
                       <td>{a.responsable_id ? (nombrePersona.get(a.responsable_id) ?? '') : ''}</td>
                     </tr>
                   ) : (
-                    <tr key={a.id}>
+                    <tr key={a.id} title="Doble clic para ver y modificar todo el detalle" tabIndex={0} onDoubleClick={() => abrir(a)} onKeyDown={(e) => e.key === 'Enter' && abrir(a)}>
                       <td><b>{a.codigo}</b></td>
                       <td>{nombreUbic(a.ubicacion_id)}</td>
                       <td>{nombreArea(a.unidad_id)}</td>
