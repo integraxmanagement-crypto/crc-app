@@ -1,8 +1,8 @@
 import { BotonEliminar } from '../BotonEliminar'
 import { plural } from '../plural'
 import { Esqueleto } from '../Esqueleto'
-import { CalendarRange, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, TriangleAlert } from 'lucide-react'
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { CalendarRange, ChevronDown, CloudOff, CloudUpload, ClipboardCheck, Eye, FilePlus2, PenLine, RefreshCw, TriangleAlert } from 'lucide-react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { Aviso, Seccion } from '../empresas/campos'
 import { todosLosPuntos } from '../formatos/receta'
 import { NOMBRE_FRECUENCIA } from '../formatos/datos'
@@ -146,7 +146,7 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
         </Seccion>
       ) : (
         agruparPorCategoria(copia.formatos.map((f) => ({ id: f.plantilla.id, nombre: f.plantilla.nombre }))).map(({ categoria, items }) => (
-          <Seccion key={categoria.clave} titulo={categoria.nombre}>
+          <Subseccion key={categoria.clave} clave={categoria.clave} nombre={categoria.nombre} cantidad={items.length}>
             {!items.length ? (
               <p className="nota">{categoria.vacio}</p>
             ) : (
@@ -173,10 +173,43 @@ export function Inspecciones({ empresaId, cuenta, online, preset }: { empresaId:
                 })}
               </ul>
             )}
-          </Seccion>
+          </Subseccion>
         ))
       )}
     </div>
+  )
+}
+
+/** Una subsección de las inspecciones (Seguridad, Respuesta a emergencias, Salud…): se puede resumir o desplegar, y se recuerda en este equipo. */
+function Subseccion({ clave, nombre, cantidad, children }: { clave: string; nombre: string; cantidad: number; children: ReactNode }) {
+  const [abierta, setAbierta] = useState(() => {
+    try {
+      return localStorage.getItem(`crc-subseccion-${clave}`) !== 'resumida'
+    } catch {
+      return true
+    }
+  })
+  const alternar = () => {
+    setAbierta((x) => {
+      try {
+        localStorage.setItem(`crc-subseccion-${clave}`, x ? 'resumida' : 'abierta')
+      } catch {
+        /* sin almacenamiento: no se recuerda */
+      }
+      return !x
+    })
+  }
+  return (
+    <section className={`seccion categoria cat-${clave} ${abierta ? '' : 'resumida'}`}>
+      <header className="seccion-cab">
+        <button type="button" className="categoria-titulo" aria-expanded={abierta} onClick={alternar}>
+          <ChevronDown size={20} aria-hidden="true" className="categoria-flecha" />
+          <h2>{nombre}</h2>
+        </button>
+        <span className="chip">{plural(cantidad, 'inspección', 'inspecciones')}</span>
+      </header>
+      {abierta && children}
+    </section>
   )
 }
 

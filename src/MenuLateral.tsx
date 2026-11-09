@@ -1,7 +1,9 @@
-import { UsersRound, CalendarDays, ChevronDown, ClipboardList, HardHat, Home, ListChecks, ListTodo, X } from 'lucide-react'
+import { UsersRound, CalendarDays, ChevronDown, ClipboardList, Folder, HardHat, HeartPulse, Home, ListChecks, ListTodo, ShieldCheck, Siren, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { type CopiaLocal, leerCopia } from './inspecciones/campo'
-import { agruparPorCategoria } from './inspecciones/categorias'
+import { type Categoria, agruparPorCategoria } from './inspecciones/categorias'
+
+const ICONO_CATEGORIA: Record<Categoria, LucideIcon> = { seguridad: ShieldCheck, emergencias: Siren, salud: HeartPulse, otras: Folder }
 import { ir, useRuta } from './ruta'
 import type { Perfil } from './sesion'
 import { useEscritorio } from './useEscritorio'
@@ -16,6 +18,8 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
   const [formatos, setFormatos] = useState<{ id: string; nombre: string }[]>([])
   // Inspecciones se despliega con la flecha; «Ver más» muestra el resto de los tipos en este mismo panel y «Ocultar» los vuelve a esconder.
   // Al elegir otra sección, todo se recoge (pedido del dueño, 05/11/2026).
+  // Cada subsección (Seguridad, Respuesta a emergencias, Salud) se puede resumir o desplegar.
+  const [resumidas, setResumidas] = useState<Partial<Record<Categoria, boolean>>>({})
   const [inspAbierto, setInspAbierto] = useState(() => location.hash.startsWith('#/inspecciones'))
   // En pantalla de escritorio el menú está siempre a la vista (fijo a la izquierda); en celular y tablet es un cajón que se abre.
   const escritorio = useEscritorio()
@@ -92,10 +96,15 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
               </div>
               {inspAbierto && (
                 <ul id="menu-inspecciones" className="menu-sub">
-                  {agruparPorCategoria(formatos).map(({ categoria, items }) => (
-                    <li key={categoria.clave} className="menu-subseccion">
-                      <span className="menu-sub-titulo">{categoria.nombre}</span>
-                      {items.length ? (
+                  {agruparPorCategoria(formatos).map(({ categoria, items }) => {
+                    const Icono = ICONO_CATEGORIA[categoria.clave]
+                    return (
+                    <li key={categoria.clave} className={`menu-subseccion cat-${categoria.clave}`}>
+                      <button type="button" className="menu-sub-titulo" aria-expanded={!resumidas[categoria.clave]} onClick={() => setResumidas((r) => ({ ...r, [categoria.clave]: !r[categoria.clave] }))}>
+                        <Icono size={16} aria-hidden="true" /> {categoria.nombre}
+                        <ChevronDown className="menu-sub-flecha" size={14} aria-hidden="true" />
+                      </button>
+                      {resumidas[categoria.clave] ? null : items.length ? (
                         <ul>
                           {items.map((f) => (
                             <li key={f.id}>
@@ -107,7 +116,8 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
                         <small className="menu-sub-vacio">Próximamente</small>
                       )}
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
               )}
             </div>
