@@ -1,6 +1,8 @@
 import { Esqueleto } from '../Esqueleto'
-import { ArrowLeft, ClipboardCheck, FileSpreadsheet, FileText, ListChecks, Search, Upload } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, FileSpreadsheet, FileText, ListChecks, PenLine, Search, Upload } from 'lucide-react'
 import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { InsigniaListo } from '../InsigniaListo'
 import { CargaMasivaEquipos } from '../activos/CargaMasiva'
 import { FormActivo, useContextoActivos } from '../activos/Activos'
 import { Aviso, Seccion } from '../empresas/campos'
@@ -11,9 +13,14 @@ import { ir } from '../ruta'
 import { hoyLocal } from './ayudas'
 import { type CopiaLocal, type FormatoLocal, leerCopia } from './campo'
 import { type FilaAvance, type UltimaInspeccion, avancePeriodo, ultimasInspecciones } from './datos'
-import { BuscadorExtintor, periodosDelAnio } from './Extintores'
+import type { vistaDeExcel } from './excelVista'
+import { BuscadorExtintor, mesesDelAnio, periodosDelAnio } from './Extintores'
+import { PanelFirma } from './Firma'
 import { periodoDe, periodosHasta } from './periodos'
+import { armarRegistroBomba } from './registroBomba'
+import { entregarRegistro } from './registroPeriodo'
 import { Ventana } from './Ventana'
+import { VistaExcel } from './VistaExcel'
 
 /** Los formatos que forman «Inspección de bomba contra incendio» (se reconocen por su nombre). */
 export const esBombaIncendio = (nombre: string) => /^inspecci[oó]n de (moto|electro)bomba/i.test(nombre)
@@ -218,7 +225,7 @@ function Panel({ abrir, empresaId, cuenta, gestiona, online, copia, formatos }: 
           </>
         )}
         {activa === 'hallazgos' && <Hallazgos empresaId={empresaId} cuenta={cuenta} gestiona={gestiona} online={online} fuentes={nombresFormato} />}
-        {activa === 'registro' && <Registro grupos={grupos} periodo={periodo?.etiqueta ?? ''} nombreUbic={nombreUbic} />}
+        {activa === 'registro' && <Registro grupos={grupos} sede={sede} hoy={hoy} copia={copia} nombreUbic={nombreUbic} />}
       </div>
     </>
   )
@@ -352,18 +359,91 @@ function TablaInspeccion({ grupos, nombrePersona, nombreArea, nombreUbic }: { gr
 }
 
 /**
- * Generar registro: se elige el tipo de bomba y el equipo; el formato del dueño es de una bomba (con sus dos firmas), así que se baja
- * el Excel o el PDF de su inspección de la semana elegida.
+ * Generar registro (09/11/2026), igual que en la caseta: tipo de bomba y equipo, mes y año, fecha de la inspección, responsable de la inspección
+ * y custodia del registro con su cargo, y firma electrónica avanzada o física. Sale la hoja de la última inspección de esa bomba en el mes.
  */
-function Registro({ grupos, periodo, nombreUbic }: { grupos: Grupo[]; periodo: string; nombreUbic: (id: string | null) => string }) {
+function Registro({ grupos, sede, hoy, copia, nombreUbic }: { grupos: Grupo[]; sede: string; hoy: string; copia: CopiaLocal; nombreUbic: (id: string | null) => string }) {
   const [clave, setClave] = useState<Clave>(grupos[0].clave)
   const g = grupos.find((x) => x.clave === clave) ?? grupos[0]
   const [equipo, setEquipo] = useState('')
   const a = g.activos.find((x) => x.id === equipo) ?? g.activos[0]
-  const f = a ? g.filas.find((x) => x.activo_id === a.id) : undefined
+  const [anio, setAnio] = useState(Number(hoy.slice(0, 4)))
+  const [mes, setMes] = useState(hoy.slice(0, 7))
+  const meses = useMemo(() => mesesDelAnio(anio), [anio])
+  const elegido = meses.find((m) => m.clave === mes) ?? meses[0]
+  // La inspección de esta bomba en el mes (undefined: se está buscando; null: no tiene).
+  const [hecha, setHecha] = useState<FilaAvance | null | undefined>(undefined)
+  const [fecha, setFecha] = useState('')
+  const [registro, setRegistro] = useState({ nombre: '', cargo: '' })
+  const [tipoFirma, setTipoFirma] = useState<'electronica' | 'fisica'>('electronica')
+  const [firma, setFirma] = useState<Uint8Array | null>(null)
+  const [firmando, setFirmando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const [armando, setArmando] = useState(false)
+  const [armandoDe, setArmandoDe] = useState<'excel' | 'pdf' | null>(null)
+  const [listoDe, setListoDe] = useState<'excel' | 'pdf' | null>(null)
+  const [vistaPdf, setVistaPdf] = useState<ReturnType<typeof vistaDeExcel> | null>(null)
+  const firmaFisica = tipoFirma === 'fisica'
+
+  useEffect(() => {
+    let vivo = true
+    setHecha(undefined)
+    if (!a) return
+    avancePeriodo(g.formato.plantilla.id, sede, elegido.desde, elegido.hasta).then((filas) => {
+      if (!vivo) return
+      const f = filas.find((x) => x.activo_id === a.id)
+      setHecha(f?.inspeccion_id ? f : null)
+      if (f?.fecha) setFecha(f.fecha)
+    }, (e) => vivo && setError((e as Error).message))
+    return () => {
+      vivo = false
+    }
+  }, [g.formato.plantilla.id, sede, elegido.desde, elegido.hasta, a])
+  useEffect(() => {
+    if (!listoDe) return
+    const t = setTimeout(() => setListoDe(null), 4000)
+    return () => clearTimeout(t)
+  }, [listoDe])
+  useEffect(() => {
+    if (!vistaPdf) return
+    const listo = () => setVistaPdf(null)
+    window.addEventListener('afterprint', listo)
+    const t = setTimeout(() => window.print(), 300)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('afterprint', listo)
+    }
+  }, [vistaPdf])
+
+  async function generar(como: 'excel' | 'pdf') {
+    setError(null)
+    setAviso(null)
+    if (!a || !hecha?.inspeccion_id) return
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return setError('Escribe la fecha de la inspección.')
+    if (registro.nombre.trim().length < 3 || !registro.cargo.trim() || (!firmaFisica && !firma)) {
+      return setError(firmaFisica ? 'Escribe tu nombre y apellido y tu cargo: el pie del formato los pide.' : 'Escribe tu nombre y apellido, tu cargo y firma: el pie del formato los pide.')
+    }
+    setArmando(true)
+    setArmandoDe(como)
+    setListoDe(null)
+    try {
+      const bytes = await armarRegistroBomba({ inspeccionId: hecha.inspeccion_id, copia, registro: { ...registro, fecha }, firma: firmaFisica ? null : firma })
+      if (!bytes) return setAviso('Este formato no tiene un Excel de la organización. Súbelo en el formato.')
+      const vista = await entregarRegistro(bytes, como, `Inspección ${g.nombre}- ${a.codigo}- ${elegido.clave}`)
+      if (vista) setVistaPdf(vista)
+      setListoDe(como)
+      setAviso(`Registro listo: ${a.codigo}.`)
+    } catch (e) {
+      setError(`No se pudo armar el registro: ${(e as Error).message}`)
+    } finally {
+      setArmando(false)
+      setArmandoDe(null)
+    }
+  }
+
   return (
-    <Seccion titulo={`Generar registro · ${periodo.split(' · ')[0]}`}>
-      <p className="nota">Elige el tipo de bomba y el equipo: se baja el Excel o el PDF de su inspección de la semana elegida arriba.</p>
+    <Seccion titulo="Generar registro">
       <div className="fila2">
         <label className="field">
           <span>Tipo de bomba</span>
@@ -378,17 +458,74 @@ function Registro({ grupos, periodo, nombreUbic }: { grupos: Grupo[]; periodo: s
           </select>
         </label>
       </div>
-      {!a ? <p className="nota">No hay {g.nombre.toLowerCase()}s registradas.</p> : !f?.inspeccion_id ? (
-        <p className="nota">{a.codigo} no tiene inspección en esta semana.</p>
+      <div className="fila2">
+        <label className="field">
+          <span>Mes</span>
+          <select value={elegido.clave} onChange={(e) => setMes(e.target.value)}>
+            {meses.map((m) => <option key={m.clave} value={m.clave}>{m.etiqueta.split(' ')[0]}</option>)}
+          </select>
+        </label>
+        <label className="field">
+          <span>Año</span>
+          <select value={anio} onChange={(e) => { const n = Number(e.target.value); setAnio(n); setMes(`${n}-${elegido.clave.slice(5, 7)}`) }}>
+            {Array.from({ length: 5 }, (_, k) => Number(hoy.slice(0, 4)) - k).map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      </div>
+      {!a ? <p className="nota">No hay {g.nombre.toLowerCase()}s registradas.</p> : hecha === undefined ? <p className="nota">Buscando la inspección…</p> : !hecha ? (
+        <p className="nota">{a.codigo} no tiene inspección en este mes.</p>
       ) : (
         <>
-          <p className="aviso-ok">{a.codigo} · inspeccionada el {fechaCorta(f.fecha ?? '')}.</p>
+          <p className="aviso-ok">{a.codigo} · última inspección del mes: {fechaCorta(hecha.fecha ?? '')}.</p>
+          <label className="field campo-fecha">
+            <span>Fecha de inspección (por defecto, la de la inspección; puedes cambiarla)</span>
+            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          </label>
+          <div className="fila2">
+            <label className="field">
+              <span>Responsable de la inspección y custodia del registro: nombre y apellido *</span>
+              <input type="text" maxLength={200} value={registro.nombre} onChange={(e) => setRegistro((r) => ({ ...r, nombre: e.target.value }))} />
+            </label>
+            <label className="field">
+              <span>Cargo *</span>
+              <input type="text" maxLength={120} value={registro.cargo} onChange={(e) => setRegistro((r) => ({ ...r, cargo: e.target.value }))} />
+            </label>
+          </div>
+          <fieldset className="opciones-firma">
+            <legend>Firma del registro</legend>
+            <label className={tipoFirma === 'electronica' ? 'marcada' : ''}>
+              <input type="radio" name="tipo-firma-bomba" checked={tipoFirma === 'electronica'} onChange={() => setTipoFirma('electronica')} />
+              <span><b>Firma electrónica avanzada</b><small>Firmas aquí en pantalla y tu firma sale en el registro.</small></span>
+            </label>
+            <label className={tipoFirma === 'fisica' ? 'marcada' : ''}>
+              <input type="radio" name="tipo-firma-bomba" checked={tipoFirma === 'fisica'} onChange={() => (setTipoFirma('fisica'), setFirmando(false))} />
+              <span><b>Firma física</b><small>El espacio de la firma sale en blanco para firmar a mano en el papel.</small></span>
+            </label>
+          </fieldset>
+          {firmaFisica ? null : firmando ? (
+            <PanelFirma onListo={(png) => void png.arrayBuffer().then((b) => (setFirma(new Uint8Array(b)), setFirmando(false)))} onCancelar={() => setFirmando(false)} />
+          ) : (
+            <div className="acciones">
+              <button className="btn-sec" type="button" onClick={() => setFirmando(true)}>
+                <PenLine size={16} aria-hidden="true" /> {firma ? 'Firmar de nuevo' : 'Firmar *'}
+              </button>
+              {firma && <span className="chip chip-ok">Firma lista (no se guarda: hay que firmar cada vez)</span>}
+            </div>
+          )}
+          <Aviso>{error}</Aviso>
+          {aviso && <p className="aviso-suave">{aviso}</p>}
           <div className="acciones">
-            <button className="btn" type="button" onClick={() => ir(`/inspecciones/${f.inspeccion_id}/excel`)}><FileSpreadsheet size={18} aria-hidden="true" /> Generar en Excel</button>
-            <button className="btn" type="button" onClick={() => ir(`/inspecciones/${f.inspeccion_id}/pdf`)}><FileText size={18} aria-hidden="true" /> Generar en PDF</button>
+            <button className="btn" type="button" disabled={armando} onClick={() => void generar('excel')}>
+              {armandoDe === 'excel' || listoDe === 'excel' ? <InsigniaListo armando={armandoDe === 'excel'} listo={listoDe === 'excel'} /> : <FileSpreadsheet size={18} aria-hidden="true" />} {armandoDe === 'excel' ? 'Armando…' : listoDe === 'excel' ? '¡Listo!' : 'Generar en Excel'}
+            </button>
+            <button className="btn" type="button" disabled={armando} onClick={() => void generar('pdf')}>
+              {armandoDe === 'pdf' || listoDe === 'pdf' ? <InsigniaListo armando={armandoDe === 'pdf'} listo={listoDe === 'pdf'} /> : <FileText size={18} aria-hidden="true" />} {armandoDe === 'pdf' ? 'Armando…' : listoDe === 'pdf' ? '¡Listo!' : 'Generar en PDF'}
+            </button>
           </div>
         </>
       )}
+      {error && !hecha && <Aviso>{error}</Aviso>}
+      {vistaPdf && createPortal(<VistaExcel vista={vistaPdf.vista} medias={vistaPdf.medias} />, document.body)}
     </Seccion>
   )
 }
