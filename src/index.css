@@ -1,35 +1,35 @@
-/* Colores y medidas de la marca CRC */
+/* Colores y medidas de la marca (paleta Zenda.ia × MPF) */
 :root {
   /* Marca */
-  --blue: #0b3c5d;
-  --blue-deep: #082d46;
-  --blue-text: #0b3c5d;
-  --teal: #1ba39c;
-  --teal-ink: #0e7068;
-  --teal-rgb: 27 163 156;
-  --cyan: #22c7e6;
-  --cyan-rgb: 34 199 230;
+  --blue: #2b1a0f;
+  --blue-deep: #1f120a;
+  --blue-text: #623c21;
+  --teal: #6abf4b;
+  --teal-ink: #2f7a2a;
+  --teal-rgb: 106 191 75;
+  --cyan: #8ccf6e;
+  --cyan-rgb: 140 207 110;
 
   /* Superficies y texto */
-  --ground: #f1f5fa;
-  --surface: #ffffff;
-  --surface-2: #f6f9fc;
-  --surface-3: #e9f0f7;
+  --ground: #f7f1e8;
+  --surface: #fffcf7;
+  --surface-2: #fbf6ee;
+  --surface-3: #efe6d8;
   --paper: var(--surface);
-  --ink: #0a2033;
-  --ink-2: #47607a;
-  --ink-3: #7b8ea3;
+  --ink: #2b1a0f;
+  --ink-2: #6b5443;
+  --ink-3: #8c7765;
   --ink-soft: var(--ink-2);
-  --on-blue: #ffffff;
-  --on-blue-2: #b9d3e3;
-  --rule: #d6e0ea;
-  --sombra: 11 34 51;
+  --on-blue: #f7f1e8;
+  --on-blue-2: #d8c7b4;
+  --rule: #e2d6c5;
+  --sombra: 43 26 15;
 
   /* Estados: fondo suave, texto, borde y relleno fuerte */
-  --ok-bg: #e0f3f1;
-  --ok-fg: #0b5d56;
-  --ok-dot: #2ecc71;
-  --ok-fuerte: #1f7a3d;
+  --ok-bg: #e4f3dc;
+  --ok-fg: #1f5c1b;
+  --ok-dot: #6abf4b;
+  --ok-fuerte: #2f7a2a;
   --aviso-bg: #fff4dc;
   --aviso-bg-2: #fffaf0;
   --aviso-fg: #6b4a00;
@@ -44,10 +44,10 @@
   --warn: #b26a00;
 
   /* Botón principal */
-  --btn-bg: linear-gradient(135deg, #0d4a73 0%, #0e7a73 100%);
+  --btn-bg: linear-gradient(135deg, #2b7227 0%, #348230 100%);
   --btn-fg: #ffffff;
-  --btn-glow: 0 8px 22px -10px rgb(14 122 115 / 0.7);
-  --brillo: 0 0 0 1px rgb(var(--teal-rgb) / 0.35), 0 8px 28px -12px rgb(var(--teal-rgb) / 0.55);
+  --btn-glow: 0 8px 22px -10px rgb(47 122 42 / 0.7);
+  --brillo: 0 0 0 1px rgb(var(--teal-rgb) / 0.45), 0 8px 28px -12px rgb(var(--teal-rgb) / 0.55);
 
   --font: 'Archivo Variable', system-ui, sans-serif;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -63,36 +63,36 @@
 /* Tema oscuro: elegido en «Apariencia» o, en automático, el del dispositivo (06/11/2026) */
 :root[data-theme='dark'] {
   /* Marca */
-  --blue: #0a1626;
-  --blue-deep: #060f1b;
-  --blue-text: #8fd3ee;
-  --teal: #2dd4bf;
-  --teal-ink: #5eead4;
-  --teal-rgb: 45 212 191;
-  --cyan: #38d6f5;
-  --cyan-rgb: 56 214 245;
+  --blue: #1a0f08;
+  --blue-deep: #120a05;
+  --blue-text: #a6e48b;
+  --teal: #6abf4b;
+  --teal-ink: #9bdc80;
+  --teal-rgb: 106 191 75;
+  --cyan: #8ccf6e;
+  --cyan-rgb: 140 207 110;
 
   /* Superficies y texto */
-  --ground: #050b14;
-  --surface: #0b1523;
-  --surface-2: #101e31;
-  --surface-3: #162840;
-  --ink: #e8f0f8;
-  --ink-2: #9db3c9;
-  --ink-3: #6f879e;
-  --on-blue: #f2f7fc;
-  --on-blue-2: #9fb9cf;
-  --rule: #1e3249;
+  --ground: #150d07;
+  --surface: #20140c;
+  --surface-2: #2b1a0f;
+  --surface-3: #3a2616;
+  --ink: #f7f1e8;
+  --ink-2: #cbb9a5;
+  --ink-3: #9b8671;
+  --on-blue: #f7f1e8;
+  --on-blue-2: #cdbba6;
+  --rule: #46301f;
   --sombra: 0 0 0;
-  --borde-campo: #4d6a89;
-  --pista: #1a2d45;
+  --borde-campo: #8a7058;
+  --pista: #3a2616;
   --aviso-grafico: #e8a317;
 
   /* Estados */
-  --ok-bg: #0d2f2c;
-  --ok-fg: #5eead4;
-  --ok-dot: #34d399;
-  --ok-fuerte: #17803d;
+  --ok-bg: #1b3a18;
+  --ok-fg: #a6e48b;
+  --ok-dot: #6abf4b;
+  --ok-fuerte: #2f7a2a;
   --aviso-bg: #2b2208;
   --aviso-bg-2: #231b07;
   --aviso-fg: #fcd34d;
@@ -108,9 +108,9 @@
   --rojo-campo: #f87171;
 
   /* Botón principal */
-  --btn-bg: linear-gradient(135deg, #2dd4bf 0%, #38d6f5 100%);
-  --btn-fg: #03131c;
-  --btn-glow: 0 8px 26px -8px rgb(45 212 191 / 0.55);
+  --btn-bg: linear-gradient(135deg, #6abf4b 0%, #8ccf6e 100%);
+  --btn-fg: #1a0f08;
+  --btn-glow: 0 8px 26px -8px rgb(106 191 75 / 0.55);
   --brillo: 0 0 0 1px rgb(var(--teal-rgb) / 0.4), 0 0 32px -8px rgb(var(--teal-rgb) / 0.45);
 
   color-scheme: dark;
@@ -119,36 +119,36 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     /* Marca */
-    --blue: #0a1626;
-    --blue-deep: #060f1b;
-  --blue-text: #8fd3ee;
-    --teal: #2dd4bf;
-    --teal-ink: #5eead4;
-    --teal-rgb: 45 212 191;
-    --cyan: #38d6f5;
-    --cyan-rgb: 56 214 245;
+    --blue: #1a0f08;
+    --blue-deep: #120a05;
+  --blue-text: #a6e48b;
+    --teal: #6abf4b;
+    --teal-ink: #9bdc80;
+    --teal-rgb: 106 191 75;
+    --cyan: #8ccf6e;
+    --cyan-rgb: 140 207 110;
 
     /* Superficies y texto */
-    --ground: #050b14;
-    --surface: #0b1523;
-    --surface-2: #101e31;
-    --surface-3: #162840;
-    --ink: #e8f0f8;
-    --ink-2: #9db3c9;
-    --ink-3: #6f879e;
-    --on-blue: #f2f7fc;
-    --on-blue-2: #9fb9cf;
-    --rule: #1e3249;
+    --ground: #150d07;
+    --surface: #20140c;
+    --surface-2: #2b1a0f;
+    --surface-3: #3a2616;
+    --ink: #f7f1e8;
+    --ink-2: #cbb9a5;
+    --ink-3: #9b8671;
+    --on-blue: #f7f1e8;
+    --on-blue-2: #cdbba6;
+    --rule: #46301f;
     --sombra: 0 0 0;
-    --borde-campo: #4d6a89;
-    --pista: #1a2d45;
+    --borde-campo: #8a7058;
+    --pista: #3a2616;
     --aviso-grafico: #e8a317;
 
     /* Estados */
-    --ok-bg: #0d2f2c;
-    --ok-fg: #5eead4;
-    --ok-dot: #34d399;
-    --ok-fuerte: #17803d;
+    --ok-bg: #1b3a18;
+    --ok-fg: #a6e48b;
+    --ok-dot: #6abf4b;
+    --ok-fuerte: #2f7a2a;
     --aviso-bg: #2b2208;
     --aviso-bg-2: #231b07;
     --aviso-fg: #fcd34d;
@@ -164,9 +164,9 @@
     --rojo-campo: #f87171;
 
     /* Botón principal */
-    --btn-bg: linear-gradient(135deg, #2dd4bf 0%, #38d6f5 100%);
-    --btn-fg: #03131c;
-    --btn-glow: 0 8px 26px -8px rgb(45 212 191 / 0.55);
+    --btn-bg: linear-gradient(135deg, #6abf4b 0%, #8ccf6e 100%);
+    --btn-fg: #1a0f08;
+    --btn-glow: 0 8px 26px -8px rgb(106 191 75 / 0.55);
     --brillo: 0 0 0 1px rgb(var(--teal-rgb) / 0.4), 0 0 32px -8px rgb(var(--teal-rgb) / 0.45);
 
     color-scheme: dark;
@@ -223,20 +223,22 @@ ul {
   color: var(--on-blue);
 }
 
-/* Contenedor del logo (el SVG va adentro, con su proporción original 901 × 828) */
+/* Contenedor del logo (la imagen va adentro; la proporción la fija el componente Logo) */
 .logo {
   display: block;
   flex: none;
-  aspect-ratio: 901 / 828;
 }
 
-.logo svg {
+.logo svg,
+.logo img {
+  display: block;
   width: 100%;
   height: 100%;
 }
 
 .logo-ingreso {
-  height: 9.5rem;
+  width: 100%;
+  max-width: 34rem;
 }
 
 /* En pantallas no tan angostas, el nombre va al costado del logo */
@@ -435,17 +437,6 @@ ul {
   min-height: 30svh;
   gap: 1.25rem;
   padding-bottom: 2rem;
-}
-
-/* En el ingreso el logo va un poco más chico en celular, para que el formulario quede a la vista */
-.screen:has(.form) .logo-ingreso {
-  height: 7.5rem;
-}
-
-@media (min-width: 900px) {
-  .screen:has(.form) .logo-ingreso {
-    height: 10rem;
-  }
 }
 
 .form {
@@ -673,9 +664,6 @@ ul {
     height: auto;
   }
 
-  .logo-ingreso {
-    height: 12rem;
-  }
 
   .brand-1 {
     font-size: 3.1rem;

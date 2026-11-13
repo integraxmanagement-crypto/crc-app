@@ -343,17 +343,11 @@ export default function App() {
     )
   }
 
-  // Antes de entrar (y en el cambio obligatorio de contraseña): franja azul con el logo animado.
+  // Antes de entrar (y en el cambio obligatorio de contraseña): franja con el logo animado.
   return (
     <main className="screen" data-fase={sesion.fase}>
       <header className="sign">
-        {/* Mientras se revisa la sesión todavía no se sabe si toca el ingreso: así el animado no se descarga sin necesidad. */}
-        {sesion.fase === 'cargando' ? <span className="logo logo-ingreso" /> : <Logo animado fondo="oscuro" className="logo-ingreso" />}
-        <h1 className="brand">
-          <span className="brand-1">Centinel</span> <span className="brand-2">
-            Risk <span>Control</span>
-          </span>
-        </h1>
+        <Logo animado fondo="oscuro" className="logo-ingreso" />
       </header>
 
       <section className="panel">
@@ -364,4 +358,4 @@ export default function App() {
   )
 }
 
-const VERSION = 'Versión 0.9.6 · Organigrama del equipo de SST, mapa de sismos y caducidad de contraseña'
+const VERSION = 'Versión 0.9.6'

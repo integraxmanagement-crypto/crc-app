@@ -28,7 +28,8 @@ async function cargarLogo(ruta: string): Promise<string | null> {
   return url
 }
 
-export function LogoBarra({ perfil }: { perfil: Perfil }) {
+/** soloEmpresa: sin logo de la empresa no muestra nada (el pie del menú lateral no repite el de CRC). */
+export function LogoBarra({ perfil, soloEmpresa = false }: { perfil: Perfil; soloEmpresa?: boolean }) {
   const [logo, setLogo] = useState<{ empresa: string; url: string } | null>(null)
   const [diminuto, setDiminuto] = useState(false) // un archivo de prueba de 1 píxel no sirve de logo: se deja el de CRC
   // La cuenta del dueño no tiene empresa: mientras mira la ficha de una empresa, la cabecera lleva el logo de esa empresa.
@@ -74,5 +75,5 @@ export function LogoBarra({ perfil }: { perfil: Perfil }) {
   if (empresa && logo?.empresa === empresa && !diminuto) {
     return <img className="logo-empresa" src={logo.url} alt="Logo de la empresa" onLoad={(e) => setDiminuto(e.currentTarget.naturalWidth < 16 || e.currentTarget.naturalHeight < 8)} />
   }
-  return <Logo fondo="oscuro" />
+  return soloEmpresa ? null : <Logo fondo="oscuro" />
 }

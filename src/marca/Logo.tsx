@@ -1,67 +1,48 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import logoClaro from './zenda-logo-claro.webp'
+import logoOscuro from './zenda-logo-oscuro.webp'
 
-// Logo de CRC (tarea 2.1a). Los dos archivos SVG son el diseño del dueño y se usan tal cual, sin modificarlos.
-// Se insertan dentro de la página (no como imagen) para elegir su versión clara u oscura según el FONDO de la app,
-// y no según el modo oscuro del celular o de Windows. Cada uno se descarga aparte y una sola vez:
-// el animado solo cuando se muestra la pantalla de ingreso.
-type Tipo = 'animado' | 'estatico'
+// Logo de Zenda.ia (versión para Machu Picchu Foods, 13/11/2026).
+// - Estático: dos imágenes con fondo transparente; la de letras crema va sobre fondos oscuros y la de letras cacao sobre claros.
+// - Animado (pantalla de ingreso): el SVG del dueño, insertado en la página para elegir su versión por el FONDO de la app
+//   y no por el modo oscuro del dispositivo. Se descarga aparte y solo cuando se muestra el ingreso.
+export const TEXTO_LOGO = 'Zenda.ia'
 
-const cargar: Record<Tipo, () => Promise<{ default: string }>> = {
-  animado: () => import('./crc-logo-animado.svg?raw'),
-  estatico: () => import('./crc-logo-estatico.svg?raw'),
-}
-const yaCargado: Partial<Record<Tipo, string>> = {}
+const PROPORCION = { claro: 1500 / 528, oscuro: 1438 / 486, animado: 1680 / 620 }
+let svgCargado: string | null = null
 
-export const TEXTO_LOGO = 'CRC · Centinel Risk Control'
-
-// El archivo animado termina de dibujarse y rellenarse a los 4,6 s; el dueño pidió 3 s (22/10/2026).
-// Se acelera desde aquí, sin tocar el archivo: el dibujo va más rápido y los pulsos de luz (que se repiten)
-// mantienen su ritmo pero empiezan antes, para que sigan llegando justo después del dibujo.
-const DIBUJO_ORIGINAL_MS = 4600
-const DIBUJO_MS = 3000
-
-/**
- * fondo 'claro': versión con letras oscuras (sobre blanco). fondo 'oscuro': versión con letras claras (sobre azul).
- * La animación se detiene sola si la persona activó «reducir movimiento» (lo trae el propio SVG).
- */
+/** fondo 'claro': letras cacao. fondo 'oscuro': letras crema. La animación se detiene sola con «reducir movimiento» (lo trae el SVG). */
 export function Logo({ animado = false, fondo, className = '' }: { animado?: boolean; fondo: 'claro' | 'oscuro'; className?: string }) {
-  const tipo: Tipo = animado ? 'animado' : 'estatico'
-  const [svg, setSvg] = useState<string | null>(yaCargado[tipo] ?? null)
-
+  const [svg, setSvg] = useState<string | null>(svgCargado)
   useEffect(() => {
-    if (svg) return
+    if (!animado || svg) return
     let vigente = true
-    cargar[tipo]().then((m) => {
-      yaCargado[tipo] = m.default
+    import('./zenda-logo-animado.svg?raw').then((m) => {
+      svgCargado = m.default
       if (vigente) setSvg(m.default)
     })
     return () => {
       vigente = false
     }
-  }, [tipo, svg])
+  }, [animado, svg])
 
-  // Solo se ajustan atributos de la etiqueta principal: la clase de tema y que el lector de pantalla use el texto de afuera.
-  const html = svg
-    ?.replace('class="crc-logo"', `class="crc-logo ${fondo === 'oscuro' ? 'dark' : 'light'}"`)
-    .replace('role="img" aria-labelledby="crc-t"', 'aria-hidden="true" focusable="false"')
-
-  // Con «reducir movimiento» no hay animaciones y esto no hace nada.
-  const caja = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    if (!animado || !html || !caja.current) return
-    for (const a of caja.current.getAnimations({ subtree: true })) {
-      if (a.effect?.getTiming().iterations === Infinity) a.currentTime = Number(a.currentTime ?? 0) + (DIBUJO_ORIGINAL_MS - DIBUJO_MS)
-      else a.playbackRate = DIBUJO_ORIGINAL_MS / DIBUJO_MS
-    }
-  }, [animado, html])
-
+  if (animado) {
+    const html = svg
+      ?.replace('class="zenda-logo"', `class="zenda-logo ${fondo === 'oscuro' ? 'dark' : 'light'}"`)
+      .replace('role="img" aria-labelledby="zn-t"', 'aria-hidden="true" focusable="false"')
+    return (
+      <span
+        className={`logo ${className}`}
+        style={{ aspectRatio: PROPORCION.animado }}
+        role="img"
+        aria-label={TEXTO_LOGO}
+        dangerouslySetInnerHTML={html ? { __html: html } : undefined}
+      />
+    )
+  }
   return (
-    <span
-      ref={caja}
-      className={`logo ${className}`}
-      role="img"
-      aria-label={TEXTO_LOGO}
-      dangerouslySetInnerHTML={html ? { __html: html } : undefined}
-    />
+    <span className={`logo ${className}`} style={{ aspectRatio: PROPORCION[fondo] }}>
+      <img src={fondo === 'oscuro' ? logoOscuro : logoClaro} alt={TEXTO_LOGO} decoding="async" draggable={false} />
+    </span>
   )
 }

@@ -132,7 +132,7 @@ export function HojaEntrega({ grabado, empresa, onCerrar }: { grabado: Grabado; 
               <section className="hoja-tarjetas">
                 {entregas.map((e) => (
                   <div key={e.fila} className="tarjeta-entrega">
-                    <p className="tarjeta-titulo">CRC · Centinel Risk Control</p>
+                    <p className="tarjeta-titulo">Zenda.ia</p>
                     <p>
                       <b>{e.apellidos_nombres}</b>
                       <br />

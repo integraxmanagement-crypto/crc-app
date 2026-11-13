@@ -4539,7 +4539,7 @@ fieldset.field legend {
 }
 
 .menu-sub .menu-subseccion {
-  --rama: #5eead4;
+  --rama: #9bdc80;
   padding: 0.35rem 0 0.2rem;
   border-radius: 10px;
   background: rgb(255 255 255 / 6%);
@@ -4676,4 +4676,39 @@ fieldset.field legend {
   .categoria-flecha {
     transition: none;
   }
+}
+
+/* Pie del menú lateral con el logo de la organización, y barra de desplazamiento fina (13/11/2026) */
+.menu-lateral nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 22%) transparent;
+  scrollbar-gutter: stable;
+}
+
+.menu-lateral nav:hover {
+  scrollbar-color: rgb(255 255 255 / 45%) transparent;
+}
+
+.menu-pie {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid rgb(255 255 255 / 14%);
+}
+
+.menu-pie:empty {
+  display: none;
+}
+
+.menu-pie .logo-empresa {
+  display: block;
+  max-width: 9rem;
+  max-height: 3.25rem;
+  object-fit: contain;
+  opacity: 0.92;
 }

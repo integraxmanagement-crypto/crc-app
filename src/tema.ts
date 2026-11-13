@@ -19,7 +19,7 @@ export function temaGuardado(): Tema {
 
 function colorBarra(t: Tema): string {
   const oscuro = t === 'oscuro' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  return oscuro ? '#0a1626' : '#0B3C5D'
+  return oscuro ? '#1a0f08' : '#2B1A0F'
 }
 
 export function aplicarTema(t: Tema) {

@@ -8,6 +8,7 @@ import { ir, useRuta } from './ruta'
 import type { Perfil } from './sesion'
 import { useEscritorio } from './useEscritorio'
 import { Logo } from './marca/Logo'
+import { LogoBarra } from './marca/LogoBarra'
 
 /**
  * Menú lateral (pedido del dueño, 29/10/2026): se abre desde las tres líneas de la barra y se desliza desde la izquierda. Trae Inicio,
@@ -143,6 +144,10 @@ export function MenuLateral({ perfil, equipoSso, online, abierto, onCerrar }: { 
             </button>
           )}
         </nav>
+        {/* Al final del menú, el logo de la organización, centrado y discreto (pedido del dueño, 13/11/2026). */}
+        <div className="menu-pie">
+          <LogoBarra perfil={perfil} soloEmpresa />
+        </div>
       </aside>
     </>
   )
