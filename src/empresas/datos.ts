@@ -196,8 +196,9 @@ export async function subirLogo(empresaId: string, tipo: 'positivo' | 'negativo'
   if (rutaAnterior && rutaAnterior !== ruta) await db().storage.from('logos').remove([rutaAnterior])
 }
 
-export async function quitarLogoNegativo(empresaId: string, ruta: string) {
-  await rpc<void>('registrar_logo', { p_empresa: empresaId, p_tipo: 'negativo', p_ruta: null })
+/** Quita un logo (positivo o negativo): se borra de la empresa y su archivo del almacén. */
+export async function quitarLogo(empresaId: string, tipo: 'positivo' | 'negativo', ruta: string) {
+  await rpc<void>('registrar_logo', { p_empresa: empresaId, p_tipo: tipo, p_ruta: null })
   await db().storage.from('logos').remove([ruta])
 }
 

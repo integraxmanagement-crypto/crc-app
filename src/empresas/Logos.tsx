@@ -3,7 +3,7 @@ import { Esqueleto } from '../Esqueleto'
 import { ImageUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Aviso, Seccion } from './campos'
-import { type Empresa, quitarLogoNegativo, revisarLogo, subirLogo, verLogo } from './datos'
+import { type Empresa, quitarLogo, revisarLogo, subirLogo, verLogo } from './datos'
 
 type Tipo = 'positivo' | 'negativo'
 
@@ -33,12 +33,13 @@ export function Logos({ empresa, editable, onCambio }: { empresa: Empresa; edita
     }
   }
 
-  async function quitar() {
-    if (!empresa.logo_negativo) return
+  async function quitar(tipo: Tipo) {
+    const ruta = tipo === 'positivo' ? empresa.logo_positivo : empresa.logo_negativo
+    if (!ruta) return
     setError(null)
     try {
-      await quitarLogoNegativo(empresa.id, empresa.logo_negativo)
-      setOk('Logo negativo quitado: se usará el positivo.')
+      await quitarLogo(empresa.id, tipo, ruta)
+      setOk(tipo === 'negativo' ? 'Logo negativo quitado: se usará el positivo.' : 'Logo positivo quitado: los registros impresos saldrán sin logo hasta que subas uno.')
       window.dispatchEvent(new Event('crc:logo-cambiado'))
       onCambio()
     } catch (err) {
@@ -57,6 +58,7 @@ export function Logos({ empresa, editable, onCambio }: { empresa: Empresa; edita
           editable={editable}
           onRevisar={revisar}
           onArchivo={(a) => subir('positivo', a)}
+          onQuitar={empresa.logo_positivo ? () => void quitar('positivo') : undefined}
         />
         <CajaLogo
           key={`n-${empresa.actualizado_en}`}
@@ -67,12 +69,12 @@ export function Logos({ empresa, editable, onCambio }: { empresa: Empresa; edita
           editable={editable}
           onRevisar={revisar}
           onArchivo={(a) => subir('negativo', a)}
-          onQuitar={empresa.logo_negativo ? () => void quitar() : undefined}
+          onQuitar={empresa.logo_negativo ? () => void quitar('negativo') : undefined}
         />
       </div>
       <Aviso>{error}</Aviso>
       <Aviso tipo="ok">{ok}</Aviso>
-      <p className="nota">PNG, JPG o WebP de hasta 1 MB. Mejor PNG con fondo transparente. Si no hay logo negativo, se usa el positivo.</p>
+      <p className="nota">PNG, JPG o WebP de hasta 1 MB. Mejor PNG con fondo transparente. Si no hay logo negativo, se usa el positivo. Cada logo se quita con su propio botón; sin logo positivo, los registros impresos salen sin logo.</p>
     </Seccion>
   )
 }
@@ -154,7 +156,7 @@ function CajaLogo({
             </button>
           )}
           {onQuitar && !pendiente && (
-            <BotonEliminar etiqueta="Quitar el logo" verbo="quitar" onEliminar={onQuitar} />
+            <BotonEliminar etiqueta={`Quitar el logo ${tipo}`} verbo="quitar" onEliminar={onQuitar} />
           )}
         </div>
       )}

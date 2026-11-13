@@ -917,9 +917,11 @@
 }
 
 .logo-fondo {
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   height: 9rem;
+  overflow: hidden;
   padding: 1rem;
   border: 1px solid var(--rule);
   border-radius: 10px;
@@ -937,9 +939,13 @@
   color: var(--on-blue-2);
 }
 
+/* El logo se ajusta al recuadro (alto de la caja menos el relleno), sea del tamaño que sea. */
 .logo-fondo img {
+  display: block;
+  width: auto;
+  height: auto;
   max-width: 100%;
-  max-height: 100%;
+  max-height: 7rem;
   object-fit: contain;
 }
 
