@@ -1,6 +1,62 @@
 import { TriangleAlert } from 'lucide-react'
 import { type Alcance, CONFIG_INICIAL, type ConfigEvaluacion, type Evaluacion, type Nivel, descripcionMmi, romano } from './evaluacionSismo'
+import { type FichaShakeMap, compararIntensidades } from './shakemap'
 import { type Sismo, formatearFechaHora, formatearLugar } from './sismos'
+
+/** Estado de la comparación con USGS ShakeMap de un sismo. */
+export type EstadoComparacion =
+  | { tipo: 'cargando' }
+  | { tipo: 'error' }
+  | { tipo: 'ok'; ficha: FichaShakeMap; usgs: number | null; urlPagina: string }
+
+const NOMBRE_PAGER = { green: 'Verde', yellow: 'Amarilla', orange: 'Naranja', red: 'Roja' } as const
+
+/** Compara la intensidad calculada con la del ShakeMap de USGS (ajustado con datos reales) y muestra lo que USGS sabe del sismo. */
+function Comparacion({ propia, estado }: { propia: number; estado: EstadoComparacion | null }) {
+  const usgs = estado?.tipo === 'ok' ? estado.usgs : null
+  const maximo = estado?.tipo === 'ok' ? estado.ficha.mmiMaximo : null
+  // Fuera del mapa de USGS: allí la sacudida es leve; si aun así el cálculo propio supera el máximo de todo el sismo, es una lectura conservadora.
+  const supera = usgs == null && maximo != null && propia > maximo + 0.5
+  const cercano = usgs == null ? !supera : compararIntensidades(propia, usgs).cercano
+  const mensaje = usgs != null
+    ? compararIntensidades(propia, usgs).texto
+    : supera
+      ? `Tu ubicación queda fuera del mapa de USGS (allí la sacudida es leve) y tu cálculo supera la intensidad máxima de todo el sismo según USGS (MMI ${maximo?.toFixed(1)}): tu cálculo es conservador, por el suelo blando que se supone. Lo más probable es una sacudida menor.`
+      : 'Tu ubicación queda fuera del mapa de USGS: allí la sacudida es leve. Si tu cálculo da más de MMI III, conviene revisar el reporte oficial del IGP.'
+  return (
+    <section className="sismo-comparacion" aria-label="Comparación con USGS ShakeMap">
+      <h4>Comparación con USGS ShakeMap</h4>
+      {!estado || estado.tipo === 'cargando' ? (
+        <p className="nota">Consultando a USGS…</p>
+      ) : estado.tipo === 'error' ? (
+        <p className="aviso-suave">No se pudo consultar a USGS en este momento. Reintenta tocando el sismo otra vez.</p>
+      ) : !estado.ficha.disponible ? (
+        <p className="nota">USGS todavía no publicó un ShakeMap de este sismo (suele hacerlo con los de magnitud 4,5 o más, pasados unos minutos). Por ahora vale solo tu cálculo.</p>
+      ) : (
+        <>
+          <div className="sismo-comparacion-cifras">
+            <div><small>Tu cálculo</small><b>MMI {propia.toFixed(1)}</b><span>{romano(propia)}</span></div>
+            <div>
+              <small>USGS ShakeMap en tu ubicación</small>
+              {estado.usgs == null ? <b>Fuera del mapa</b> : <b>MMI {estado.usgs.toFixed(1)}</b>}
+              <span>{estado.usgs == null ? 'sacudida leve' : romano(estado.usgs)}</span>
+            </div>
+          </div>
+          <p className="sismo-comparacion-veredicto" data-cercano={cercano ? 'si' : 'no'}>{mensaje}</p>
+          <dl className="sismo-datos">
+            {estado.ficha.mmiMaximo != null && <div><dt>Intensidad máxima (USGS)</dt><dd>MMI {estado.ficha.mmiMaximo.toFixed(1)}</dd></div>}
+            {estado.ficha.cdiMaximo != null && <div><dt>Máxima sentida (reportes de personas)</dt><dd>MMI {estado.ficha.cdiMaximo.toFixed(1)}{estado.ficha.reportes ? ` · ${estado.ficha.reportes} reportes` : ''}</dd></div>}
+            {estado.ficha.pager && <div><dt>Alerta PAGER (impacto estimado)</dt><dd>{NOMBRE_PAGER[estado.ficha.pager]}</dd></div>}
+          </dl>
+          <p className="nota">
+            El ShakeMap se ajusta con registros y reportes reales, por eso es la referencia. Sus valores son preliminares y cambian en las horas siguientes.{' '}
+            <a href={estado.urlPagina} target="_blank" rel="noopener noreferrer">Ver el ShakeMap en USGS</a>
+          </p>
+        </>
+      )}
+    </section>
+  )
+}
 
 export const NOMBRE_NIVEL: Record<Nivel, string> = { INFORMAR: 'Informar', ALERTA: 'Alerta', EVACUAR: 'Evacuar' }
 
@@ -44,7 +100,7 @@ function Corte({ distancia, profundidad, hipocentral }: { distancia: number; pro
 }
 
 /** Detalle del sismo elegido: intensidad en la ubicación, nivel de acción, distancias y hasta dónde llega (alcance). */
-export function DetalleEvaluacion({ sismo, ev, alcance, cfg = CONFIG_INICIAL, manual = false }: { sismo: Sismo; ev: Evaluacion; alcance: Alcance; cfg?: ConfigEvaluacion; manual?: boolean }) {
+export function DetalleEvaluacion({ sismo, ev, alcance, cfg = CONFIG_INICIAL, manual = false, comparacion = null }: { sismo: Sismo; ev: Evaluacion; alcance: Alcance; cfg?: ConfigEvaluacion; manual?: boolean; comparacion?: EstadoComparacion | null }) {
   const d = ev.distanciaEpicentralKm
   const dentro = (km: number) => (d <= km ? 'dentro' : 'fuera')
   return (
@@ -81,6 +137,7 @@ export function DetalleEvaluacion({ sismo, ev, alcance, cfg = CONFIG_INICIAL, ma
         <li data-nivel="EVACUAR"><b>{alcance.evacuar ? `${alcance.evacuar} km` : 'No llega'}</b> evacuación (MMI {cfg.umbralEvacuar} o más) · tu ubicación está {alcance.evacuar ? dentro(alcance.evacuar) : 'fuera'}</li>
       </ul>
       <p className="nota">Las distancias se miden desde el epicentro; los círculos del mapa muestran estos alcances con el suelo elegido. En el corte, la profundidad se dibuja más grande de lo real para que se vea.</p>
+      {!manual && <Comparacion propia={ev.mmiUbicacion} estado={comparacion} />}
       <Corte distancia={ev.distanciaEpicentralKm} profundidad={sismo.depth} hipocentral={ev.distanciaHipocentralKm} />
     </section>
   )

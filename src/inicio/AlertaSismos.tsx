@@ -4,7 +4,8 @@ import 'leaflet/dist/leaflet.css'
 import { ExternalLink, LocateFixed, MapPin, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CONFIG_INICIAL, type Ubicacion, alcanceDelSismo, evaluarSismo } from './evaluacionSismo'
-import { DetalleEvaluacion, InsigniaNivel } from './EvaluacionSismoVista'
+import { DetalleEvaluacion, type EstadoComparacion, InsigniaNivel } from './EvaluacionSismoVista'
+import { type CuadriculaMmi, type FichaShakeMap, consultarCuadricula, consultarFichaShakeMap, intensidadEnPunto } from './shakemap'
 import {
   IGP, LIMA, REFRESCO_MS, type Sismo, colorPorMagnitud, consultarSismos, distanciaDeLima, enPeru, formatearFechaHora, formatearLugar, hace,
   sismoParaAlerta,
@@ -58,6 +59,10 @@ export default function AlertaSismos({ online }: { online: boolean }) {
   const [manualCampos, setManualCampos] = useState({ lat: '', lon: '', prof: '', mag: '' })
   const [manualError, setManualError] = useState<string | null>(null)
   const [manual, setManual] = useState<Sismo | null>(null)
+  // Lo que USGS ShakeMap dice de cada sismo elegido (se guarda para no volver a pedirlo).
+  const fichas = useRef(new Map<string, FichaShakeMap>())
+  const cuadriculas = useRef(new Map<string, CuadriculaMmi>())
+  const [comparacion, setComparacion] = useState<{ id: string; estado: EstadoComparacion } | null>(null)
   const [gps, setGps] = useState<{ tipo: 'buscando' } | { tipo: 'error'; mensaje: string } | null>(null)
   const [elegido, setElegido] = useState<string | null>(null)
   const cfg = CONFIG_INICIAL
@@ -117,6 +122,38 @@ export default function AlertaSismos({ online }: { online: boolean }) {
   const sismoElegido = elegido === 'manual' ? manual : (visibles.find((s) => s.id === elegido) ?? null)
   const evElegido = sismoElegido && ubic ? (evaluaciones.get(sismoElegido.id) ?? evaluarSismo({ lat: sismoElegido.lat, lon: sismoElegido.lon, profundidad: sismoElegido.depth, magnitud: sismoElegido.mag }, ubic, cfg)) : null
   const alcanceElegido = useMemo(() => (sismoElegido ? alcanceDelSismo({ profundidad: sismoElegido.depth, magnitud: sismoElegido.mag }, cfg) : null), [sismoElegido, cfg])
+  // Comparación con USGS ShakeMap: la ficha del sismo y la intensidad que el ShakeMap da en la ubicación elegida.
+  const idUsgs = elegido && elegido !== 'manual' ? elegido : null
+  const urlUsgs = sismoElegido?.url ?? ''
+  useEffect(() => {
+    if (!idUsgs || !online) return
+    let vivo = true
+    void (async () => {
+      try {
+        let ficha = fichas.current.get(idUsgs)
+        if (!ficha) {
+          setComparacion({ id: idUsgs, estado: { tipo: 'cargando' } })
+          ficha = await consultarFichaShakeMap(idUsgs)
+          fichas.current.set(idUsgs, ficha)
+        }
+        let usgs: number | null = null
+        if (ficha.disponible && ficha.urlMmi && ubic) {
+          let g = cuadriculas.current.get(idUsgs)
+          if (!g) {
+            g = await consultarCuadricula(ficha.urlMmi)
+            cuadriculas.current.set(idUsgs, g)
+          }
+          usgs = intensidadEnPunto(g, ubic.lat, ubic.lon)
+        }
+        if (vivo) setComparacion({ id: idUsgs, estado: { tipo: 'ok', ficha, usgs, urlPagina: urlUsgs } })
+      } catch {
+        if (vivo) setComparacion({ id: idUsgs, estado: { tipo: 'error' } })
+      }
+    })()
+    return () => {
+      vivo = false
+    }
+  }, [idUsgs, online, ubic, urlUsgs])
   // El alcance del sismo elegido: círculos desde el epicentro (se siente, alerta, evacuación) y la línea hasta la ubicación.
   useEffect(() => {
     const c = capaAlcance.current
@@ -329,7 +366,7 @@ export default function AlertaSismos({ online }: { online: boolean }) {
         </ul>
       </div>
 
-      {sismoElegido && evElegido && alcanceElegido && <DetalleEvaluacion sismo={sismoElegido} ev={evElegido} alcance={alcanceElegido} cfg={cfg} manual={elegido === 'manual'} />}
+      {sismoElegido && evElegido && alcanceElegido && <DetalleEvaluacion sismo={sismoElegido} ev={evElegido} alcance={alcanceElegido} cfg={cfg} manual={elegido === 'manual'} comparacion={comparacion?.id === elegido ? comparacion.estado : null} />}
       {sismoElegido && !ubic && <p className="nota">Define tu ubicación (arriba) para ver cuánto se sentiría este sismo ahí. Mientras, el mapa muestra hasta dónde llega.</p>}
 
       <p className="sismos-legal">

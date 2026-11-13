@@ -4948,3 +4948,55 @@ fieldset.field legend {
   grid-column: 1 / -1;
   margin: 0;
 }
+
+/* Comparación con USGS ShakeMap (13/11/2026) */
+.sismo-comparacion {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border: 1px dashed var(--rule);
+  border-radius: 12px;
+}
+
+.sismo-comparacion h4 {
+  margin: 0;
+}
+
+.sismo-comparacion-cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.5rem;
+}
+
+.sismo-comparacion-cifras div {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.sismo-comparacion-cifras small {
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.sismo-comparacion-cifras b {
+  font-size: 1.2rem;
+}
+
+.sismo-comparacion-veredicto {
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border-left: 5px solid var(--teal-ink);
+  border-radius: 6px;
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+
+.sismo-comparacion-veredicto[data-cercano='no'] {
+  border-left-color: #d9641e;
+  background: #fde4cf;
+  color: #6f3006;
+}
