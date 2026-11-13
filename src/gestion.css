@@ -4903,3 +4903,48 @@ fieldset.field legend {
 .corte-epi { fill: #fff; stroke: var(--ink); stroke-width: 2; }
 .corte-ubic { fill: #2563eb; }
 .corte-texto { fill: var(--ink); font-size: 12px; }
+
+/* Cálculo manual de un sismo (13/11/2026) */
+.sismos-manual {
+  margin: 0.5rem 0;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.sismos-manual summary {
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sismos-manual-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.6rem;
+  padding: 0 1rem 1rem;
+}
+
+.sismos-manual-form label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.sismos-manual-form input {
+  min-height: 2.5rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--borde-campo);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.sismos-manual-form .sismos-ubicacion-acciones,
+.sismos-manual-form .nota,
+.sismos-manual-form .aviso-suave {
+  grid-column: 1 / -1;
+  margin: 0;
+}

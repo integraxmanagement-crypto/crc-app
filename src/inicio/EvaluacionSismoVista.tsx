@@ -44,15 +44,15 @@ function Corte({ distancia, profundidad, hipocentral }: { distancia: number; pro
 }
 
 /** Detalle del sismo elegido: intensidad en la ubicación, nivel de acción, distancias y hasta dónde llega (alcance). */
-export function DetalleEvaluacion({ sismo, ev, alcance, cfg = CONFIG_INICIAL }: { sismo: Sismo; ev: Evaluacion; alcance: Alcance; cfg?: ConfigEvaluacion }) {
+export function DetalleEvaluacion({ sismo, ev, alcance, cfg = CONFIG_INICIAL, manual = false }: { sismo: Sismo; ev: Evaluacion; alcance: Alcance; cfg?: ConfigEvaluacion; manual?: boolean }) {
   const d = ev.distanciaEpicentralKm
   const dentro = (km: number) => (d <= km ? 'dentro' : 'fuera')
   return (
     <section className="sismo-detalle" aria-label="Evaluación del sismo en tu ubicación" data-nivel={ev.nivel}>
       <header>
         <div>
-          <h3>M {sismo.mag.toFixed(1)} — {formatearLugar(sismo.place)}</h3>
-          <small>{formatearFechaHora(sismo.time)}</small>
+          <h3>M {sismo.mag.toFixed(1)} — {manual ? `epicentro ${sismo.lat.toFixed(2)}, ${sismo.lon.toFixed(2)}` : formatearLugar(sismo.place)}</h3>
+          <small>{manual ? 'Cálculo manual con los datos que escribiste' : formatearFechaHora(sismo.time)}</small>
         </div>
         <InsigniaNivel ev={ev} />
       </header>

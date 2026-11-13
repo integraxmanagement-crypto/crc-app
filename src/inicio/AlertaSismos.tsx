@@ -3,7 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { ExternalLink, LocateFixed, MapPin, RefreshCw, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CONFIG_INICIAL, SUELOS, type Ubicacion, alcanceDelSismo, evaluarSismo } from './evaluacionSismo'
+import { CONFIG_INICIAL, type Ubicacion, alcanceDelSismo, evaluarSismo } from './evaluacionSismo'
 import { DetalleEvaluacion, InsigniaNivel } from './EvaluacionSismoVista'
 import {
   IGP, LIMA, REFRESCO_MS, type Sismo, colorPorMagnitud, consultarSismos, distanciaDeLima, enPeru, formatearFechaHora, formatearLugar, hace,
@@ -19,23 +19,14 @@ function textoSobre(hex: string) {
   const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
   return 1.05 / (l + 0.05) >= 4.5 ? '#ffffff' : '#0b2233'
 }
-// Ubicación a evaluar y suelo: se recuerdan en este equipo (no se envían a ningún servidor).
+// La ubicación a evaluar se recuerda en este equipo (no se envía a ningún servidor). El suelo ya no se elige: se usa el criterio conservador del protocolo.
 const CLAVE_UBIC = 'crc-ubicacion-sismos'
-const CLAVE_SUELO = 'crc-suelo-sismos'
 function leerUbicacion(): Ubicacion | null {
   try {
     const g = JSON.parse(localStorage.getItem(CLAVE_UBIC) ?? 'null') as Ubicacion | null
     return g && Number.isFinite(g.lat) && Number.isFinite(g.lon) ? g : null
   } catch {
     return null
-  }
-}
-function leerSuelo(): number {
-  try {
-    const n = Number(localStorage.getItem(CLAVE_SUELO))
-    return SUELOS.some((s) => s.ajuste === n) && localStorage.getItem(CLAVE_SUELO) !== null ? n : CONFIG_INICIAL.ajusteSueloMmi
-  } catch {
-    return CONFIG_INICIAL.ajusteSueloMmi
   }
 }
 const COLOR_ALCANCE = { sentido: '#c99a12', alerta: '#d9641e', evacuar: '#b3261e' }
@@ -60,12 +51,16 @@ export default function AlertaSismos({ online }: { online: boolean }) {
   const capaAlcance = useRef<L.LayerGroup | null>(null)
   // Evaluación en la ubicación del usuario (actual, o elegida en el mapa) con el cálculo del protocolo de sismos.
   const [ubic, setUbic] = useState<Ubicacion | null>(leerUbicacion)
-  const [suelo, setSuelo] = useState(leerSuelo)
-  const [eligiendo, setEligiendo] = useState(false)
-  const eligiendoRef = useRef(false)
+  const [eligiendo, setEligiendo] = useState<'ubicacion' | 'epicentro' | null>(null)
+  const eligiendoRef = useRef<'ubicacion' | 'epicentro' | null>(null)
+  // Cálculo manual: se escribe (o se toca en el mapa) el epicentro, la profundidad y la magnitud, para cuando los sismos no cargan o para probar un caso.
+  const [manualAbierto, setManualAbierto] = useState(false)
+  const [manualCampos, setManualCampos] = useState({ lat: '', lon: '', prof: '', mag: '' })
+  const [manualError, setManualError] = useState<string | null>(null)
+  const [manual, setManual] = useState<Sismo | null>(null)
   const [gps, setGps] = useState<{ tipo: 'buscando' } | { tipo: 'error'; mensaje: string } | null>(null)
   const [elegido, setElegido] = useState<string | null>(null)
-  const cfg = useMemo(() => ({ ...CONFIG_INICIAL, ajusteSueloMmi: suelo }), [suelo])
+  const cfg = CONFIG_INICIAL
   const guardarUbic = useCallback((u: Ubicacion | null) => {
     setUbic(u)
     try {
@@ -80,7 +75,7 @@ export default function AlertaSismos({ online }: { online: boolean }) {
       (p) => {
         guardarUbic({ lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5) })
         setGps(null)
-        setEligiendo(false)
+        setEligiendo(null)
         mapa.current?.setView([p.coords.latitude, p.coords.longitude], Math.max(mapa.current.getZoom(), 7))
       },
       (e) => setGps({ tipo: 'error', mensaje: e.code === 1 ? 'No diste permiso para usar tu ubicación. Puedes elegirla en el mapa.' : 'No se pudo obtener tu ubicación. Puedes elegirla en el mapa.' }),
@@ -94,6 +89,7 @@ export default function AlertaSismos({ online }: { online: boolean }) {
       setEstado({ tipo: 'vivo', en: Date.now() })
     } catch (e) {
       setEstado({ tipo: 'error', mensaje: (e as Error).message })
+      setManualAbierto(true)
     }
   }, [dias, magMin])
 
@@ -118,8 +114,8 @@ export default function AlertaSismos({ online }: { online: boolean }) {
     () => new Map(ubic ? visibles.map((s) => [s.id, evaluarSismo({ lat: s.lat, lon: s.lon, profundidad: s.depth, magnitud: s.mag }, ubic, cfg)]) : []),
     [visibles, ubic, cfg],
   )
-  const sismoElegido = visibles.find((s) => s.id === elegido) ?? null
-  const evElegido = sismoElegido ? (evaluaciones.get(sismoElegido.id) ?? null) : null
+  const sismoElegido = elegido === 'manual' ? manual : (visibles.find((s) => s.id === elegido) ?? null)
+  const evElegido = sismoElegido && ubic ? (evaluaciones.get(sismoElegido.id) ?? evaluarSismo({ lat: sismoElegido.lat, lon: sismoElegido.lon, profundidad: sismoElegido.depth, magnitud: sismoElegido.mag }, ubic, cfg)) : null
   const alcanceElegido = useMemo(() => (sismoElegido ? alcanceDelSismo({ profundidad: sismoElegido.depth, magnitud: sismoElegido.mag }, cfg) : null), [sismoElegido, cfg])
   // El alcance del sismo elegido: círculos desde el epicentro (se siente, alerta, evacuación) y la línea hasta la ubicación.
   useEffect(() => {
@@ -151,9 +147,11 @@ export default function AlertaSismos({ online }: { online: boolean }) {
     capaUbic.current = L.layerGroup().addTo(m)
     // Con «Elegir en el mapa» activo, el toque o clic define la ubicación GPS.
     m.on('click', (e: L.LeafletMouseEvent) => {
-      if (!eligiendoRef.current) return
-      guardarUbic({ lat: +e.latlng.lat.toFixed(5), lon: +e.latlng.lng.toFixed(5) })
-      setEligiendo(false)
+      const modo = eligiendoRef.current
+      if (!modo) return
+      if (modo === 'ubicacion') guardarUbic({ lat: +e.latlng.lat.toFixed(5), lon: +e.latlng.lng.toFixed(5) })
+      else setManualCampos((c) => ({ ...c, lat: e.latlng.lat.toFixed(4), lon: e.latlng.lng.toFixed(4) }))
+      setEligiendo(null)
     })
     mapa.current = m
     return () => {
@@ -253,24 +251,57 @@ export default function AlertaSismos({ online }: { online: boolean }) {
           <button className="btn-sec" type="button" disabled={gps?.tipo === 'buscando'} onClick={usarMiUbicacion}>
             <LocateFixed size={16} aria-hidden="true" /> {gps?.tipo === 'buscando' ? 'Buscando…' : 'Usar mi ubicación actual'}
           </button>
-          <button className="btn-sec" type="button" aria-pressed={eligiendo} onClick={() => setEligiendo((x) => !x)}>
-            <MapPin size={16} aria-hidden="true" /> {eligiendo ? 'Toca el mapa…' : 'Elegir en el mapa'}
+          <button className="btn-sec" type="button" aria-pressed={eligiendo === 'ubicacion'} onClick={() => setEligiendo((x) => (x === 'ubicacion' ? null : 'ubicacion'))}>
+            <MapPin size={16} aria-hidden="true" /> {eligiendo === 'ubicacion' ? 'Toca el mapa…' : 'Elegir en el mapa'}
           </button>
           {ubic && (
             <button className="btn-link" type="button" onClick={() => (guardarUbic(null), setElegido(null))}>
               <X size={16} aria-hidden="true" /> Quitar
             </button>
           )}
-          <label>
-            Suelo
-            <select value={suelo} onChange={(e) => { const n = Number(e.target.value); setSuelo(n); try { localStorage.setItem(CLAVE_SUELO, String(n)) } catch { /* no se recuerda */ } }}>
-              {SUELOS.map((s) => <option key={s.ajuste} value={s.ajuste}>{s.nombre}</option>)}
-            </select>
-          </label>
         </div>
-        {eligiendo && <p className="nota">Toca el punto del mapa donde quieres evaluar los sismos. Después puedes arrastrar el pin para ajustarlo.</p>}
+        {eligiendo === 'ubicacion' && <p className="nota">Toca el punto del mapa donde quieres evaluar los sismos. Después puedes arrastrar el pin para ajustarlo.</p>}
+        <p className="nota">Se considera suelo blando o relleno, el criterio conservador del protocolo: así la estimación no se queda corta.</p>
         {gps?.tipo === 'error' && <p className="aviso-suave">{gps.mensaje}</p>}
       </div>
+
+      <details className="sismos-manual" open={manualAbierto} onToggle={(e) => setManualAbierto(e.currentTarget.open)}>
+        <summary>Cálculo manual (si los sismos no cargan, o para probar un caso)</summary>
+        <form
+          className="sismos-manual-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const lat = Number(manualCampos.lat), lon = Number(manualCampos.lon), prof = Number(manualCampos.prof), mag = Number(manualCampos.mag)
+            const ok = (v: string, n: number, a: number, b: number) => v.trim() !== '' && Number.isFinite(n) && n >= a && n <= b
+            if (!ok(manualCampos.lat, lat, -90, 90)) return setManualError('La latitud debe estar entre -90 y 90 (por ejemplo, -12.3 para el sur).')
+            if (!ok(manualCampos.lon, lon, -180, 180)) return setManualError('La longitud debe estar entre -180 y 180 (por ejemplo, -77.7 para el oeste).')
+            if (!ok(manualCampos.prof, prof, 0, 700)) return setManualError('La profundidad debe estar entre 0 y 700 km.')
+            if (!ok(manualCampos.mag, mag, 2, 9.6)) return setManualError('La magnitud debe estar entre 2 y 9,6.')
+            if (!ubic) return setManualError('Primero define tu ubicación (arriba): sin ella no hay dónde evaluar el sismo.')
+            setManualError(null)
+            setManual({ id: 'manual', mag, place: 'Cálculo manual', time: Date.now(), url: '', lat, lon, depth: prof })
+            setElegido('manual')
+          }}
+        >
+          <label>Latitud del epicentro<input inputMode="decimal" placeholder="-12.3" value={manualCampos.lat} onChange={(e) => setManualCampos((c) => ({ ...c, lat: e.target.value }))} /></label>
+          <label>Longitud del epicentro<input inputMode="decimal" placeholder="-77.7" value={manualCampos.lon} onChange={(e) => setManualCampos((c) => ({ ...c, lon: e.target.value }))} /></label>
+          <label>Profundidad (km)<input inputMode="decimal" placeholder="40" value={manualCampos.prof} onChange={(e) => setManualCampos((c) => ({ ...c, prof: e.target.value }))} /></label>
+          <label>Magnitud<input inputMode="decimal" placeholder="7.0" value={manualCampos.mag} onChange={(e) => setManualCampos((c) => ({ ...c, mag: e.target.value }))} /></label>
+          <div className="sismos-ubicacion-acciones">
+            <button className="btn" type="submit">Calcular</button>
+            <button className="btn-sec" type="button" aria-pressed={eligiendo === 'epicentro'} onClick={() => setEligiendo((x) => (x === 'epicentro' ? null : 'epicentro'))}>
+              <MapPin size={16} aria-hidden="true" /> {eligiendo === 'epicentro' ? 'Toca el mapa…' : 'Epicentro en el mapa'}
+            </button>
+            {manual && (
+              <button className="btn-link" type="button" onClick={() => { setManual(null); setElegido((x) => (x === 'manual' ? null : x)) }}>
+                <X size={16} aria-hidden="true" /> Quitar el cálculo
+              </button>
+            )}
+          </div>
+          {manualError && <p className="aviso-suave">{manualError}</p>}
+          <p className="nota">Latitud sur y longitud oeste van con signo menos. La magnitud es necesaria para el cálculo; la profundidad es la del hipocentro.</p>
+        </form>
+      </details>
 
       <div className="sismos-cuerpo">
         <div className="sismos-mapa" ref={nodoMapa} role="region" aria-label="Mapa de sismos" />
@@ -298,7 +329,7 @@ export default function AlertaSismos({ online }: { online: boolean }) {
         </ul>
       </div>
 
-      {sismoElegido && evElegido && alcanceElegido && <DetalleEvaluacion sismo={sismoElegido} ev={evElegido} alcance={alcanceElegido} cfg={cfg} />}
+      {sismoElegido && evElegido && alcanceElegido && <DetalleEvaluacion sismo={sismoElegido} ev={evElegido} alcance={alcanceElegido} cfg={cfg} manual={elegido === 'manual'} />}
       {sismoElegido && !ubic && <p className="nota">Define tu ubicación (arriba) para ver cuánto se sentiría este sismo ahí. Mientras, el mapa muestra hasta dónde llega.</p>}
 
       <p className="sismos-legal">
