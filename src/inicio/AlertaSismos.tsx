@@ -43,7 +43,7 @@ export default function AlertaSismos({ online }: { online: boolean }) {
   const [sismos, setSismos] = useState<Sismo[]>([])
   const [estado, setEstado] = useState<Estado>({ tipo: 'cargando' })
   const [magMin, setMagMin] = useState(4)
-  const [dias, setDias] = useState(7)
+  const [dias, setDias] = useState(1) // por defecto, las últimas 24 horas (13/11/2026)
   const [soloPeru, setSoloPeru] = useState(true)
   const nodoMapa = useRef<HTMLDivElement>(null)
   const mapa = useRef<L.Map | null>(null)
