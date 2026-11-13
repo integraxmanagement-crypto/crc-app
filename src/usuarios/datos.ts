@@ -70,6 +70,7 @@ export const RESULTADOS: Record<string, string> = {
   inhabilitada: 'Cuenta inhabilitada',
   limite_supabase: 'Límite de Supabase',
   error: 'Error del sistema',
+  en_curso: 'Sin terminar', // intento reservado cuyo resultado no llegó a anotarse; cuenta como fallo para el bloqueo
 }
 
 export type ContrasenaDada = {

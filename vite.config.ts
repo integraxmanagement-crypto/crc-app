@@ -1,9 +1,18 @@
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Cabeceras de seguridad de la app publicada (vercel.json). La vista previa local (npm run preview) usa las mismas,
+// para probar aquí lo que el navegador permitirá o bloqueará en Vercel.
+const cabeceras: Record<string, string> = Object.fromEntries(
+  (JSON.parse(readFileSync(new URL('./vercel.json', import.meta.url), 'utf8')) as { headers: { headers: { key: string; value: string }[] }[] })
+    .headers[0].headers.map((c) => [c.key, c.value]),
+)
+
 // https://vite.dev/config/
 export default defineConfig({
+  preview: { headers: cabeceras },
   plugins: [
     react(),
     VitePWA({
